@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Recipe } from '../types';
 import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { useUserGarden } from '../contexts/UserGardenContext';
 import { getRecipeSuggestion } from '../services/geminiService';
 import { RECIPE_CATALOG } from '../constants';
+import { useRecipeImages } from '../hooks/useRecipeImages';
 import RecipeCard from './RecipeCard';
 import RecipeDetailModal from './RecipeDetailModal';
 import RecipeModal from './RecipeModal';
@@ -13,6 +14,14 @@ const DiscoveryCarousel: React.FC = () => {
     const { myPlants } = useUserGarden();
     const { saveRecipeFromCatalog, isRecipeSaved } = useUserCookbook();
 
+    // Use the recipe images hook for catalog recipes
+    const { recipes: catalogWithImages, isInitializing, initializeImages } = useRecipeImages(RECIPE_CATALOG);
+
+    // Initialize images on first mount
+    useEffect(() => {
+        initializeImages();
+    }, [initializeImages]);
+
     const seasonalRecipes = useMemo(() => {
         const currentMonth = new Date().toLocaleString('en-US', { month: 'short' });
         const harvestableIngredients = new Set(
@@ -20,15 +29,15 @@ const DiscoveryCarousel: React.FC = () => {
         );
 
         if (harvestableIngredients.size === 0) {
-            return RECIPE_CATALOG; // Show all if nothing is in season
+            return catalogWithImages; // Show all if nothing is in season
         }
-        
-        return [...RECIPE_CATALOG].sort((a, b) => {
+
+        return [...catalogWithImages].sort((a, b) => {
             const aScore = a.keyIngredients.filter(ing => harvestableIngredients.has(ing)).length;
             const bScore = b.keyIngredients.filter(ing => harvestableIngredients.has(ing)).length;
             return bScore - aScore; // Sort by most matching ingredients
         });
-    }, [myPlants]);
+    }, [myPlants, catalogWithImages]);
 
     const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
 
@@ -82,7 +91,7 @@ const RecipeBook: React.FC = () => {
         try {
             const recipeData = await getRecipeSuggestion(myPlants);
             if (recipeData.name !== "Garden's Resting") {
-              addRecipe(recipeData, 'gemini');
+              await addRecipe(recipeData, 'gemini');
             } else {
               setError("Nothing is ready for harvest right now, so we can't suggest a recipe.");
             }
@@ -94,8 +103,8 @@ const RecipeBook: React.FC = () => {
         }
     };
 
-    const handleAddRecipe = (recipeData: Omit<Recipe, 'id' | 'source' | 'keyIngredients'>) => {
-        addRecipe(recipeData, 'user');
+    const handleAddRecipe = async (recipeData: Omit<Recipe, 'id' | 'source' | 'keyIngredients'>) => {
+        await addRecipe(recipeData, 'user');
         setAddModalOpen(false);
     };
     

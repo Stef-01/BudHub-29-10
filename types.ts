@@ -64,7 +64,9 @@ export type Tab = 'Garden' | 'Tasks' | 'Recipes' | 'Events';
 export interface Recipe {
     id: string;
     name: string;
-    image: string;
+    image: string; // Can be URL or emoji
+    imageSource?: 'unsplash' | 'user' | 'emoji' | 'preloaded'; // Track where image came from
+    imageLoading?: boolean; // Track loading state
     course: 'main' | 'side' | 'breakfast' | 'snack' | 'soup' | 'condiment' | 'beverage';
     diet_tags: string[];
     spice_level: number;
