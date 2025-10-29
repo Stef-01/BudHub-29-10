@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vibe-Coded Garden</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes marquee-slow {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+    .animate-marquee-slow {
+      animation: marquee-slow 40s linear infinite;
+    }
+    .group-hover\:pause-animation:hover .pause-animation {
+        animation-play-state: paused;
+    }
+    @keyframes jump-in {
+      0% {
+        opacity: 0;
+        transform: scale(0.5);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    .animate-jump-in {
+      animation: jump-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+      "react/": "https://aistudiocdn.com/react@^19.2.0/",
+      "react": "https://aistudiocdn.com/react@^19.2.0",
+      "@google/genai": "https://aistudiocdn.com/@google/genai@^1.27.0"
+    }
+  }
+  </script>
+</head>
+<body class="bg-green-50">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
