@@ -1,13 +1,12 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { INITIAL_COOKBOOK } from '../constants';
 import type { Recipe } from '../types';
-import { unsplashService } from '../services/unsplashService';
-import { imageCacheService } from '../services/imageCacheService';
+import { INITIAL_COOKBOOK } from '../constants';
 
 interface UserCookbookContextType {
   recipes: Recipe[];
-  addRecipe: (recipe: Omit<Recipe, 'id' | 'source' | 'keyIngredients'>, source: 'user' | 'gemini') => Promise<void>;
+  addRecipe: (recipeData: Omit<Recipe, 'id' | 'source' | 'keyIngredients'>, source: 'user' | 'gemini') => void;
+  removeRecipe: (recipeId: string) => void;
   saveRecipeFromCatalog: (recipe: Recipe) => void;
   isRecipeSaved: (recipeId: string) => boolean;
 }
@@ -15,7 +14,7 @@ interface UserCookbookContextType {
 const UserCookbookContext = createContext<UserCookbookContextType | undefined>(undefined);
 
 export const UserCookbookProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [recipes, setRecipes] = useLocalStorage<Recipe[]>('user_recipes', INITIAL_COOKBOOK);
+  const [recipes, setRecipes] = useLocalStorage<Recipe[]>('user_cookbook_recipes', INITIAL_COOKBOOK);
 
   const addRecipe = async (recipeData: Omit<Recipe, 'id' | 'source' | 'keyIngredients'>, source: 'user' | 'gemini') => {
     const recipeId = `recipe-${new Date().getTime()}`;
@@ -56,29 +55,31 @@ export const UserCookbookProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     const newRecipe: Recipe = {
       ...recipeData,
-      id: recipeId,
-      source: source,
-      keyIngredients: [], // User/Gemini recipes don't need key ingredients for sorting
-      image: finalImage,
-      imageSource: imageSource,
+      id: `recipe_${new Date().getTime()}`,
+      source,
+      // Gemini/user added recipes won't have this for now for simplicity
+      keyIngredients: [], 
     };
+    setRecipes(prev => [...prev, newRecipe]);
+  };
 
-    setRecipes(prev => [newRecipe, ...prev]);
+  const removeRecipe = (recipeId: string) => {
+    setRecipes(prev => prev.filter(r => r.id !== recipeId));
   };
 
   const saveRecipeFromCatalog = (recipe: Recipe) => {
-      setRecipes(prev => {
-          if (prev.some(r => r.id === recipe.id)) return prev;
-          return [...prev, recipe];
-      });
+    setRecipes(prev => {
+        if (prev.some(r => r.id === recipe.id)) return prev;
+        return [...prev, recipe];
+    });
   };
 
   const isRecipeSaved = (recipeId: string): boolean => {
-      return recipes.some(r => r.id === recipeId);
-  };
+    return recipes.some(r => r.id === recipeId);
+  }
 
   return (
-    <UserCookbookContext.Provider value={{ recipes, addRecipe, saveRecipeFromCatalog, isRecipeSaved }}>
+    <UserCookbookContext.Provider value={{ recipes, addRecipe, removeRecipe, saveRecipeFromCatalog, isRecipeSaved }}>
       {children}
     </UserCookbookContext.Provider>
   );

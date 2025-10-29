@@ -579,7 +579,7 @@ export const RECIPE_CATALOG: Recipe[] = [
     {
         id: 'rcp_masala_chai_low_sugar',
         name: 'Masala Chai (Low Sugar)',
-        image: 'https://images.unsplash.com/photo-1594212699903-ec8a64e1f972?q=80&w=2070&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1578899805437-4352b215281e?q=80&w=2070&auto=format&fit=crop',
         course: 'beverage',
         diet_tags: ['vegetarian', 'diabetic_friendly'],
         spice_level: 1,
