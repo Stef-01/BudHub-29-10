@@ -49,7 +49,23 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ recipe, onClose }
       >
         <header className="relative flex-shrink-0">
           {isImageUrl ? (
-            <img src={recipe.image} alt={recipe.name} className="w-full h-48 object-cover rounded-t-2xl" />
+            <img
+              src={recipe.image}
+              alt={recipe.name}
+              className="w-full h-48 object-cover rounded-t-2xl"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.style.display = 'none';
+                const fallbackDiv = document.createElement('div');
+                fallbackDiv.className = 'w-full h-48 flex items-center justify-center bg-green-100 rounded-t-2xl';
+                const fallbackSpan = document.createElement('span');
+                fallbackSpan.className = 'text-6xl';
+                fallbackSpan.textContent = '🍲';
+                fallbackDiv.appendChild(fallbackSpan);
+                target.parentElement?.appendChild(fallbackDiv);
+              }}
+            />
           ) : (
             <div className="w-full h-48 flex items-center justify-center bg-green-100 rounded-t-2xl">
               <span className="text-6xl">{recipe.image || '🍲'}</span>

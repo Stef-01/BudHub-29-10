@@ -20,7 +20,23 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onClick }) => {
     >
       <div className="relative">
         {isImageUrl ? (
-          <img src={recipe.image} alt={recipe.name} className="w-full h-40 object-cover" />
+          <img
+            src={recipe.image}
+            alt={recipe.name}
+            className="w-full h-40 object-cover"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.style.display = 'none';
+              const fallbackDiv = document.createElement('div');
+              fallbackDiv.className = 'w-full h-40 flex items-center justify-center bg-green-100';
+              const fallbackSpan = document.createElement('span');
+              fallbackSpan.className = 'text-5xl';
+              fallbackSpan.textContent = '🍲';
+              fallbackDiv.appendChild(fallbackSpan);
+              target.parentElement?.appendChild(fallbackDiv);
+            }}
+          />
         ) : (
           <div className="w-full h-40 flex items-center justify-center bg-green-100">
             <span className="text-5xl">{recipe.image || '🍲'}</span>

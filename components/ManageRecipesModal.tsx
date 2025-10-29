@@ -41,7 +41,24 @@ const ManageRecipesModal: React.FC<ManageRecipesModalProps> = ({ recipes, onClos
                             {userRecipes.map(recipe => (
                                 <li key={recipe.id} className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                                     <div className="flex items-center">
-                                        <span className="text-3xl mr-4">{recipe.image.startsWith('http') ? '🍲' : recipe.image}</span>
+                                        {recipe.image.startsWith('http') ? (
+                                          <img
+                                            src={recipe.image}
+                                            alt={recipe.name}
+                                            className="w-12 h-12 object-cover rounded-lg mr-4"
+                                            onError={(e) => {
+                                              const target = e.currentTarget;
+                                              target.onerror = null;
+                                              target.style.display = 'none';
+                                              const fallback = document.createElement('span');
+                                              fallback.className = 'text-3xl mr-4';
+                                              fallback.textContent = '🍲';
+                                              target.parentElement?.appendChild(fallback);
+                                            }}
+                                          />
+                                        ) : (
+                                          <span className="text-3xl mr-4">{recipe.image}</span>
+                                        )}
                                         <div>
                                             <p className="font-semibold text-gray-800">{recipe.name}</p>
                                             <p className="text-sm text-gray-500 capitalize">{recipe.source === 'gemini' ? 'Gemini Suggested' : 'Your Recipe'}</p>
