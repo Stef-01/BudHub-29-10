@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Task, DayOfWeek, TaskCategory } from '../types';
 import { useUserGarden } from '../contexts/UserGardenContext';
 import { useGamification } from '../contexts/GamificationContext';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { getTaskStates, saveTaskState } from '../services/db';
 import TaskCard from './TaskCard';
 import { WateringCanIcon, FertilizerIcon, BugIcon, ShieldIcon, PrunersIcon, MulchIcon, TrellisIcon } from './icons/Icons';
 
@@ -34,16 +34,25 @@ const getToday = (): DayOfWeek => {
 const TaskBoard: React.FC<TaskBoardProps> = ({ allTasks, dismissedTaskIds, onDismissTask }) => {
     const { myPlants } = useUserGarden();
     const { addXp } = useGamification();
-    const [completedTasks, setCompletedTasks] = useLocalStorage<Record<string, boolean>>('completed_tasks', {});
+    const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
     const [selectedDay, setSelectedDay] = useState<DayOfWeek>(getToday());
     const [hiddenCategories, setHiddenCategories] = useState<Set<TaskCategory>>(new Set());
     const [visibleTaskCount, setVisibleTaskCount] = useState(TASKS_TO_SHOW_INITIALLY);
+
+    useEffect(() => {
+        const loadTaskStates = async () => {
+            const states = await getTaskStates();
+            setCompletedTasks(states);
+        };
+        loadTaskStates();
+    }, []);
 
     const handleToggleComplete = (task: Task, isCompleted: boolean) => {
         setCompletedTasks(prev => ({
             ...prev,
             [task.id]: isCompleted,
         }));
+        saveTaskState(task.id, isCompleted);
         addXp(task.priority, isCompleted ? 'add' : 'remove');
     };
 

@@ -1,41 +1,73 @@
-import React, { createContext, useState, useContext, useMemo, useEffect, ReactNode } from 'react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import React, { createContext, useState, useContext, useMemo, useEffect, ReactNode, useCallback } from 'react';
 import { LEVEL_XP_BASE, LEVEL_XP_MULTIPLIER, XP_VALUES } from '../config';
 import type { TaskPriority } from '../types';
+import { getGamificationState, saveGamificationState } from '../services/db';
 
 interface GamificationContextType {
   xp: number;
   level: number;
   xpForNextLevel: number;
-  prevLevel: number;
   showLevelUp: boolean;
   setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>;
   addXp: (priority: TaskPriority, action: 'add' | 'remove') => void;
+  loading: boolean;
 }
 
 const GamificationContext = createContext<GamificationContextType | undefined>(undefined);
 
 export const GamificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [xp, setXp] = useLocalStorage<number>('user_xp', 0);
-  const [level, setLevel] = useLocalStorage<number>('user_level', 1);
+  const [xp, setXp] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [showLevelUp, setShowLevelUp] = useState(false);
-  const [prevLevel, setPrevLevel] = useState(level);
+  const [prevLevel, setPrevLevel] = useState(1);
+
+  useEffect(() => {
+    const loadState = async () => {
+        setLoading(true);
+        const { xp, level } = await getGamificationState();
+        setXp(xp);
+        setLevel(level);
+        setPrevLevel(level);
+        setLoading(false);
+    };
+    loadState();
+  }, []);
 
   const xpForNextLevel = useMemo(() => {
     return Math.floor(LEVEL_XP_BASE * Math.pow(LEVEL_XP_MULTIPLIER, level - 1));
   }, [level]);
 
+  const updateStateInDb = useCallback(async (newXp: number, newLevel: number) => {
+    await saveGamificationState(newXp, newLevel);
+  }, []);
+
   useEffect(() => {
-    if (xp >= xpForNextLevel) {
-      const newXp = xp - xpForNextLevel;
-      setLevel(prev => prev + 1);
+    if (loading) return;
+    
+    let needsDbUpdate = false;
+    let currentXp = xp;
+    let currentLevel = level;
+
+    if (currentXp >= xpForNextLevel) {
+      const newXp = currentXp - xpForNextLevel;
+      const newLevel = currentLevel + 1;
+      setLevel(newLevel);
       setXp(newXp);
+      needsDbUpdate = true;
+    } else {
+      needsDbUpdate = true;
     }
+    
+    if(needsDbUpdate) {
+        updateStateInDb(xp, level);
+    }
+
     if (level > prevLevel) {
       setShowLevelUp(true);
       setPrevLevel(level);
     }
-  }, [xp, level, xpForNextLevel, setLevel, setXp, prevLevel]);
+  }, [xp, level, xpForNextLevel, loading, prevLevel, updateStateInDb]);
 
   const addXp = (priority: TaskPriority, action: 'add' | 'remove') => {
     const amount = XP_VALUES[priority] || 15;
@@ -50,10 +82,10 @@ export const GamificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     xp,
     level,
     xpForNextLevel,
-    prevLevel,
     showLevelUp,
     setShowLevelUp,
-    addXp
+    addXp,
+    loading
   };
 
   return (

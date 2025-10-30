@@ -6,8 +6,9 @@ import { HEATWAVE_THRESHOLD } from './config';
 import { COMMUNITY_EVENTS } from './constants';
 import { GamificationProvider, useGamification } from './contexts/GamificationContext';
 import { UserGardenProvider, useUserGarden } from './contexts/UserGardenContext';
-import { UserCookbookProvider } from './contexts/UserCookbookContext';
-import { useLocalStorage } from './hooks/useLocalStorage';
+import { UserCookbookProvider, useUserCookbook } from './contexts/UserCookbookContext';
+import { ImageGenerationProvider } from './contexts/ImageGenerationContext';
+import { getDismissedTaskIds, saveDismissedTaskIds } from './services/db';
 
 import Header from './components/Header';
 import Navigation from './components/Navigation';
@@ -24,25 +25,36 @@ const AppContent: React.FC = () => {
   const [weather, setWeather] = useState<Weather | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('Garden');
-  const [loading, setLoading] = useState<boolean>(true);
-  const [dismissedTaskIds, setDismissedTaskIds] = useLocalStorage<string[]>('dismissed_task_ids', []);
+  const [weatherLoading, setWeatherLoading] = useState<boolean>(true);
+  const [dismissedTaskIds, setDismissedTaskIds] = useState<string[]>([]);
+  const [dismissedTasksLoading, setDismissedTasksLoading] = useState(true);
 
-  const { myPlants } = useUserGarden();
-  const { showLevelUp, setShowLevelUp, level } = useGamification();
+  const { myPlants, loading: gardenLoading } = useUserGarden();
+  const { showLevelUp, setShowLevelUp, level, loading: gamificationLoading } = useGamification();
+  const { loading: cookbookLoading } = useUserCookbook();
 
   useEffect(() => {
-    const fetchWeather = async () => {
-      setLoading(true);
+    const fetchWeatherData = async () => {
+      setWeatherLoading(true);
       try {
         const weatherData = await getMockWeather({ city: 'Logan', state: 'QLD' });
         setWeather(weatherData);
       } catch (error) {
         console.error("Failed to fetch weather data", error);
       } finally {
-        setLoading(false);
+        setWeatherLoading(false);
       }
     };
-    fetchWeather();
+
+    const loadDismissedTasks = async () => {
+        setDismissedTasksLoading(true);
+        const ids = await getDismissedTaskIds();
+        setDismissedTaskIds(ids);
+        setDismissedTasksLoading(false);
+    };
+
+    fetchWeatherData();
+    loadDismissedTasks();
   }, []);
 
   useEffect(() => {
@@ -57,7 +69,9 @@ const AppContent: React.FC = () => {
   const handleDismissTask = (taskId: string) => {
     setDismissedTaskIds(prev => {
       if (prev.includes(taskId)) return prev;
-      return [...prev, taskId];
+      const newIds = [...prev, taskId];
+      saveDismissedTaskIds(newIds);
+      return newIds;
     });
   };
 
@@ -90,6 +104,8 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const loading = weatherLoading || gardenLoading || cookbookLoading || gamificationLoading || dismissedTasksLoading;
+
   return (
     <div className="bg-green-50 min-h-screen font-sans">
       <Header />
@@ -118,7 +134,9 @@ const App: React.FC = () => {
     <GamificationProvider>
       <UserGardenProvider>
         <UserCookbookProvider>
-          <AppContent />
+          <ImageGenerationProvider>
+            <AppContent />
+          </ImageGenerationProvider>
         </UserCookbookProvider>
       </UserGardenProvider>
     </GamificationProvider>

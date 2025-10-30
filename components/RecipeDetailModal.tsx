@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import type { Recipe } from '../types';
-import { XIcon, FireIcon, TimeIcon, UsersIcon, HeartIcon } from './icons/Icons';
+import { XIcon, FireIcon, TimeIcon, UsersIcon, HeartIcon, LoadingSpinner, CameraIcon } from './icons/Icons';
+import { useRecipeImage } from '../hooks/useRecipeImage';
+import { useUserCookbook } from '../contexts/UserCookbookContext';
 
 interface RecipeDetailModalProps {
   recipe: Recipe;
@@ -8,6 +10,31 @@ interface RecipeDetailModalProps {
 }
 
 const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ recipe, onClose }) => {
+  const { imageUrl, isGenerating } = useRecipeImage(recipe);
+  const { saveOrUpdateRecipeImage } = useUserCookbook();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:'));
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      try {
+        await saveOrUpdateRecipeImage(recipe, file);
+      } catch (error) {
+        console.error("Failed to upload image:", error);
+        alert("Failed to upload image. Please try again.");
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
@@ -20,17 +47,41 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ recipe, onClose }
         className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <header className="relative flex-shrink-0">
-          {recipe.image && (recipe.image.startsWith('http') ? 
-            <img className="h-56 w-full object-cover rounded-t-2xl" src={recipe.image} alt={recipe.name} /> :
-            <div className="h-56 w-full flex items-center justify-center bg-green-100 text-6xl rounded-t-2xl">{recipe.image}</div>
-          )}
+        <header className="relative flex-shrink-0 group">
+          <div className="h-56 w-full rounded-t-2xl bg-green-50">
+            {isUploading || isGenerating ? (
+              <div className="h-full w-full flex flex-col items-center justify-center text-center p-2">
+                <LoadingSpinner className="h-8 w-8 text-green-600" />
+                <p className="mt-2 text-sm text-gray-500">{isUploading ? 'Uploading...' : 'Generating...'}</p>
+              </div>
+            ) : isRenderableImage ? (
+              <img className="h-full w-full object-cover rounded-t-2xl" src={imageUrl} alt={recipe.name} />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-green-100 text-6xl rounded-t-2xl">{imageUrl}</div>
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 p-2 rounded-full bg-black/40 text-white hover:bg-black/60"
+            className="absolute top-3 right-3 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
             aria-label="Close"
           >
             <XIcon className="h-6 w-6" />
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+          <button
+            onClick={handleUploadClick}
+            disabled={isUploading}
+            className="absolute bottom-3 right-3 flex items-center px-3 py-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+            aria-label="Change recipe image"
+          >
+            <CameraIcon className="h-5 w-5 mr-2" />
+            Change Image
           </button>
         </header>
 

@@ -1,1 +1,2 @@
-full contents of hooks/useUnsplashImage.ts
+// This file is a placeholder for an unused hook.
+export {};

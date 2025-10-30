@@ -64,7 +64,7 @@ export type Tab = 'Garden' | 'Tasks' | 'Recipes' | 'Events';
 export interface Recipe {
     id: string;
     name: string;
-    image: string;
+    image: string; // Can be URL, emoji, or object URL (blob:)
     course: 'main' | 'side' | 'breakfast' | 'snack' | 'soup' | 'condiment' | 'beverage';
     diet_tags: string[];
     spice_level: number;
@@ -81,6 +81,11 @@ export interface Recipe {
     // For simplicity in this app, ingredients and instructions are strings
     ingredients: string;
     instructions: string;
+    imageMetadata?: {
+        source: 'url' | 'emoji' | 'ai_generated' | 'user' | 'content_addressed' | 'user_upload';
+        status: 'pending' | 'generated' | 'failed' | 'cached';
+        image_key?: string; // sha256 hash of the generation spec or image content
+    };
 }
 
 

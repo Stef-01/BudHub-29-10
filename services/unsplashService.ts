@@ -1,1 +1,2 @@
-full contents of services/unsplashService.ts
+// This file is a placeholder for an unused service.
+export {};

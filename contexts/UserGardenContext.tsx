@@ -1,37 +1,47 @@
 // Fix: Implemented UserGardenContext to resolve missing module errors.
-import React, { createContext, useContext, ReactNode } from 'react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import type { Plant } from '../types';
-import { PLANT_CATALOG } from '../constants';
+import { getMyPlants, addPlant as dbAddPlant, removePlant as dbRemovePlant } from '../services/db';
 
 interface UserGardenContextType {
   myPlants: Plant[];
   addPlant: (plant: Plant) => void;
   removePlant: (plantId: number) => void;
+  loading: boolean;
 }
 
 const UserGardenContext = createContext<UserGardenContextType | undefined>(undefined);
 
-// Start the user with a couple of plants to get them going.
-const INITIAL_GARDEN: Plant[] = [PLANT_CATALOG[0], PLANT_CATALOG[2]];
-
 export const UserGardenProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [myPlants, setMyPlants] = useLocalStorage<Plant[]>('user_garden_plants', INITIAL_GARDEN);
+  const [myPlants, setMyPlants] = useState<Plant[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPlants = async () => {
+      setLoading(true);
+      const plants = await getMyPlants();
+      setMyPlants(plants);
+      setLoading(false);
+    };
+    loadPlants();
+  }, []);
 
   const addPlant = (plant: Plant) => {
     setMyPlants(prev => {
       // Avoid duplicates
       if (prev.some(p => p.id === plant.id)) return prev;
+      dbAddPlant(plant.id);
       return [...prev, plant];
     });
   };
 
   const removePlant = (plantId: number) => {
     setMyPlants(prev => prev.filter(p => p.id !== plantId));
+    dbRemovePlant(plantId);
   };
 
   return (
-    <UserGardenContext.Provider value={{ myPlants, addPlant, removePlant }}>
+    <UserGardenContext.Provider value={{ myPlants, addPlant, removePlant, loading }}>
       {children}
     </UserGardenContext.Provider>
   );
