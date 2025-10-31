@@ -10,7 +10,7 @@ export const LoadingSpinner: React.FC<IconProps> = (props) => (
     xmlns="http://www.w3.org/2000/svg"
     width="24"
     height="24"
-    viewBox="0 0 24"
+    viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
@@ -154,10 +154,9 @@ export const SnowflakeIcon: React.FC<IconProps> = (props) => (
 
 export const SparklesIcon: React.FC<IconProps> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
-    <path d="M18 12h-6"></path>
-    <path d="M15 9h.01"></path>
-    <path d="M15 15h.01"></path>
+    <path d="M12 3L9.5 8.5 4 11l5.5 2.5L12 19l2.5-5.5L20 11l-5.5-2.5L12 3z" />
+    <path d="M4.5 15.5L6 14l1.5 1.5L9 14l-1.5-1.5L6 11l-1.5 1.5L3 14l1.5 1.5z" />
+    <path d="M18 5l-1.5-1.5L15 5l1.5 1.5L18 5z" />
   </svg>
 );
 
@@ -271,4 +270,20 @@ export const CameraIcon: React.FC<IconProps> = (props) => (
     <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
     <circle cx="12" cy="13" r="3"></circle>
   </svg>
+);
+
+export const GameControllerIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <line x1="6" y1="11" x2="10" y2="11"></line>
+        <line x1="8" y1="9" x2="8" y2="13"></line>
+        <line x1="15" y1="12" x2="15.01" y2="12"></line>
+        <line x1="18" y1="10" x2="18.01" y2="10"></line>
+        <path d="M17.32 5H6.68a4 4 0 0 0-3.97 3.59c-.2 1.44-.06 3.2.55 4.88 1.12 3.13 3.32 5.53 6.74 5.53s5.62-2.4 6.74-5.53c.61-1.68.75-3.44.55-4.88A4 4 0 0 0 17.32 5z"></path>
+    </svg>
+);
+
+export const ZapIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+    </svg>
 );

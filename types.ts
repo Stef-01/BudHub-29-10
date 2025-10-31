@@ -1,73 +1,35 @@
-// FIX: Defined DayOfWeek directly to resolve circular dependency error.
-export type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
-
+import type { DayOfWeek, PlantCategory, Phenology, ImageMetadata, TaskCategory, TaskPriority, MovementProfile, Alert, Tab, GameMode, GameQuestion, GameScore } from './types';
 // types.ts
 
-export interface Weather {
-  location: {
-    name: string;
-    region: string;
-  };
-  current: {
-    tempC: number;
-    humidity: number;
-    precipMM: number;
-    condition: string;
-    windKPH: number;
-  };
-  forecast: {
-    day: DayOfWeek;
-    maxTempC: number;
-    minTempC: number;
-    chanceOfRain: number;
-    condition: string;
-  }[];
-}
+export type DayOfWeek = "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
 
-export type PlantCategory = "Vegetable" | "Fruit" | "Herb" | "Flower" | "Berry or Vine";
-export type PlantPhenology = "Seedling" | "Vegetative" | "Flowering" | "Fruiting" | "Harvest" | "Dormant";
+export type Phenology = "Dormant" | "Vegetative" | "Flowering" | "Fruiting" | "Harvest";
+
+export type PlantCategory = "Fruit" | "Vegetable" | "Herb" | "Berry or Vine" | "Flower";
 
 export interface Plant {
     id: number;
     name: string;
     icon: string;
     category: PlantCategory;
-    phenology: PlantPhenology;
-    fruitingMonths: string[]; // e.g., ['Jan', 'Feb']
+    phenology: Phenology;
+    fruitingMonths: string[];
 }
 
-export type TaskCategory = 'Watering' | 'Feeding' | 'Pest Control' | 'Protection' | 'Maintenance' | 'Mulching' | 'Fruiting Support';
-export type TaskPriority = 'High' | 'Medium' | 'Low';
-export type MovementProfile = 'hinge_and_squat' | 'light_standing' | 'carry_push' | 'stretch_reach';
-
-export interface Task {
-  id: string;
-  plantId: number | null;
-  day: DayOfWeek;
-  title: string;
-  description: string;
-  category: TaskCategory;
-  priority: TaskPriority;
-  movement: MovementProfile;
-  isCompleted: boolean;
+export interface ImageMetadata {
+    source: 'emoji' | 'preloaded' | 'user' | 'user_upload' | 'ai_generated' | 'content_addressed';
+    status: 'pending' | 'generated' | 'failed' | 'cached';
+    errorMessage?: string;
+    image_key?: string; // a content-address for the image
 }
-
-export interface Alert {
-    type: 'Heatwave' | 'Frost';
-    title: string;
-    message: string;
-    severity: 'Warning' | 'Critical';
-}
-
-export type Tab = 'Garden' | 'Tasks' | 'Recipes' | 'Events';
 
 export interface Recipe {
     id: string;
     name: string;
-    image: string; // Can be URL, emoji, or object URL (blob:)
+    image: string; // emoji or URL
     course: 'main' | 'side' | 'breakfast' | 'snack' | 'soup' | 'condiment' | 'beverage';
     diet_tags: string[];
-    spice_level: number;
+    spice_level: 0 | 1 | 2 | 3; // mild, spicy, hot, fiery
     prep_minutes: number;
     cook_minutes: number;
     servings: number;
@@ -76,18 +38,15 @@ export interface Recipe {
     high_protein: boolean;
     low_carb: boolean;
     gluten_free: boolean;
+    protein_grams?: number;
+    fiber_grams?: number;
+    carbs_grams?: number;
     source: 'preloaded' | 'user' | 'gemini';
     keyIngredients: string[];
-    // For simplicity in this app, ingredients and instructions are strings
     ingredients: string;
     instructions: string;
-    imageMetadata?: {
-        source: 'url' | 'emoji' | 'ai_generated' | 'user' | 'content_addressed' | 'user_upload';
-        status: 'pending' | 'generated' | 'failed' | 'cached';
-        image_key?: string; // sha256 hash of the generation spec or image content
-    };
+    imageMetadata?: ImageMetadata;
 }
-
 
 export interface CommunityEvent {
     id: number;
@@ -95,4 +54,66 @@ export interface CommunityEvent {
     date: string;
     location: string;
     description: string;
+}
+
+export interface Weather {
+    location: {
+        name: string;
+        region: string;
+    };
+    current: {
+        tempC: number;
+        humidity: number;
+        precipMM: number;
+        condition: string;
+        windKPH: number;
+    };
+    forecast: {
+        day: DayOfWeek;
+        maxTempC: number;
+        minTempC: number;
+        chanceOfRain: number;
+        condition: string;
+    }[];
+}
+
+export type TaskCategory = 'Watering' | 'Feeding' | 'Pest Control' | 'Protection' | 'Maintenance' | 'Mulching' | 'Fruiting Support';
+
+export type TaskPriority = 'High' | 'Medium' | 'Low';
+
+export type MovementProfile = 'hinge_and_squat' | 'light_standing' | 'carry_push' | 'stretch_reach';
+
+export interface Task {
+    id: string;
+    plantId: number | null;
+    day: DayOfWeek;
+    title: string;
+    description: string;
+    category: TaskCategory;
+    priority: TaskPriority;
+    movement: MovementProfile;
+    isCompleted: boolean;
+}
+
+export interface Alert {
+    type: 'Heatwave' | 'Frost';
+    severity: 'Warning' | 'Critical';
+    title: string;
+    message: string;
+}
+
+export type Tab = 'Garden' | 'Tasks' | 'Recipes' | 'Events' | 'Games';
+
+export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb';
+
+export interface GameQuestion {
+    options: Recipe[];
+    correctAnswerId: string;
+}
+
+export interface GameScore {
+    gameMode: GameMode;
+    score: number;
+    date: string;
+    id?: number;
 }

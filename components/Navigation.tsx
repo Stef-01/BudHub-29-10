@@ -1,7 +1,7 @@
 
 import React from 'react';
 import type { Tab } from '../types';
-import { GardenIcon, TasksIcon, RecipeBookIcon, CommunityIcon } from './icons/Icons';
+import { GardenIcon, TasksIcon, RecipeBookIcon, CommunityIcon, GameControllerIcon } from './icons/Icons';
 
 interface NavButtonProps {
   label: Tab;
@@ -35,6 +35,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
     { label: 'Tasks', icon: <TasksIcon className="h-6 w-6" /> },
     { label: 'Recipes', icon: <RecipeBookIcon className="h-6 w-6" /> },
     { label: 'Events', icon: <CommunityIcon className="h-6 w-6" /> },
+    { label: 'Games', icon: <GameControllerIcon className="h-6 w-6" /> },
   ];
 
   return (

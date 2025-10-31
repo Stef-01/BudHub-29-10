@@ -1,5 +1,6 @@
 // services/imageStoreService.ts
 import type { Recipe } from '../types';
+import { backupArtifacts } from './imageBackupService';
 
 const DB_NAME = 'GardenVibeImageStore';
 const DB_VERSION = 1;
@@ -12,7 +13,7 @@ export interface ImageArtifacts {
     original: Blob;
     preview: Blob;
     thumb: Blob;
-    manifest: object;
+    manifest: any; // Allow any object for manifest
 }
 
 function getDb(): Promise<IDBDatabase> {
@@ -40,14 +41,22 @@ export async function saveImageArtifacts(key: string, recipeId: string, artifact
     const db = await getDb();
     return new Promise((resolve, reject) => {
         const tx = db.transaction([IMAGES_STORE, ALIASES_STORE], 'readwrite');
-        tx.oncomplete = () => resolve();
+        
+        tx.oncomplete = () => {
+            // After the primary storage transaction completes successfully,
+            // write to the failsafe backup layer (localStorage).
+            backupArtifacts(key, recipeId, artifacts)
+              .catch(err => console.error("Failed to write to image backup.", err));
+            resolve();
+        };
+
         tx.onerror = () => reject(tx.error);
 
-        // 1. Save the image artifacts (blobs and manifest)
+        // 1. Save the image artifacts (blobs and manifest) to IndexedDB
         const imagesStore = tx.objectStore(IMAGES_STORE);
         imagesStore.put({ key, ...artifacts });
 
-        // 2. Save the alias mapping recipeId to the image key
+        // 2. Save the alias mapping recipeId to the image key to IndexedDB
         const aliasesStore = tx.objectStore(ALIASES_STORE);
         aliasesStore.put({ recipeId, key });
     });
@@ -75,7 +84,7 @@ export async function getArtifacts(key: string): Promise<ImageArtifacts | null> 
     });
 }
 
-async function getAlias(recipeId: string): Promise<{ recipeId: string; key: string } | null> {
+export async function getAlias(recipeId: string): Promise<{ recipeId: string; key: string } | null> {
     const db = await getDb();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(ALIASES_STORE, 'readonly');
@@ -92,7 +101,11 @@ export interface ImageUrls {
     original: string;
 }
 
-export async function getRecipeImageUrls(recipeId: string): Promise<ImageUrls | null> {
+export interface ImageState extends ImageUrls {
+    key: string;
+}
+
+export async function getRecipeImageState(recipeId: string): Promise<ImageState | null> {
     const alias = await getAlias(recipeId);
     if (!alias || !alias.key) return null;
 
@@ -100,6 +113,7 @@ export async function getRecipeImageUrls(recipeId: string): Promise<ImageUrls | 
     if (!artifacts) return null;
 
     return {
+        key: alias.key,
         thumb: URL.createObjectURL(artifacts.thumb),
         preview: URL.createObjectURL(artifacts.preview),
         original: URL.createObjectURL(artifacts.original),

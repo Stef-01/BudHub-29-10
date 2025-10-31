@@ -3,7 +3,6 @@ import type { Recipe } from '../types';
 import { 
     getMyRecipes, 
     addRecipe as dbAddRecipe, 
-    updateRecipe as dbUpdateRecipe, 
     removeRecipe as dbRemoveRecipe 
 } from '../services/db';
 import { processAndStoreUserImage } from '../services/imageService';
@@ -53,38 +52,34 @@ export const UserCookbookProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   const updateRecipe = (updatedRecipe: Recipe) => {
-    setRecipes(prev => prev.map(r => r.id === updatedRecipe.id ? updatedRecipe : r));
-    dbUpdateRecipe(updatedRecipe);
+    setRecipes(prev => {
+        const exists = prev.some(r => r.id === updatedRecipe.id);
+        if (exists) {
+            return prev.map(r => r.id === updatedRecipe.id ? updatedRecipe : r);
+        }
+        return [...prev, updatedRecipe];
+    });
+    // dbAddRecipe performs INSERT OR REPLACE, which is correct for an upsert.
+    dbAddRecipe(updatedRecipe);
   };
   
   const saveOrUpdateRecipeImage = async (recipe: Recipe, file: File) => {
     const { key } = await processAndStoreUserImage(recipe, file);
 
-    setRecipes(prevRecipes => {
-        const recipeExists = prevRecipes.some(r => r.id === recipe.id);
-        
-        // Base recipe is either the existing one or the one passed in from the catalog
-        const baseRecipe = recipeExists ? prevRecipes.find(r => r.id === recipe.id)! : recipe;
+    const baseRecipe = recipes.find(r => r.id === recipe.id) || recipe;
 
-        const updatedRecipe: Recipe = {
-            ...baseRecipe,
-            image: '', // Clear any temporary or old image value
-            imageMetadata: {
-                source: 'user_upload',
-                status: 'generated',
-                image_key: key,
-            }
-        };
-        
-        // dbAddRecipe uses INSERT OR REPLACE, so it handles both adding and updating.
-        dbAddRecipe(updatedRecipe);
-        
-        if (recipeExists) {
-            return prevRecipes.map(r => r.id === recipe.id ? updatedRecipe : r);
-        } else {
-            return [...prevRecipes, updatedRecipe];
+    const updatedRecipe: Recipe = {
+        ...baseRecipe,
+        image: '', // Clear any temporary or old image value
+        imageMetadata: {
+            source: 'user_upload',
+            status: 'generated',
+            image_key: key,
         }
-    });
+    };
+    
+    // Call the newly robust updateRecipe function
+    updateRecipe(updatedRecipe);
   };
 
   const removeRecipe = (recipeId: string) => {

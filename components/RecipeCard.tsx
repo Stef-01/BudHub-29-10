@@ -53,7 +53,9 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onClick }) => {
             )}
         </div>
         {error && (
-            <p className="text-xs text-red-500 mt-2">Image generation failed.</p>
+            <p className="text-xs text-red-500 mt-2" title={error}>
+              Image failed: {error.length > 30 ? `${error.substring(0, 27)}...` : error}
+            </p>
         )}
       </div>
     </div>
