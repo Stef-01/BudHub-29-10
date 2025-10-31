@@ -1,4 +1,3 @@
-import type { DayOfWeek, PlantCategory, Phenology, ImageMetadata, TaskCategory, TaskPriority, MovementProfile, Alert, Tab, GameMode, GameQuestion, GameScore } from './types';
 // types.ts
 
 export type DayOfWeek = "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
@@ -38,9 +37,6 @@ export interface Recipe {
     high_protein: boolean;
     low_carb: boolean;
     gluten_free: boolean;
-    protein_grams?: number;
-    fiber_grams?: number;
-    carbs_grams?: number;
     source: 'preloaded' | 'user' | 'gemini';
     keyIngredients: string[];
     ingredients: string;
