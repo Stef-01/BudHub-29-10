@@ -1,8 +1,8 @@
-
 import React, { useState, useCallback } from 'react';
 import type { Weather, Plant } from '../types';
 import { getGardeningTip } from '../services/geminiService';
 import { SparklesIcon, LoadingSpinner } from './icons/Icons';
+import Button from './ui/Button';
 
 interface GeminiTipProps {
   weather: Weather;
@@ -45,14 +45,15 @@ const GeminiTip: React.FC<GeminiTipProps> = ({ weather, plants }) => {
           {error && <p className="mt-2 text-sm text-red-100 font-medium">{error}</p>}
           {tip && <p className="mt-2 text-lg italic">"{tip}"</p>}
         </div>
-        <button
+        <Button
+          variant="secondary"
           onClick={handleGetTip}
           disabled={loading}
-          className="flex items-center justify-center w-full md:w-auto px-6 py-3 bg-white/20 hover:bg-white/30 disabled:bg-white/10 disabled:cursor-not-allowed rounded-full font-semibold transition-all duration-300 ease-in-out backdrop-blur-sm shadow-md"
+          className="bg-white/20 hover:bg-white/30 text-white border-0 w-full md:w-auto"
         >
           <SparklesIcon className="h-5 w-5 mr-2" />
           Get Vibe-Coded Tip
-        </button>
+        </Button>
       </div>
     </div>
   );

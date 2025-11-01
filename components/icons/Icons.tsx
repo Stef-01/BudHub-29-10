@@ -197,8 +197,8 @@ export const CommunityIcon: React.FC<IconProps> = (props) => (
 export const MulchIcon: React.FC<IconProps> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M2 22v-4h20v4"></path>
-    <path d="m11.5 18-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2"></path>
-    <path d="m20.5 18-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2"></path>
+    <path d="m11.5 18-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2"></path>
+    <path d="m20.5 18-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2-1.5 1-1-2.5-1.5-1-1 2"></path>
   </svg>
 );
 
@@ -285,5 +285,12 @@ export const GameControllerIcon: React.FC<IconProps> = (props) => (
 export const ZapIcon: React.FC<IconProps> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+    </svg>
+);
+
+export const RetryIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        <path d="M21 3v6h-6"/>
     </svg>
 );

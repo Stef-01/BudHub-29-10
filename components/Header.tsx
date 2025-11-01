@@ -1,14 +1,16 @@
 import React from 'react';
 import ProgressBar from './ProgressBar';
 import { useGamification } from '../contexts/GamificationContext';
+import { useScroll } from '../hooks/useScroll';
 
 const Header: React.FC = () => {
   const { xp, level, xpForNextLevel } = useGamification();
+  const isScrolled = useScroll();
   
   return (
-    <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md shadow-sm">
+    <header className={`sticky top-0 z-20 bg-white/90 backdrop-blur-md transition-shadow duration-300 ${isScrolled ? 'shadow-lg' : 'shadow-sm'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
+        <div className={`flex justify-between items-center transition-all duration-300 ${isScrolled ? 'py-2' : 'py-4'}`}>
           <div className="flex-shrink-0">
             <h1 className="text-2xl font-bold text-green-800">Garden<span className="text-green-500">Vibe</span></h1>
             <p className="text-sm text-gray-500">Your Logan, QLD Garden Companion</p>

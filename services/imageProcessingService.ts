@@ -25,8 +25,8 @@ async function digest(data: string | ArrayBuffer): Promise<string> {
  * or from the raw binary content of a file.
  */
 export async function buildKey(specOrBuffer: object | ArrayBuffer): Promise<string> {
-  // FIX: Explicitly check for ArrayBuffer. `typeof ArrayBuffer` is 'object', which caused
-  // all uploaded images to be stringified to '{}' and result in the same hash.
+  // CRITICAL FIX: Explicitly check for ArrayBuffer. `typeof specOrBuffer` returns 'object' for an ArrayBuffer,
+  // which caused the previous logic to stringify the buffer to '{}' and result in the same hash for all user-uploaded images.
   const data = specOrBuffer instanceof ArrayBuffer
     ? specOrBuffer
     : JSON.stringify(canonicalize(specOrBuffer));

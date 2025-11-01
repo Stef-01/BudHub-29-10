@@ -1,16 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import type { Task, DayOfWeek, TaskCategory } from '../types';
+import React, { useState, useMemo } from 'react';
+import type { DayOfWeek, TaskCategory } from '../types';
 import { useUserGarden } from '../contexts/UserGardenContext';
-import { useGamification } from '../contexts/GamificationContext';
-import { getTaskStates, saveTaskState } from '../services/db';
+import { useTasks } from '../contexts/TasksContext';
 import TaskCard from './TaskCard';
 import { WateringCanIcon, FertilizerIcon, BugIcon, ShieldIcon, PrunersIcon, MulchIcon, TrellisIcon } from './icons/Icons';
-
-interface TaskBoardProps {
-    allTasks: Task[];
-    dismissedTaskIds: string[];
-    onDismissTask: (taskId: string) => void;
-}
 
 const WEEK_DAYS: DayOfWeek[] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const TASK_CATEGORIES: TaskCategory[] = ['Watering', 'Feeding', 'Pest Control', 'Protection', 'Maintenance', 'Mulching', 'Fruiting Support'];
@@ -31,30 +24,13 @@ const getToday = (): DayOfWeek => {
     return WEEK_DAYS[todayIndex];
 };
 
-const TaskBoard: React.FC<TaskBoardProps> = ({ allTasks, dismissedTaskIds, onDismissTask }) => {
+const TaskBoard: React.FC = () => {
     const { myPlants } = useUserGarden();
-    const { addXp } = useGamification();
-    const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
+    const { getTasksForDay, dismissTask, toggleTaskComplete, getAllTasks, loading: tasksLoading } = useTasks();
+
     const [selectedDay, setSelectedDay] = useState<DayOfWeek>(getToday());
     const [hiddenCategories, setHiddenCategories] = useState<Set<TaskCategory>>(new Set());
     const [visibleTaskCount, setVisibleTaskCount] = useState(TASKS_TO_SHOW_INITIALLY);
-
-    useEffect(() => {
-        const loadTaskStates = async () => {
-            const states = await getTaskStates();
-            setCompletedTasks(states);
-        };
-        loadTaskStates();
-    }, []);
-
-    const handleToggleComplete = (task: Task, isCompleted: boolean) => {
-        setCompletedTasks(prev => ({
-            ...prev,
-            [task.id]: isCompleted,
-        }));
-        saveTaskState(task.id, isCompleted);
-        addXp(task.priority, isCompleted ? 'add' : 'remove');
-    };
 
     const handleToggleCategory = (category: TaskCategory) => {
         setHiddenCategories(prev => {
@@ -73,27 +49,20 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ allTasks, dismissedTaskIds, onDis
         setVisibleTaskCount(TASKS_TO_SHOW_INITIALLY); // Reset count when changing day
     };
 
+    const tasksForDay = useMemo(() => getTasksForDay(selectedDay), [getTasksForDay, selectedDay]);
+
     const filteredTasks = useMemo(() => {
-        return allTasks
-            .filter(task => !dismissedTaskIds.includes(task.id))
-            .map(task => ({
-                ...task,
-                isCompleted: !!completedTasks[task.id],
-            }))
-            .filter(task => task.day === selectedDay && !hiddenCategories.has(task.category))
-            .sort((a, b) => {
-                // Uncompleted tasks first
-                if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
-                // Then sort by priority
-                const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
-                return priorityOrder[a.priority] - priorityOrder[b.priority];
-            });
-    }, [allTasks, dismissedTaskIds, completedTasks, selectedDay, hiddenCategories]);
+        return tasksForDay.filter(task => !hiddenCategories.has(task.category));
+    }, [tasksForDay, hiddenCategories]);
 
     const visibleTasks = filteredTasks.slice(0, visibleTaskCount);
     const hasMoreTasks = filteredTasks.length > visibleTaskCount;
 
-    if (allTasks.length === 0 && myPlants.length > 0) {
+    if (tasksLoading) {
+        return <div className="text-center p-8">Loading tasks...</div>;
+    }
+
+    if (getAllTasks().length === 0 && myPlants.length > 0) {
          return (
             <div className="text-center p-8 bg-white/80 rounded-xl">
                 <h3 className="text-xl font-semibold text-gray-700">All quiet this week!</h3>
@@ -166,8 +135,8 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ allTasks, dismissedTaskIds, onDis
                             key={task.id}
                             task={task}
                             plant={myPlants.find(p => p.id === task.plantId)}
-                            onToggleComplete={handleToggleComplete}
-                            onDismiss={onDismissTask}
+                            onToggleComplete={toggleTaskComplete}
+                            onDismiss={dismissTask}
                         />
                     ))}
                 </div>

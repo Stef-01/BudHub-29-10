@@ -1,214 +1,195 @@
 // services/db.ts
+import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import type { Plant, Recipe, Task, GameScore } from '../types';
+import { PLANT_CATALOG, INITIAL_COOKBOOK } from '../constants';
+import { initializeSeedImages } from './seedImageStore';
 
-import { INITIAL_GARDEN, PLANT_CATALOG, INITIAL_COOKBOOK } from '../constants';
-import type { Plant, Recipe, GameScore } from '../types';
+const DB_NAME = 'VibeGardenDB';
+const DB_VERSION = 3; // Incremented for transient cache
 
-const DB_NAME = 'GardenVibeDB';
-const DB_VERSION = 1;
-const PLANTS_STORE = 'myPlants';
-const RECIPES_STORE = 'myRecipes';
-const GAMIFICATION_STORE = 'gamification';
-const TASKS_STORE = 'taskStates';
-const SCORES_STORE = 'gameScores';
+export const STORES = {
+    METADATA: 'metadata',
+    USER_GARDEN: 'user_garden',
+    USER_COOKBOOK: 'user_cookbook',
+    TASK_STATES: 'task_states',
+    GAMIFICATION: 'gamification',
+    GAME_SCORES: 'game_scores',
+    IMAGE_ARTIFACTS: 'image_artifacts',
+    IMAGE_ALIASES: 'image_aliases',
+    TRANSIENT_RECIPE_CACHE: 'transient_recipe_cache',
+} as const;
 
-let dbPromise: Promise<IDBDatabase> | null = null;
+interface VibeGardenDB extends DBSchema {
+    [STORES.METADATA]: {
+        key: string;
+        value: { version: string };
+    };
+    [STORES.USER_GARDEN]: {
+        key: number;
+        value: { id: number };
+    };
+    [STORES.USER_COOKBOOK]: {
+        key: string;
+        value: Recipe;
+        indexes: { 'by-source': string };
+    };
+    [STORES.TASK_STATES]: {
+        key: string;
+        value: { id: string; isCompleted: boolean };
+    };
+    [STORES.GAMIFICATION]: {
+        key: string;
+        value: { id: string; xp: number; level: number };
+    };
+    [STORES.GAME_SCORES]: {
+        key: number;
+        value: GameScore;
+        indexes: { 'by-gamemode': string };
+    };
+    [STORES.IMAGE_ARTIFACTS]: {
+        key: string;
+        value: any;
+    };
+    [STORES.IMAGE_ALIASES]: {
+        key: string;
+        value: { recipeId: string; key: string };
+    };
+    [STORES.TRANSIENT_RECIPE_CACHE]: {
+        key: string;
+        value: Recipe;
+    };
+}
 
-function getDb(): Promise<IDBDatabase> {
-    if (dbPromise) {
-        return dbPromise;
+let dbPromise: Promise<IDBPDatabase<VibeGardenDB>> | null = null;
+
+async function createAndSeedDb() {
+    if (dbPromise) return dbPromise;
+
+    dbPromise = openDB<VibeGardenDB>(DB_NAME, DB_VERSION, {
+        upgrade(db, oldVersion, newVersion, transaction) {
+            console.log(`Upgrading DB from version ${oldVersion} to ${newVersion}`);
+            if (oldVersion < 1) {
+                db.createObjectStore(STORES.METADATA, { keyPath: 'key' });
+                db.createObjectStore(STORES.USER_GARDEN, { keyPath: 'id' });
+                const cookbookStore = db.createObjectStore(STORES.USER_COOKBOOK, { keyPath: 'id' });
+                cookbookStore.createIndex('by-source', 'source');
+                db.createObjectStore(STORES.TASK_STATES, { keyPath: 'id' });
+                db.createObjectStore(STORES.GAMIFICATION, { keyPath: 'id' });
+                const scoresStore = db.createObjectStore(STORES.GAME_SCORES, { keyPath: 'id', autoIncrement: true });
+                scoresStore.createIndex('by-gamemode', 'gameMode');
+                db.createObjectStore(STORES.IMAGE_ARTIFACTS, { keyPath: 'key' });
+                db.createObjectStore(STORES.IMAGE_ALIASES, { keyPath: 'recipeId' });
+
+                INITIAL_COOKBOOK.forEach(recipe => {
+                    transaction.objectStore(STORES.USER_COOKBOOK).add(recipe);
+                });
+            }
+             if (oldVersion < 3) {
+                if (!db.objectStoreNames.contains(STORES.TRANSIENT_RECIPE_CACHE)) {
+                    db.createObjectStore(STORES.TRANSIENT_RECIPE_CACHE, { keyPath: 'id' });
+                }
+            }
+        },
+    });
+    
+    try {
+        const db = await dbPromise;
+        await initializeSeedImages(db);
+        return db;
+    } catch (error) {
+        console.error("Failed to initialize the database:", error);
+        dbPromise = null;
+        throw error;
     }
-    dbPromise = new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-        request.onupgradeneeded = (event) => {
-            const db = (event.target as IDBOpenDBRequest).result;
-            if (!db.objectStoreNames.contains(PLANTS_STORE)) {
-                db.createObjectStore(PLANTS_STORE, { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains(RECIPES_STORE)) {
-                db.createObjectStore(RECIPES_STORE, { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains(GAMIFICATION_STORE)) {
-                db.createObjectStore(GAMIFICATION_STORE, { keyPath: 'key' });
-            }
-            if (!db.objectStoreNames.contains(TASKS_STORE)) {
-                db.createObjectStore(TASKS_STORE, { keyPath: 'id' });
-            }
-             if (!db.objectStoreNames.contains(SCORES_STORE)) {
-                db.createObjectStore(SCORES_STORE, { keyPath: 'id', autoIncrement: true });
-            }
-        };
-    });
-    return dbPromise;
 }
 
-// --- Plants ---
-export async function getMyPlants(): Promise<Plant[]> {
-    const db = await getDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(PLANTS_STORE, 'readonly');
-        const store = tx.objectStore(PLANTS_STORE);
-        const request = store.getAll();
-        request.onsuccess = () => {
-            if (request.result.length > 0) {
-                resolve(request.result);
-            } else {
-                // Initialize with default garden if empty
-                const initTx = db.transaction(PLANTS_STORE, 'readwrite');
-                const initStore = initTx.objectStore(PLANTS_STORE);
-                INITIAL_GARDEN.forEach(plant => initStore.add(plant));
-                initTx.oncomplete = () => resolve(INITIAL_GARDEN);
-                initTx.onerror = () => reject(initTx.error);
-            }
-        };
-        request.onerror = () => reject(request.error);
-    });
-}
 
-export async function addPlant(plantId: number): Promise<void> {
-    const plantToAdd = PLANT_CATALOG.find(p => p.id === plantId);
-    if (!plantToAdd) return;
-    const db = await getDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(PLANTS_STORE, 'readwrite');
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        const store = tx.objectStore(PLANTS_STORE);
-        store.add(plantToAdd);
-    });
-}
+export const getDb = (): Promise<IDBPDatabase<VibeGardenDB>> => {
+    return createAndSeedDb();
+};
 
-export async function removePlant(plantId: number): Promise<void> {
-    const db = await getDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(PLANTS_STORE, 'readwrite');
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        const store = tx.objectStore(PLANTS_STORE);
-        store.delete(plantId);
-    });
-}
-
-// --- Recipes ---
-export async function getMyRecipes(): Promise<Recipe[]> {
-    const db = await getDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(RECIPES_STORE, 'readonly');
-        const store = tx.objectStore(RECIPES_STORE);
-        const request = store.getAll();
-        request.onsuccess = () => {
-            if (request.result.length > 0) {
-                resolve(request.result);
-            } else {
-                // Initialize with default cookbook
-                const initTx = db.transaction(RECIPES_STORE, 'readwrite');
-                const initStore = initTx.objectStore(RECIPES_STORE);
-                INITIAL_COOKBOOK.forEach(recipe => initStore.add(recipe));
-                initTx.oncomplete = () => resolve(INITIAL_COOKBOOK);
-                initTx.onerror = () => reject(initTx.error);
-            }
-        };
-        request.onerror = () => reject(request.error);
-    });
-}
-
-export async function addRecipe(recipe: Recipe): Promise<void> {
-    const db = await getDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(RECIPES_STORE, 'readwrite');
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        const store = tx.objectStore(RECIPES_STORE);
-        store.put(recipe); // Use put for add/update
-    });
-}
-
-export async function removeRecipe(recipeId: string): Promise<void> {
-    const db = await getDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(RECIPES_STORE, 'readwrite');
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        const store = tx.objectStore(RECIPES_STORE);
-        store.delete(recipeId);
-    });
-}
-
-// --- Gamification ---
+// --- GAMIFICATION ---
 export async function getGamificationState(): Promise<{ xp: number, level: number }> {
     const db = await getDb();
-    return new Promise((resolve) => {
-        const tx = db.transaction(GAMIFICATION_STORE, 'readonly');
-        const store = tx.objectStore(GAMIFICATION_STORE);
-        const request = store.get('userState');
-        request.onsuccess = () => {
-            resolve(request.result || { xp: 0, level: 1 });
-        };
-        // In case of error, resolve with default state
-        request.onerror = () => resolve({ xp: 0, level: 1 });
-    });
+    const state = await db.get(STORES.GAMIFICATION, 'user');
+    return state || { xp: 0, level: 1 };
 }
 
 export async function saveGamificationState(xp: number, level: number): Promise<void> {
     const db = await getDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(GAMIFICATION_STORE, 'readwrite');
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        const store = tx.objectStore(GAMIFICATION_STORE);
-        store.put({ key: 'userState', xp, level });
-    });
+    await db.put(STORES.GAMIFICATION, { id: 'user', xp, level });
 }
 
-// --- Task States ---
+// --- GARDEN ---
+export async function getMyPlants(): Promise<Plant[]> {
+    const db = await getDb();
+    const plantIds = await db.getAllKeys(STORES.USER_GARDEN);
+    return plantIds
+        .map(id => PLANT_CATALOG.find(p => p.id === id))
+        .filter((p): p is Plant => !!p);
+}
+
+export async function addPlant(plantId: number): Promise<void> {
+    const db = await getDb();
+    await db.put(STORES.USER_GARDEN, { id: plantId });
+}
+
+export async function removePlant(plantId: number): Promise<void> {
+    const db = await getDb();
+    await db.delete(STORES.USER_GARDEN, plantId);
+}
+
+// --- TASKS ---
 export async function getTaskStates(): Promise<Record<string, boolean>> {
     const db = await getDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(TASKS_STORE, 'readonly');
-        const store = tx.objectStore(TASKS_STORE);
-        const request = store.getAll();
-        request.onsuccess = () => {
-            const states = request.result.reduce((acc, item) => {
-                acc[item.id] = item.isCompleted;
-                return acc;
-            }, {} as Record<string, boolean>);
-            resolve(states);
-        };
-        request.onerror = () => reject(request.error);
-    });
+    const states = await db.getAll(STORES.TASK_STATES);
+    return states.reduce((acc, state) => {
+        acc[state.id] = state.isCompleted;
+        return acc;
+    }, {} as Record<string, boolean>);
 }
 
 export async function saveTaskState(taskId: string, isCompleted: boolean): Promise<void> {
     const db = await getDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(TASKS_STORE, 'readwrite');
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        const store = tx.objectStore(TASKS_STORE);
-        store.put({ id: taskId, isCompleted });
-    });
+    await db.put(STORES.TASK_STATES, { id: taskId, isCompleted });
 }
 
-// --- Game Scores ---
+// --- COOKBOOK & TRANSIENT CACHE ---
+export async function getRecipes(): Promise<Recipe[]> {
+    const db = await getDb();
+    return db.getAll(STORES.USER_COOKBOOK);
+}
+
+export async function getTransientRecipes(): Promise<Recipe[]> {
+    const db = await getDb();
+    return db.getAll(STORES.TRANSIENT_RECIPE_CACHE);
+}
+
+export async function saveRecipe(recipe: Recipe): Promise<void> {
+    const db = await getDb();
+    const tx = db.transaction([STORES.USER_COOKBOOK, STORES.TRANSIENT_RECIPE_CACHE], 'readwrite');
+    await tx.objectStore(STORES.USER_COOKBOOK).put(recipe);
+    await tx.objectStore(STORES.TRANSIENT_RECIPE_CACHE).delete(recipe.id);
+    await tx.done;
+}
+
+export async function saveToTransientCache(recipe: Recipe): Promise<void> {
+    const db = await getDb();
+    await db.put(STORES.TRANSIENT_RECIPE_CACHE, recipe);
+}
+
+export async function removeRecipe(recipeId: string): Promise<void> {
+    const db = await getDb();
+    await db.delete(STORES.USER_COOKBOOK, recipeId);
+}
+
+// --- GAME SCORES ---
 export async function getHighScores(): Promise<GameScore[]> {
-  const db = await getDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(SCORES_STORE, 'readonly');
-    const store = tx.objectStore(SCORES_STORE);
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+    const db = await getDb();
+    return db.getAll(STORES.GAME_SCORES);
 }
 
 export async function saveScore(score: Omit<GameScore, 'id'>): Promise<void> {
-  const db = await getDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(SCORES_STORE, 'readwrite');
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    const store = tx.objectStore(SCORES_STORE);
-    store.add(score);
-  });
+    const db = await getDb();
+    await db.add(STORES.GAME_SCORES, score as GameScore);
 }

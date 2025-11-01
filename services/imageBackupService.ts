@@ -1,10 +1,16 @@
 // services/imageBackupService.ts
-import type { ImageArtifacts } from "./imageStoreService";
 
-const PREFIX = 'vibe_img_backup_';
-const ALIAS_PREFIX = `${PREFIX}alias_`;
-const MANIFEST_PREFIX = `${PREFIX}manifest_`;
-const THUMB_PREFIX = `${PREFIX}thumb_`;
+/**
+ * A localStorage-based backup service for critical user data and image metadata.
+ * This is a failsafe in case IndexedDB is cleared by the browser.
+ * NOTE: localStorage has size limits (5-10MB). We only back up essential, lightweight data.
+ */
+import type { ImageArtifacts } from './imageStoreService';
+import type { Plant, Recipe } from '../types';
+
+const GARDEN_BACKUP_KEY = 'backup_user_garden';
+const COOKBOOK_BACKUP_KEY = 'backup_user_cookbook';
+const IMAGE_MANIFEST_BACKUP_PREFIX = 'backup_img_manifest_';
 
 function blobToBase64(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -15,63 +21,87 @@ function blobToBase64(blob: Blob): Promise<string> {
     });
 }
 
-/**
- * Creates a failsafe backup of image artifacts in localStorage.
- * This is called *after* a successful write to the primary IndexedDB store.
- * - For user uploads, it backs up the small thumbnail blob as a base64 string.
- * - For all images, it backs up the manifest and the recipe-to-key alias.
- */
-export async function backupArtifacts(key: string, recipeId: string, artifacts: ImageArtifacts): Promise<void> {
-    try {
-        // Always back up the alias and manifest.
-        localStorage.setItem(`${ALIAS_PREFIX}${recipeId}`, key);
-        localStorage.setItem(`${MANIFEST_PREFIX}${key}`, JSON.stringify(artifacts.manifest));
+// --- Image Manifest Backup ---
 
-        // For irreplaceable user uploads, also back up the thumbnail.
-        if (artifacts.manifest?.request?.source === 'user_upload') {
-            const thumbDataUri = await blobToBase64(artifacts.thumb);
-            localStorage.setItem(`${THUMB_PREFIX}${key}`, thumbDataUri);
+/**
+ * Backs up the essential, non-recoverable parts of an image artifact.
+ * - For user uploads (irreplaceable), we back up the small thumbnail.
+ * - For AI generations (reproducible), we only back up the manifest.
+ */
+export async function backupImageManifest(key: string, artifacts: ImageArtifacts): Promise<void> {
+    try {
+        let backupPayload: any = { manifest: artifacts.manifest };
+        const source = artifacts.manifest?.request?.source;
+
+        if (source === 'user_upload') {
+            backupPayload.thumbB64 = await blobToBase64(artifacts.thumb);
         }
-    } catch (e) {
-        console.error("Failed to write to localStorage backup. It might be full.", e);
-        // Here, we could implement a strategy to clear old backups if the storage is full.
+
+        localStorage.setItem(`${IMAGE_MANIFEST_BACKUP_PREFIX}${key}`, JSON.stringify(backupPayload));
+    } catch (error) {
+        console.warn(`Failed to back up image manifest for key ${key}.`, error);
     }
 }
 
-/**
- * Checks localStorage for a backup if the primary store fails.
- * This is the core of the recovery mechanism.
- */
-export async function getBackupState(recipeId: string): Promise<{ key: string; manifest: any; thumbDataUri?: string } | null> {
-    const key = localStorage.getItem(`${ALIAS_PREFIX}${recipeId}`);
-    if (!key) {
-        return null;
-    }
-
-    const manifestStr = localStorage.getItem(`${MANIFEST_PREFIX}${key}`);
-    if (!manifestStr) {
-        return null;
-    }
-
+export function getImageManifestBackup(key: string): { manifest: any; thumbB64?: string } | null {
+    const backupJSON = localStorage.getItem(`${IMAGE_MANIFEST_BACKUP_PREFIX}${key}`);
+    if (!backupJSON) return null;
     try {
-        const manifest = JSON.parse(manifestStr);
-        const thumbDataUri = localStorage.getItem(`${THUMB_PREFIX}${key}`) || undefined;
-        
-        return { key, manifest, thumbDataUri };
-    } catch (e) {
-        console.error(`Failed to parse backup manifest for key ${key}`, e);
+        return JSON.parse(backupJSON);
+    } catch {
         return null;
     }
 }
 
-/**
- * Clears all image-related backups from localStorage. Useful for debugging.
- */
-export function clearAllImageBackups(): void {
-    Object.keys(localStorage).forEach(key => {
-        if (key.startsWith(PREFIX)) {
-            localStorage.removeItem(key);
+
+// --- User Garden Backup & Restore ---
+
+export async function backupUserGarden(plants: Plant[]): Promise<void> {
+    try {
+        // We only need to store the IDs, as the full plant data is in the catalog.
+        const plantIds = plants.map(p => p.id);
+        localStorage.setItem(GARDEN_BACKUP_KEY, JSON.stringify(plantIds));
+    } catch (error) {
+        console.warn('Failed to back up user garden.', error);
+    }
+}
+
+export function restoreUserGarden(): number[] | null {
+    const gardenJSON = localStorage.getItem(GARDEN_BACKUP_KEY);
+    if (!gardenJSON) return null;
+    try {
+        const plantIds = JSON.parse(gardenJSON);
+        if (Array.isArray(plantIds) && plantIds.every(id => typeof id === 'number')) {
+            return plantIds;
         }
-    });
-    console.log("All image backups cleared from localStorage.");
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+// --- User Cookbook Backup & Restore ---
+
+export async function backupUserCookbook(recipes: Recipe[]): Promise<void> {
+    try {
+        // We can store the full recipe objects as they contain user-specific data.
+        localStorage.setItem(COOKBOOK_BACKUP_KEY, JSON.stringify(recipes));
+    } catch (error) {
+        console.warn('Failed to back up user cookbook.', error);
+    }
+}
+
+export function restoreUserCookbook(): Recipe[] | null {
+    const cookbookJSON = localStorage.getItem(COOKBOOK_BACKUP_KEY);
+    if (!cookbookJSON) return null;
+    try {
+        const recipes = JSON.parse(cookbookJSON);
+        // Basic validation
+        if (Array.isArray(recipes) && recipes.every(r => r.id && r.name)) {
+            return recipes;
+        }
+        return null;
+    } catch {
+        return null;
+    }
 }

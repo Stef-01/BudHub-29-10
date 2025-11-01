@@ -1,7 +1,7 @@
-
 import React from 'react';
 import type { Tab } from '../types';
 import { GardenIcon, TasksIcon, RecipeBookIcon, CommunityIcon, GameControllerIcon } from './icons/Icons';
+import { useScroll } from '../hooks/useScroll';
 
 interface NavButtonProps {
   label: Tab;
@@ -30,6 +30,8 @@ interface NavigationProps {
 }
 
 const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
+  const isScrolled = useScroll();
+
   const navItems: { label: Tab; icon: React.ReactNode }[] = [
     { label: 'Garden', icon: <GardenIcon className="h-6 w-6" /> },
     { label: 'Tasks', icon: <TasksIcon className="h-6 w-6" /> },
@@ -37,9 +39,11 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
     { label: 'Events', icon: <CommunityIcon className="h-6 w-6" /> },
     { label: 'Games', icon: <GameControllerIcon className="h-6 w-6" /> },
   ];
+  
+  const topPosition = isScrolled ? 'top-[65px]' : 'top-[81px]';
 
   return (
-    <nav className="sticky top-[81px] z-10 bg-white/80 backdrop-blur-sm shadow-md">
+    <nav className={`sticky z-10 bg-white/80 backdrop-blur-sm shadow-md transition-all duration-300 ${topPosition}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-around space-x-2 py-2">
           {navItems.map(item => (

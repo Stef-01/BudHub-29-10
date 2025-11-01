@@ -37,6 +37,9 @@ export interface Recipe {
     high_protein: boolean;
     low_carb: boolean;
     gluten_free: boolean;
+    protein_grams?: number;
+    fiber_grams?: number;
+    carbs_grams?: number;
     source: 'preloaded' | 'user' | 'gemini';
     keyIngredients: string[];
     ingredients: string;

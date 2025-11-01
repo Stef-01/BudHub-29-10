@@ -1,18 +1,16 @@
 // Fix: Implemented GardenView component to resolve missing module errors.
 import React, { useState } from 'react';
-import type { Weather } from '../types';
 import { useUserGarden } from '../contexts/UserGardenContext';
+import { useWeather } from '../contexts/WeatherContext';
 import PlantCard from './PlantCard';
 import WeatherCard from './WeatherCard';
 import AddPlantModal from './AddPlantModal';
+import Button from './ui/Button';
 import { PlusIcon } from './icons/Icons';
 
-interface GardenViewProps {
-  weather: Weather | null;
-}
-
-const GardenView: React.FC<GardenViewProps> = ({ weather }) => {
+const GardenView: React.FC = () => {
   const { myPlants } = useUserGarden();
+  const { weather } = useWeather();
   const [isModalOpen, setModalOpen] = useState(false);
 
   return (
@@ -22,13 +20,10 @@ const GardenView: React.FC<GardenViewProps> = ({ weather }) => {
       <div>
         <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
           <h2 className="text-2xl font-bold text-green-900">My Garden Patch</h2>
-          <button 
-            onClick={() => setModalOpen(true)}
-            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 transition-colors"
-          >
+          <Button onClick={() => setModalOpen(true)}>
             <PlusIcon className="h-5 w-5 mr-2" />
             Add/Remove Plants
-          </button>
+          </Button>
         </div>
 
         {myPlants.length > 0 ? (

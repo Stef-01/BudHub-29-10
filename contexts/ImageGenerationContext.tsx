@@ -1,19 +1,16 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
+// contexts/ImageGenerationContext.tsx
+import React, { createContext, useState, useEffect, ReactNode, useRef, useCallback } from 'react';
 import type { Recipe } from '../types';
 import { useUserCookbook } from './UserCookbookContext';
 import { generateAndStoreRecipeImage } from '../services/imageService';
+import { saveAlias } from '../services/imageStoreService';
 
 const MAX_CONCURRENT_GENERATIONS = 1;
-const API_COOLDOWN_MS = 60500; // Cooldown for successful requests (just over 1 minute)
-const RATE_LIMIT_PAUSE_MS = 300000; // 5 minutes pause for 429 errors
-const GENERATION_TIMEOUT_MS = 120000;
-const MAX_RETRIES = 2;
-
-type QueueItem = Recipe & { retries: number };
-type ProcessorStatus = 'IDLE' | 'PROCESSING' | 'COOLDOWN';
+const RATE_LIMIT_RETRY_DELAY = 5 * 60 * 1000;
 
 export interface ImageGenerationContextType {
     enqueueRecipe: (recipe: Recipe) => void;
+    reEnqueueRecipe: (recipe: Recipe) => void;
     processingIds: Set<string>;
     queueSize: number;
     totalEnqueued: number;
@@ -23,104 +20,91 @@ export interface ImageGenerationContextType {
 export const ImageGenerationContext = createContext<ImageGenerationContextType | undefined>(undefined);
 
 export const ImageGenerationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { updateRecipe, loading: cookbookLoading } = useUserCookbook();
-    const [queue, setQueue] = useState<QueueItem[]>([]);
+    const { saveToTransientCache, loading: cookbookLoading } = useUserCookbook();
+
+    const queueRef = useRef<Recipe[]>([]);
     const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
-    const [processorStatus, setProcessorStatus] = useState<ProcessorStatus>('IDLE');
-    const [isRateLimited, setIsRateLimited] = useState(false);
-    const enqueuedIds = useRef<Set<string>>(new Set());
+    const [queueSize, setQueueSize] = useState(0);
     const [totalEnqueued, setTotalEnqueued] = useState(0);
-    const [isInitialDelayOver, setIsInitialDelayOver] = useState(false);
+    const [isRateLimited, setIsRateLimited] = useState(false);
+    const enqueuedIdsRef = useRef<Set<string>>(new Set());
+    const rateLimitTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    useEffect(() => {
-        const timer = setTimeout(() => setIsInitialDelayOver(true), 5000); // 5s initial delay to let UI settle
-        return () => clearTimeout(timer);
-    }, []);
-
-    const enqueueRecipe = useCallback((recipe: Recipe) => {
-        if (!enqueuedIds.current.has(recipe.id)) {
-            setQueue(prev => [...prev, { ...recipe, retries: 0 }]);
-            enqueuedIds.current.add(recipe.id);
-            setTotalEnqueued(prev => prev + 1);
-        }
-    }, []);
-
-    useEffect(() => {
-        // This is the core fix: do not start the processor if the cookbook data is still loading.
-        if (cookbookLoading || !isInitialDelayOver || processorStatus !== 'IDLE' || queue.length === 0) {
+    const processQueue = useCallback(async () => {
+        if (cookbookLoading || processingIds.size >= MAX_CONCURRENT_GENERATIONS || queueRef.current.length === 0 || isRateLimited) {
             return;
         }
 
-        const recipeToProcess = queue[0];
-        
-        setProcessorStatus('PROCESSING');
-        setQueue(prev => prev.slice(1));
-        setProcessingIds(prev => new Set(prev).add(recipeToProcess.id));
+        const recipeToProcess = queueRef.current.shift();
+        if (!recipeToProcess) return;
 
-        const process = async () => {
-            try {
-                const generationPromise = generateAndStoreRecipeImage(recipeToProcess);
-                const timeoutPromise: Promise<never> = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error(`Generation timed out for recipe: ${recipeToProcess.id}`)), GENERATION_TIMEOUT_MS)
-                );
+        setQueueSize(q => q - 1);
+        setProcessingIds(p => new Set(p).add(recipeToProcess.id));
 
-                const { key } = await Promise.race([generationPromise, timeoutPromise]);
-                
-                const updatedRecipe: Recipe = { ...recipeToProcess, image: '', imageMetadata: { source: 'content_addressed', status: 'generated', image_key: key } };
-                updateRecipe(updatedRecipe);
+        try {
+            const { key } = await generateAndStoreRecipeImage(recipeToProcess);
+            const updatedRecipe: Recipe = {
+                ...recipeToProcess,
+                imageMetadata: { source: 'ai_generated', status: 'generated', image_key: key },
+            };
+            await saveAlias(updatedRecipe.id, key);
+            await saveToTransientCache(updatedRecipe); // Save result to persistent cache
+        } catch (error) {
+            console.error(`Failed to generate image for ${recipeToProcess.name}:`, error);
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
+            const failedRecipe: Recipe = {
+                ...recipeToProcess,
+                imageMetadata: { ...(recipeToProcess.imageMetadata!), status: 'failed', errorMessage },
+            };
+            await saveToTransientCache(failedRecipe); // Persist failure state
 
-                setProcessorStatus('COOLDOWN');
-                setTimeout(() => setProcessorStatus('IDLE'), API_COOLDOWN_MS);
+            if (errorMessage.includes('429')) {
+                setIsRateLimited(true);
+                queueRef.current.unshift(recipeToProcess);
+                setQueueSize(q => q + 1);
 
-            } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : String(err);
-                console.error(`Failed to generate image for ${recipeToProcess.name} (attempt ${(recipeToProcess.retries || 0) + 1}):`, errorMessage);
-
-                if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
-                    console.warn(`Rate limit exceeded. Pausing queue for ${RATE_LIMIT_PAUSE_MS / 60000} minutes.`);
-                    setQueue(prev => [recipeToProcess, ...prev]); // Re-queue at the front
-                    setIsRateLimited(true);
-                    setProcessorStatus('COOLDOWN'); // Use COOLDOWN to pause
-                    setTimeout(() => {
-                        setIsRateLimited(false);
-                        setProcessorStatus('IDLE');
-                    }, RATE_LIMIT_PAUSE_MS);
-                    return; // Exit without consuming a retry or marking as failed
-                }
-
-                const currentRetries = recipeToProcess.retries || 0;
-                if (currentRetries < MAX_RETRIES) {
-                    console.log(`Retrying image generation for ${recipeToProcess.name}.`);
-                    setQueue(prev => [...prev, { ...recipeToProcess, retries: currentRetries + 1 }]);
-                } else {
-                    console.error(`Max retries reached for ${recipeToProcess.name}. Marking as failed.`);
-                    const updatedRecipe: Recipe = { ...recipeToProcess, imageMetadata: { ...recipeToProcess.imageMetadata!, status: 'failed', errorMessage } };
-                    updateRecipe(updatedRecipe);
-                }
-
-                setProcessorStatus('COOLDOWN');
-                setTimeout(() => setProcessorStatus('IDLE'), API_COOLDOWN_MS);
-
-            } finally {
-                setProcessingIds(prev => {
-                    const newSet = new Set(prev);
-                    newSet.delete(recipeToProcess.id);
-                    return newSet;
-                });
+                if (rateLimitTimerRef.current) clearTimeout(rateLimitTimerRef.current);
+                rateLimitTimerRef.current = setTimeout(() => setIsRateLimited(false), RATE_LIMIT_RETRY_DELAY);
             }
-        };
+        } finally {
+            setProcessingIds(p => {
+                const newSet = new Set(p);
+                newSet.delete(recipeToProcess.id);
+                return newSet;
+            });
+        }
+    }, [cookbookLoading, processingIds.size, isRateLimited, saveToTransientCache]);
 
-        process();
+    useEffect(() => {
+        processQueue();
+    }, [processingIds, queueSize, isRateLimited, processQueue]);
 
-    }, [queue, processorStatus, isInitialDelayOver, updateRecipe, cookbookLoading]);
-
+    const enqueueRecipe = useCallback((recipe: Recipe) => {
+        if (!enqueuedIdsRef.current.has(recipe.id)) {
+            enqueuedIdsRef.current.add(recipe.id);
+            queueRef.current.push(recipe);
+            setQueueSize(q => q + 1);
+            setTotalEnqueued(t => t + 1);
+        }
+    }, []);
+    
+    const reEnqueueRecipe = useCallback(async (recipe: Recipe) => {
+        const newRecipe: Recipe = {
+            ...recipe,
+            imageMetadata: { ...recipe.imageMetadata!, status: 'pending', errorMessage: undefined }
+        }
+        await saveToTransientCache(newRecipe);
+        queueRef.current.unshift(newRecipe);
+        setQueueSize(q => q + 1);
+    }, [saveToTransientCache]);
 
     const value = {
         enqueueRecipe,
+        reEnqueueRecipe,
         processingIds,
-        queueSize: queue.length,
+        queueSize,
         totalEnqueued,
-        isRateLimited
+        isRateLimited,
     };
 
     return (

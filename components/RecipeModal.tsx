@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import type { Recipe } from '../types';
+import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { XIcon } from './icons/Icons';
+import Button from './ui/Button';
 
 interface RecipeModalProps {
   onClose: () => void;
-  onAddRecipe: (recipeData: Omit<Recipe, 'id' | 'source' | 'keyIngredients'>) => void;
 }
 
-const RecipeModal: React.FC<RecipeModalProps> = ({ onClose, onAddRecipe }) => {
-  const [formData, setFormData] = useState<Omit<Recipe, 'id' | 'source' | 'keyIngredients'>>({
+const RecipeModal: React.FC<RecipeModalProps> = ({ onClose }) => {
+  const { saveRecipe } = useUserCookbook();
+  const [formData, setFormData] = useState<Omit<Recipe, 'id' | 'source' | 'keyIngredients' | 'imageMetadata'>>({
     name: '',
     image: '',
     course: 'main',
@@ -42,7 +44,16 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ onClose, onAddRecipe }) => {
       alert('Please fill out the name, ingredients, and instructions.');
       return;
     }
-    onAddRecipe(formData);
+    
+    const newRecipe: Recipe = {
+        ...formData,
+        id: `recipe_user_${new Date().getTime()}`,
+        source: 'user',
+        keyIngredients: [],
+        imageMetadata: { source: 'user', status: 'cached' }
+    };
+    saveRecipe(newRecipe);
+    onClose();
   };
 
   return (
@@ -107,9 +118,9 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ onClose, onAddRecipe }) => {
             </div>
           </div>
         </form>
-        <footer className="p-4 bg-gray-50 rounded-b-2xl flex justify-end flex-shrink-0">
-          <button type="button" onClick={onClose} className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">Cancel</button>
-          <button type="submit" form="add-recipe-form" className="ml-3 px-4 py-2 bg-green-600 text-white border border-transparent rounded-md shadow-sm hover:bg-green-700">Add Recipe</button>
+        <footer className="p-4 bg-gray-50 rounded-b-2xl flex justify-end flex-shrink-0 space-x-3">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button type="submit" form="add-recipe-form">Add Recipe</Button>
         </footer>
       </div>
     </div>

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { GameMode, GameQuestion } from '../types';
 import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { useGameScores } from '../contexts/GameScoresContext';
+import { useGamification } from '../contexts/GamificationContext';
 import { generateQuestion } from '../services/gameService';
 import GameRecipeCard from './GameRecipeCard';
 import GameOverModal from './GameOverModal';
@@ -27,6 +28,7 @@ const gameTitles: Record<GameMode, string> = {
 const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onExit }) => {
     const { recipes } = useUserCookbook();
     const { saveScore } = useGameScores();
+    const { addXp } = useGamification();
     const [question, setQuestion] = useState<GameQuestion | null>(null);
     const [score, setScore] = useState(0);
     const [lives, setLives] = useState(3);
@@ -86,7 +88,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onExit }) => {
 
         setTimeout(() => {
             if (isCorrect) {
-                setScore(s => s + 10 + timer); // Bonus for speed
+                const points = 10 + timer;
+                setScore(s => s + points);
+                // Give some XP for correct answers, a Low amount is fine.
+                addXp('Low', 'add');
                 nextQuestion();
             } else {
                 setLives(prev => prev - 1);
@@ -156,6 +161,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onExit }) => {
                         isSelected={selectedAnswerId === recipe.id}
                         isCorrect={question.correctAnswerId === recipe.id}
                         isRevealed={isRevealed}
+                        gameMode={gameMode}
                     />
                 ))}
             </div>
