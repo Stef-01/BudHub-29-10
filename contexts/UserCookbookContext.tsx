@@ -1,7 +1,7 @@
 // contexts/UserCookbookContext.tsx
 import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Recipe, ImageMetadata } from '../types';
-import { getRecipes, getTransientRecipes, saveRecipe as dbSaveRecipe, removeRecipe as dbRemoveRecipe, saveToTransientCache } from '../services/db';
+import { getRecipes, getTransientRecipes, saveRecipe as dbSaveRecipe, removeRecipeWithCleanup, saveToTransientCache } from '../services/db';
 import { processAndStoreUserImage } from '../services/imageService';
 import { saveAlias } from '../services/imageStoreService';
 import { restoreUserCookbook, backupUserCookbook } from '../services/imageBackupService';
@@ -93,7 +93,7 @@ export const UserCookbookProvider: React.FC<{ children: ReactNode }> = ({ childr
     const removeRecipe = useCallback(async (recipeId: string) => {
         const newRecipes = recipes.filter(r => r.id !== recipeId);
         setRecipes(newRecipes);
-        await dbRemoveRecipe(recipeId);
+        await removeRecipeWithCleanup(recipeId); // Use new cleanup function
         await backupUserCookbook(newRecipes);
     }, [recipes]);
 

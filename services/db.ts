@@ -193,3 +193,105 @@ export async function saveScore(score: Omit<GameScore, 'id'>): Promise<void> {
     const db = await getDb();
     await db.add(STORES.GAME_SCORES, score as GameScore);
 }
+
+// --- NEW FUNCTIONS from db_improvements.ts ---
+
+/**
+ * Validates recipe data before saving.
+ */
+export const validateRecipe = (data: Partial<Recipe>): { isValid: boolean; errors: Record<string, string> } => {
+    const errors: Record<string, string> = {};
+    if (!data.name || data.name.trim().length < 3) errors.name = 'Recipe name must be at least 3 characters long.';
+    if (data.name && data.name.length > 100) errors.name = 'Recipe name must be 100 characters or less.';
+    if (!data.ingredients || data.ingredients.trim().length < 10) errors.ingredients = 'Ingredients must be at least 10 characters long.';
+    if (!data.instructions || data.instructions.trim().length < 10) errors.instructions = 'Instructions must be at least 10 characters long.';
+    if (data.prep_minutes != null && (data.prep_minutes < 0 || data.prep_minutes > 1440)) errors.prep_minutes = 'Prep time must be between 0 and 1440 minutes.';
+    if (data.cook_minutes != null && (data.cook_minutes < 0 || data.cook_minutes > 1440)) errors.cook_minutes = 'Cook time must be between 0 and 1440 minutes.';
+    if (data.servings != null && (data.servings < 1 || data.servings > 100)) errors.servings = 'Servings must be between 1 and 100.';
+    
+    return { isValid: Object.keys(errors).length === 0, errors };
+};
+
+/**
+ * Saves a recipe only if it passes validation.
+ */
+export async function saveRecipeValidated(recipe: Recipe): Promise<void> {
+    const { isValid, errors } = validateRecipe(recipe);
+    if (!isValid) {
+        throw new Error(`Invalid recipe data: ${JSON.stringify(errors)}`);
+    }
+    await saveRecipe(recipe);
+}
+
+/**
+ * Removes a recipe and its associated image data, cleaning up orphaned artifacts.
+ */
+export async function removeRecipeWithCleanup(recipeId: string): Promise<void> {
+    const db = await getDb();
+    const tx = db.transaction([STORES.USER_COOKBOOK, STORES.IMAGE_ALIASES, STORES.IMAGE_ARTIFACTS], 'readwrite');
+    const cookbookStore = tx.objectStore(STORES.USER_COOKBOOK);
+    const aliasStore = tx.objectStore(STORES.IMAGE_ALIASES);
+    const artifactStore = tx.objectStore(STORES.IMAGE_ARTIFACTS);
+
+    const alias = await aliasStore.get(recipeId);
+
+    const deletePromises = [
+        cookbookStore.delete(recipeId),
+        aliasStore.delete(recipeId)
+    ];
+
+    if (alias?.key) {
+        const allAliases = await aliasStore.getAll();
+        const isKeyShared = allAliases.some(a => a.key === alias.key && a.recipeId !== recipeId);
+        
+        if (!isKeyShared) {
+            deletePromises.push(artifactStore.delete(alias.key));
+        }
+    }
+
+    await Promise.all(deletePromises);
+    await tx.done;
+}
+
+/**
+ * Maintenance function to find and remove image artifacts that are no longer referenced by any recipe.
+ */
+export async function cleanupOrphanedImages(): Promise<number> {
+    const db = await getDb();
+    const tx = db.transaction([STORES.IMAGE_ALIASES, STORES.IMAGE_ARTIFACTS], 'readwrite');
+    const aliasStore = tx.objectStore(STORES.IMAGE_ALIASES);
+    const artifactStore = tx.objectStore(STORES.IMAGE_ARTIFACTS);
+
+    const allAliases = await aliasStore.getAll();
+    const usedArtifactKeys = new Set(allAliases.map(a => a.key));
+    const allArtifactKeys = await artifactStore.getAllKeys();
+
+    const orphanedKeys = (allArtifactKeys as string[]).filter(key => !usedArtifactKeys.has(key));
+
+    if (orphanedKeys.length > 0) {
+        await Promise.all(orphanedKeys.map(key => artifactStore.delete(key)));
+    }
+    
+    await tx.done;
+    return orphanedKeys.length;
+}
+
+/**
+ * Saves multiple task states with a simple retry mechanism.
+ */
+export async function saveTaskStatesWithRetry(tasks: { taskId: string, isCompleted: boolean }[], retries = 3, delay = 100): Promise<void> {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const db = await getDb();
+            const tx = db.transaction(STORES.TASK_STATES, 'readwrite');
+            const store = tx.objectStore(STORES.TASK_STATES);
+            await Promise.all(tasks.map(task => store.put({ id: task.taskId, isCompleted: task.isCompleted })));
+            await tx.done;
+            return; // Success
+        } catch (error) {
+            if (i === retries - 1) throw error; // Last retry failed, rethrow
+            console.warn(`Failed to save task states, retrying... (${i + 1}/${retries})`, error);
+            await new Promise(res => setTimeout(res, delay * Math.pow(2, i))); // Exponential backoff
+        }
+    }
+}

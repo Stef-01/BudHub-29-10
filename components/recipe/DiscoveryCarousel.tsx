@@ -1,5 +1,5 @@
 // components/recipe/DiscoveryCarousel.tsx
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { useUserCookbook } from '../../contexts/UserCookbookContext';
 import { useUserGarden } from '../../contexts/UserGardenContext';
 import { RECIPE_CATALOG } from '../../constants';
@@ -66,4 +66,7 @@ const DiscoveryCarousel: React.FC<{ onRecipeClick: (id: string) => void }> = ({ 
     );
 };
 
-export default DiscoveryCarousel;
+const MemoizedDiscoveryCarousel = memo(DiscoveryCarousel);
+MemoizedDiscoveryCarousel.displayName = 'DiscoveryCarousel';
+
+export default MemoizedDiscoveryCarousel;

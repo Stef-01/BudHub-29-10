@@ -98,7 +98,12 @@ export const useRecipeImage = (recipe: Recipe): {
         
         // Recovery path from backup
         if (imageMetadata?.image_key) {
-             const backup = getImageManifestBackup(imageMetadata.image_key);
+             let backup = null;
+             try {
+                backup = getImageManifestBackup(imageMetadata.image_key);
+             } catch (e) {
+                console.error('Failed to retrieve image from backup', e);
+             }
              if (backup?.thumbB64) {
                  return { status: 'cached' as ImageStatus, imageUrl: backup.thumbB64, error: null };
              }

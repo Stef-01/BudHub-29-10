@@ -1,6 +1,7 @@
 // hooks/useLocalStorage.ts
 
-import { useState, useEffect } from 'react';
+// FIX: Import Dispatch and SetStateAction types to resolve React namespace errors.
+import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 
 function getStorageValue<T>(key: string, defaultValue: T): T {
   if (typeof window !== 'undefined') {
@@ -17,7 +18,7 @@ function getStorageValue<T>(key: string, defaultValue: T): T {
   return defaultValue;
 }
 
-export function useLocalStorage<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+export function useLocalStorage<T>(key: string, defaultValue: T): [T, Dispatch<SetStateAction<T>>] {
   const [value, setValue] = useState<T>(() => {
     return getStorageValue(key, defaultValue);
   });
