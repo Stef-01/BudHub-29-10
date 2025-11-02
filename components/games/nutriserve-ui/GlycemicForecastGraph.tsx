@@ -1,6 +1,7 @@
 // components/games/nutriserve-ui/GlycemicForecastGraph.tsx
 import React from 'react';
 import type { Nutrients } from '../NutriServeTypes';
+// FIX: Corrected import path
 import { calculateGlycemicCurve } from '../../../services/nutriserveUtils';
 
 interface GlycemicForecastGraphProps {

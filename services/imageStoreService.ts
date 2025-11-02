@@ -3,6 +3,9 @@ import type { Recipe } from '../types';
 import { getDb, STORES } from './db';
 import { urlManager } from './urlManager';
 import { backupImageManifest } from './imageBackupService';
+import { sqliteStore } from './sqliteStore';
+import { blobToUint8Array, uint8ArrayToBlob } from './imageProcessingService';
+
 
 export interface ImageArtifacts {
     original: Blob;
@@ -39,19 +42,36 @@ export function dataUriToBlob(dataUri: string): Blob {
 
 /**
  * Atomically saves image artifacts and their corresponding alias in a single transaction.
+ * NEW: Implements dual-write to SQLite for persistence.
  */
 export async function saveImageArtifacts(key: string, recipeId: string, artifacts: ImageArtifacts): Promise<void> {
+    // Phase 1: Write to IndexedDB (as a cache)
     const db = await getDb();
     const tx = db.transaction([STORES.IMAGE_ARTIFACTS, STORES.IMAGE_ALIASES], 'readwrite');
-
     const artifactPromise = tx.objectStore(STORES.IMAGE_ARTIFACTS).put({ key, ...artifacts });
     const aliasPromise = tx.objectStore(STORES.IMAGE_ALIASES).put({ recipeId, key });
-
     await Promise.all([artifactPromise, aliasPromise]);
     await tx.done;
 
-    // After the primary storage transaction completes successfully,
-    // write to the failsafe backup layer (localStorage).
+    // Phase 2: Write to SQLite (for permanent storage)
+    try {
+        await sqliteStore.saveImage({
+            key,
+            original: await blobToUint8Array(artifacts.original),
+            preview: await blobToUint8Array(artifacts.preview),
+            thumb: await blobToUint8Array(artifacts.thumb),
+            manifest: JSON.stringify(artifacts.manifest),
+            created_at: new Date().toISOString()
+        });
+        await sqliteStore.saveAlias({ recipe_id: recipeId, image_key: key });
+    } catch (e) {
+        console.error("Failed to save image artifacts to SQLite:", e);
+        // We don't re-throw here, as the app can function with just IndexedDB.
+        // In a real app, we might want to queue this write for later.
+    }
+
+
+    // Phase 3: Backup manifest to localStorage (failsafe)
     await backupImageManifest(key, artifacts)
         .catch(err => console.error("Failed to write to image backup.", err));
 }
@@ -59,10 +79,17 @@ export async function saveImageArtifacts(key: string, recipeId: string, artifact
 
 /**
  * Saves or updates just the alias mapping a recipeId to an image key.
+ * NEW: Implements dual-write.
  */
 export async function saveAlias(recipeId: string, key: string): Promise<void> {
     const db = await getDb();
     await db.put(STORES.IMAGE_ALIASES, { recipeId, key });
+
+    try {
+        await sqliteStore.saveAlias({ recipe_id: recipeId, image_key: key });
+    } catch (e) {
+        console.error("Failed to save alias to SQLite:", e);
+    }
 }
 
 /**
@@ -85,23 +112,60 @@ export async function getAlias(recipeId: string): Promise<{ recipeId: string; ke
 
 /**
  * Retrieves the complete image state for a recipe, including managed object URLs.
- * This is the primary function for UI components to get displayable images for ALL
- * image types (pre-loaded, AI-generated, and user-uploaded).
+ * NEW: Implements read-through cache pattern with SQLite fallback.
  */
 export async function getRecipeImageState(recipeId: string): Promise<ImageState | null> {
+    // 1. Try IndexedDB first (fast cache)
     const alias = await getAlias(recipeId);
-    if (!alias || !alias.key) return null;
-
-    const artifacts = await getArtifacts(alias.key);
-    if (!artifacts) return null;
-
-    // Create managed URLs to prevent memory leaks
-    return {
-        key: alias.key,
-        urls: {
-            thumb: urlManager.create(artifacts.thumb, `${alias.key}:thumb`),
-            preview: urlManager.create(artifacts.preview, `${alias.key}:preview`),
-            original: urlManager.create(artifacts.original, `${alias.key}:original`),
+    if (alias?.key) {
+        const artifacts = await getArtifacts(alias.key);
+        if (artifacts) {
+            return {
+                key: alias.key,
+                urls: {
+                    thumb: urlManager.create(artifacts.thumb, `${alias.key}:thumb`),
+                    preview: urlManager.create(artifacts.preview, `${alias.key}:preview`),
+                    original: urlManager.create(artifacts.original, `${alias.key}:original`),
+                }
+            };
         }
-    };
+    }
+
+    // 2. Fallback to SQLite if IndexedDB misses
+    try {
+        const sqliteAlias = await sqliteStore.getAlias(recipeId);
+        if (sqliteAlias?.image_key) {
+            const sqliteRecord = await sqliteStore.getImage(sqliteAlias.image_key);
+            if (sqliteRecord) {
+                console.log(`IndexedDB miss for recipe ${recipeId}, serving from SQLite and repopulating cache.`);
+                
+                // Convert Uint8Array back to Blob
+                const artifacts: ImageArtifacts = {
+                    original: uint8ArrayToBlob(sqliteRecord.original),
+                    preview: uint8ArrayToBlob(sqliteRecord.preview),
+                    thumb: uint8ArrayToBlob(sqliteRecord.thumb),
+                    manifest: JSON.parse(sqliteRecord.manifest)
+                };
+
+                // 3. Repopulate IndexedDB cache for next time (don't await, let it run in background)
+                saveImageArtifacts(sqliteRecord.key, recipeId, artifacts)
+                    .catch(e => console.error("Failed to repopulate IndexedDB cache from SQLite:", e));
+                
+                return {
+                    key: sqliteRecord.key,
+                    urls: {
+                        thumb: urlManager.create(artifacts.thumb, `${sqliteRecord.key}:thumb`),
+                        preview: urlManager.create(artifacts.preview, `${sqliteRecord.key}:preview`),
+                        original: urlManager.create(artifacts.original, `${sqliteRecord.key}:original`),
+                    }
+                };
+            }
+        }
+    } catch (e) {
+        console.error(`Failed to read from SQLite for recipe ${recipeId}:`, e);
+        // Fall through to return null if SQLite fails
+    }
+
+
+    return null; // Still return null if not found anywhere
 }

@@ -76,3 +76,24 @@ export async function dataUriToBlob(dataUri: string): Promise<Blob> {
     const blob = await response.blob();
     return blob;
 }
+
+/**
+ * Converts a Blob to a Uint8Array.
+ */
+export async function blobToUint8Array(blob: Blob): Promise<Uint8Array> {
+  const arrayBuffer = await blob.arrayBuffer();
+  return new Uint8Array(arrayBuffer);
+}
+
+/**
+ * Converts a Uint8Array back to a Blob, attempting to infer MIME type.
+ */
+export function uint8ArrayToBlob(uint8Array: Uint8Array, type: string = ''): Blob {
+    // Basic magic number sniffing for common types.
+    if (type === '') {
+        if (uint8Array[0] === 0xFF && uint8Array[1] === 0xD8) type = 'image/jpeg';
+        else if (uint8Array[0] === 0x89 && uint8Array[1] === 0x50) type = 'image/png';
+        else if (uint8Array[0] === 0x52 && uint8Array[1] === 0x49) type = 'image/webp';
+    }
+    return new Blob([uint8Array], { type });
+}

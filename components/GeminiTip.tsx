@@ -1,62 +1,49 @@
-import React, { useState, useCallback } from 'react';
-import type { Weather, Plant } from '../types';
-import { getGardeningTip } from '../services/geminiService';
+// components/GeminiTip.tsx
+import React, { useState, useEffect } from 'react';
+import { useWeather } from '../../contexts/WeatherContext';
+import { useUserGarden } from '../../contexts/UserGardenContext';
+import { getGardeningTip } from '../../services/geminiService';
 import { SparklesIcon, LoadingSpinner } from './icons/Icons';
-import Button from './ui/Button';
 
-interface GeminiTipProps {
-  weather: Weather;
-  plants: Plant[];
-}
+const GeminiTip: React.FC = () => {
+    const { weather } = useWeather();
+    const { myPlants } = useUserGarden();
+    const [tip, setTip] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
-const GeminiTip: React.FC<GeminiTipProps> = ({ weather, plants }) => {
-  const [tip, setTip] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+    useEffect(() => {
+        const fetchTip = async () => {
+            if (weather && myPlants.length > 0) {
+                setLoading(true);
+                // Select a random plant from the garden for the tip
+                const randomPlant = myPlants[Math.floor(Math.random() * myPlants.length)];
+                try {
+                    const newTip = await getGardeningTip(weather, randomPlant);
+                    setTip(newTip);
+                } catch (error) {
+                    console.error("Failed to fetch Gemini tip:", error);
+                    setTip("Could not get a tip from the cosmos right now.");
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+        fetchTip();
+    }, [weather, myPlants]);
+    
+    if (!tip && !loading) return null;
 
-  const handleGetTip = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setTip('');
-    try {
-      // Pick a random plant for variety
-      const randomPlant = plants[Math.floor(Math.random() * plants.length)];
-      const generatedTip = await getGardeningTip(weather, randomPlant);
-      setTip(generatedTip);
-    } catch (err) {
-      setError('Failed to get a tip. Please try again.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [weather, plants]);
-
-  return (
-    <div className="bg-gradient-to-r from-teal-400 to-blue-500 rounded-xl shadow-lg p-6 text-white">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex-grow">
-          <h3 className="text-xl font-bold">Cosmic Garden Wisdom</h3>
-          {loading && (
-            <div className="flex items-center mt-2">
-              <LoadingSpinner className="h-5 w-5 text-white" />
-              <p className="ml-2 text-sm font-medium">Brewing a fresh tip...</p>
+    return (
+        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 text-teal-800 rounded-lg shadow-md p-4 flex items-start space-x-4">
+            <div className="flex-shrink-0 pt-0.5">
+                {loading ? <LoadingSpinner className="h-6 w-6" /> : <SparklesIcon className="h-6 w-6" />}
             </div>
-          )}
-          {error && <p className="mt-2 text-sm text-red-100 font-medium">{error}</p>}
-          {tip && <p className="mt-2 text-lg italic">"{tip}"</p>}
+            <div>
+                <h3 className="font-bold">Vibe Tip ✨</h3>
+                <p className="text-sm">{loading ? 'Thinking...' : tip}</p>
+            </div>
         </div>
-        <Button
-          variant="secondary"
-          onClick={handleGetTip}
-          disabled={loading}
-          className="bg-white/20 hover:bg-white/30 text-white border-0 w-full md:w-auto"
-        >
-          <SparklesIcon className="h-5 w-5 mr-2" />
-          Get Vibe-Coded Tip
-        </Button>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default GeminiTip;

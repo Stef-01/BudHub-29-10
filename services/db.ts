@@ -3,6 +3,7 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import type { Plant, Recipe, Task, GameScore } from '../types';
 import { PLANT_CATALOG, INITIAL_COOKBOOK } from '../constants';
 import { initializeSeedImages } from './seedImageStore';
+import { sqliteStore } from './sqliteStore';
 
 const DB_NAME = 'VibeGardenDB';
 const DB_VERSION = 3; // Incremented for transient cache
@@ -22,7 +23,7 @@ export const STORES = {
 interface VibeGardenDB extends DBSchema {
     [STORES.METADATA]: {
         key: string;
-        value: { version: string };
+        value: { version?: string; key: string, completed?: boolean }; // Make value flexible
     };
     [STORES.USER_GARDEN]: {
         key: number;
@@ -95,6 +96,27 @@ async function createAndSeedDb() {
     try {
         const db = await dbPromise;
         await initializeSeedImages(db);
+        
+        // NEW: Trigger SQLite migration if needed (non-blocking)
+        const migrationKey = 'sqlite_migration_v1';
+        db.get(STORES.METADATA, migrationKey).then(migrated => {
+             if (!migrated?.completed) {
+                console.log('Starting SQLite migration from IndexedDB...');
+                sqliteStore.migrateFromIndexedDB().then(({ migrated, errors }) => {
+                    if(errors === 0) {
+                        db.put(STORES.METADATA, { key: migrationKey, completed: true });
+                        console.log(`SQLite migration complete. Migrated ${migrated} items.`);
+                    } else {
+                        console.error(`SQLite migration finished with ${errors} errors.`);
+                    }
+                }).catch(err => {
+                    console.error("Critical error during SQLite migration:", err);
+                });
+            } else {
+                console.log("SQLite migration already completed.");
+            }
+        });
+
         return db;
     } catch (error) {
         console.error("Failed to initialize the database:", error);

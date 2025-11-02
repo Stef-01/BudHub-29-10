@@ -1,31 +1,33 @@
+// components/Header.tsx
 import React from 'react';
+import { useGamification } from '../../contexts/GamificationContext';
 import ProgressBar from './ProgressBar';
-import { useGamification } from '../contexts/GamificationContext';
-import { useScroll } from '../hooks/useScroll';
+import LevelUpModal from './LevelUpModal';
 
 const Header: React.FC = () => {
-  const { xp, level, xpForNextLevel } = useGamification();
-  const isScrolled = useScroll();
-  
-  return (
-    <header className={`sticky top-0 z-20 bg-white/90 backdrop-blur-md transition-shadow duration-300 ${isScrolled ? 'shadow-lg' : 'shadow-sm'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className={`flex justify-between items-center transition-all duration-300 ${isScrolled ? 'py-2' : 'py-4'}`}>
-          <div className="flex-shrink-0">
-            <h1 className="text-2xl font-bold text-green-800">Garden<span className="text-green-500">Vibe</span></h1>
-            <p className="text-sm text-gray-500">Your Logan, QLD Garden Companion</p>
-          </div>
-          <div className="w-1/3 max-w-xs">
-            <div className="flex items-center">
-              <span className="text-sm font-semibold text-green-800 mr-2">Lvl {level}</span>
-              <ProgressBar progress={(xp / xpForNextLevel) * 100} />
-            </div>
-            <p className="text-xs text-center text-gray-500 mt-1">{xp} / {xpForNextLevel} XP</p>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
+    const { xp, level, xpForNextLevel, showLevelUp, setShowLevelUp } = useGamification();
+    const progress = (xp / xpForNextLevel) * 100;
+
+    return (
+        <>
+            <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-sm shadow-md z-40 p-4">
+                <div className="max-w-7xl mx-auto">
+                    <div className="flex justify-between items-center">
+                        <h1 className="text-2xl font-bold text-green-800">Garden<span className="text-green-500">Vibe</span></h1>
+                        <div className="text-lg font-bold text-green-700">Level {level}</div>
+                    </div>
+                    <div className="mt-2">
+                        <ProgressBar progress={progress} />
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>XP: {Math.floor(xp)} / {Math.floor(xpForNextLevel)}</span>
+                            <span>Next Level</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            {showLevelUp && <LevelUpModal level={level} onClose={() => setShowLevelUp(false)} />}
+        </>
+    );
 };
 
 export default Header;

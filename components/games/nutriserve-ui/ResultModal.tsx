@@ -2,8 +2,10 @@
 import React, { useMemo } from 'react';
 // FIX: Corrected import path for NutriServeCustomerWithTargets type.
 import type { NutriServeCustomerWithTargets } from '../NutriServeTypes';
+// FIX: Corrected import path for NutrientStatus type.
 import type { NutrientStatus } from '../../../services/nutriserveUtils';
 import { IconArrowRightCircle } from './Icons';
+// FIX: Corrected import path for getMainDishFromOrder utility.
 import { getMainDishFromOrder } from '../../../services/nutriserveUtils';
 import DishImageDisplay from './DishImageDisplay';
 

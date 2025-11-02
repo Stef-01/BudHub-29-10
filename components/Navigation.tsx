@@ -1,58 +1,47 @@
+// components/Navigation.tsx
 import React from 'react';
-import type { Tab } from '../types';
+import type { Tab } from '../../types';
 import { GardenIcon, TasksIcon, RecipeBookIcon, CommunityIcon, GameControllerIcon } from './icons/Icons';
-import { useScroll } from '../hooks/useScroll';
-
-interface NavButtonProps {
-  label: Tab;
-  icon: React.ReactNode;
-  isActive: boolean;
-  onClick: () => void;
-}
-
-const NavButton: React.FC<NavButtonProps> = ({ label, icon, isActive, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`flex-1 flex flex-col items-center justify-center p-2 text-sm font-medium transition-colors rounded-lg ${
-      isActive ? 'text-green-700 bg-green-100' : 'text-gray-500 hover:bg-green-50 hover:text-green-600'
-    }`}
-    aria-current={isActive ? 'page' : undefined}
-  >
-    {icon}
-    <span className="mt-1">{label}</span>
-  </button>
-);
-
 
 interface NavigationProps {
   activeTab: Tab;
-  setActiveTab: (tab: Tab) => void;
+  onTabChange: (tab: Tab) => void;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
-  const isScrolled = useScroll();
+const navItems: { tab: Tab, label: string, icon: React.FC<any> }[] = [
+  { tab: 'Garden', label: 'Garden', icon: GardenIcon },
+  { tab: 'Tasks', label: 'Tasks', icon: TasksIcon },
+  { tab: 'Recipes', label: 'Recipes', icon: RecipeBookIcon },
+  { tab: 'Events', label: 'Events', icon: CommunityIcon },
+  { tab: 'Games', label: 'Games', icon: GameControllerIcon },
+];
 
-  const navItems: { label: Tab; icon: React.ReactNode }[] = [
-    { label: 'Garden', icon: <GardenIcon className="h-6 w-6" /> },
-    { label: 'Tasks', icon: <TasksIcon className="h-6 w-6" /> },
-    { label: 'Recipes', icon: <RecipeBookIcon className="h-6 w-6" /> },
-    { label: 'Events', icon: <CommunityIcon className="h-6 w-6" /> },
-    { label: 'Games', icon: <GameControllerIcon className="h-6 w-6" /> },
-  ];
-  
-  const topPosition = isScrolled ? 'top-[65px]' : 'top-[81px]';
-
+const NavItem: React.FC<{
+  item: typeof navItems[0];
+  isActive: boolean;
+  onClick: () => void;
+}> = ({ item, isActive, onClick }) => {
+  const Icon = item.icon;
+  const activeClass = isActive ? 'text-green-600' : 'text-gray-500';
   return (
-    <nav className={`sticky z-10 bg-white/80 backdrop-blur-sm shadow-md transition-all duration-300 ${topPosition}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-around space-x-2 py-2">
+    <button onClick={onClick} className={`flex-1 flex flex-col items-center justify-center p-2 rounded-lg transition-colors hover:bg-green-100 ${activeClass}`}>
+      <Icon className="h-6 w-6" />
+      <span className="text-xs font-medium mt-1">{item.label}</span>
+    </button>
+  );
+};
+
+const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-t border-gray-200 shadow-t-md z-40">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+        <div className="flex justify-around items-center h-16">
           {navItems.map(item => (
-            <NavButton
-              key={item.label}
-              label={item.label}
-              icon={item.icon}
-              isActive={activeTab === item.label}
-              onClick={() => setActiveTab(item.label)}
+            <NavItem
+              key={item.tab}
+              item={item}
+              isActive={activeTab === item.tab}
+              onClick={() => onTabChange(item.tab)}
             />
           ))}
         </div>

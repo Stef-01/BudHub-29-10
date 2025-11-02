@@ -1,6 +1,7 @@
 // components/games/nutriserve-ui/MacroMeter.tsx
 import React from 'react';
 import type { MealGoals } from '../NutriServeTypes';
+// FIX: Corrected import path
 import { getNutrientStatus, type NutrientStatus } from '../../../services/nutriserveUtils';
 
 type NutrientKey = keyof MealGoals;
