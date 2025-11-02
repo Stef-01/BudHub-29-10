@@ -11,7 +11,12 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export function generateQuestion(gameMode: GameMode, allRecipes: Recipe[]): GameQuestion | null {
-    // 1. Filter for recipes that are eligible for the game (must have a generated image).
+    // FIX: Added a check for 'nutriserve' game mode, which does not use the boolean flags on the Recipe type, to prevent errors.
+    if (gameMode === 'nutriserve') {
+        console.warn("generateQuestion should not be called for 'nutriserve' mode.");
+        return null;
+    }
+    // 1. Filter for recipes that are eligible for the game (must have a generated or cached image).
     const eligibleRecipes = allRecipes.filter(r => r.imageMetadata?.status === 'generated' || r.imageMetadata?.status === 'cached');
 
     // 2. Separate recipes into correct and incorrect piles based on the game mode.

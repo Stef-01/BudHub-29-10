@@ -17,7 +17,7 @@ interface SeedImageData {
 
 // FIX: The original base64 strings were truncated, causing a fatal `atob` error.
 // They have been replaced with a valid 1x1 pixel placeholder to allow the app to initialize.
-const PLACEHOLDER_B64 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
+const PLACEHOLDER_B64 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 const SEED_IMAGES_DATA: SeedImageData[] = [
     { recipeId: 'rcp_bhindi_masala', base64Data: PLACEHOLDER_B64 },

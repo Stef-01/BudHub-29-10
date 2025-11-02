@@ -1,5 +1,6 @@
+// services/geminiService.ts
 
-
+// FIX: import GoogleGenAI from the correct path.
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Weather, Plant, Recipe } from "../types";
 
@@ -8,6 +9,7 @@ import type { Weather, Plant, Recipe } from "../types";
 const API_KEY = process.env.API_KEY;
 
 // FIX: Conditionally initialize GoogleGenAI to avoid errors when API_KEY is missing.
+// FIX: Use named parameter for apiKey
 const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 if (!ai) {
@@ -40,11 +42,12 @@ export async function getGardeningTip(weather: Weather, plant: Plant): Promise<s
   `;
 
   try {
+    // FIX: Per coding guidelines, use ai.models.generateContent
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    // FIX: Per coding guidelines, access the .text property directly. It already includes trimming.
+    // FIX: Per coding guidelines, access the .text property directly.
     return response.text;
   } catch (error) {
     console.error("Error calling Gemini API:", error);
@@ -95,6 +98,7 @@ export async function getRecipeSuggestion(plants: Plant[]): Promise<Omit<Recipe,
     `;
 
     try {
+        // FIX: Per coding guidelines, use ai.models.generateContent
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
@@ -129,6 +133,7 @@ export async function getRecipeSuggestion(plants: Plant[]): Promise<Omit<Recipe,
             },
         });
         
+        // FIX: Per coding guidelines, access the .text property directly.
         const jsonText = response.text;
         const recipeData = JSON.parse(jsonText);
         return recipeData;

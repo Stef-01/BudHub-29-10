@@ -1,11 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vibe-Coded Garden</title>
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
+      "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+      "react/": "https://aistudiocdn.com/react@^19.2.0/",
+      "react": "https://aistudiocdn.com/react@^19.2.0",
+      "idb": "https://aistudiocdn.com/idb@^8.0.3"
+    }
+  }
+  </script>
   <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    @keyframes jump-in {
+        0% { transform: scale(0.5); opacity: 0; }
+        70% { transform: scale(1.05); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-jump-in {
+        animation: jump-in 0.5s ease-out forwards;
+    }
+
     @keyframes marquee-slow {
       from { transform: translateX(0); }
       to { transform: translateX(-50%); }
@@ -13,35 +37,37 @@
     .animate-marquee-slow {
       animation: marquee-slow 40s linear infinite;
     }
-    .group-hover\:pause-animation:hover .pause-animation {
-        animation-play-state: paused;
+    .pause-animation:hover {
+      animation-play-state: paused;
     }
-    @keyframes jump-in {
-      0% {
-        opacity: 0;
-        transform: scale(0.5);
-      }
-      100% {
-        opacity: 1;
-        transform: scale(1);
-      }
+    
+    /* Animations for NutriServe Game */
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 5px rgba(74, 222, 128, 0.5); }
+      50% { box-shadow: 0 0 20px rgba(74, 222, 128, 1); }
     }
-    .animate-jump-in {
-      animation: jump-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    .animate-glow {
+        animation: glow 2s ease-in-out infinite;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    .animate-pop {
+        animation: pop 0.3s ease-out;
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    .animate-shake {
+        animation: shake 0.3s ease-in-out;
     }
   </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.27.0",
-    "sql.js": "https://esm.sh/sql.js@1.10.3",
-    "idb": "https://aistudiocdn.com/idb@^8.0.3"
-  }
-}
-</script>
 </head>
 <body class="bg-green-50">
   <div id="root"></div>

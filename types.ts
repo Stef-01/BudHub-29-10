@@ -40,6 +40,9 @@ export interface Recipe {
     protein_grams?: number;
     fiber_grams?: number;
     carbs_grams?: number;
+    calories_kcal?: number;
+    fat_grams?: number;
+    sodium_mg?: number;
     source: 'preloaded' | 'user' | 'gemini';
     keyIngredients: string[];
     ingredients: string;
@@ -71,8 +74,8 @@ export interface Weather {
         day: DayOfWeek;
         maxTempC: number;
         minTempC: number;
-        chanceOfRain: number;
         condition: string;
+        chanceOfRain: number;
     }[];
 }
 
@@ -103,7 +106,8 @@ export interface Alert {
 
 export type Tab = 'Garden' | 'Tasks' | 'Recipes' | 'Events' | 'Games';
 
-export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb';
+// FIX: Add 'nutriserve' game mode to type.
+export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb' | 'nutriserve';
 
 export interface GameQuestion {
     options: Recipe[];
@@ -115,4 +119,11 @@ export interface GameScore {
     score: number;
     date: string;
     id?: number;
+}
+
+// Type for NutriServe game's nutritional targets
+export interface TargetBand {
+    min: number;
+    optimal: number;
+    max: number;
 }
