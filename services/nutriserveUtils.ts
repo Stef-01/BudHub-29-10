@@ -1,124 +1,173 @@
 // services/nutriserveUtils.ts
-import type { Nutrients, MealGoals, TargetBand, TargetMin, TargetMax, CustomerOrder, FoodItem, PlateItem } from '../components/games/NutriServeTypes';
-import { FOOD_DATA, MEAL_GOALS } from './nutriserveFoodData';
+import type { Character, PlateItem, Nutrients, MealGoals, Target, NutriServeCustomerWithTargets, FoodItem } from '../components/games/NutriServeTypes';
+import { CUSTOMER_CHARACTERS } from './nutriserveCharacters';
+// FIX: Correct casing of import to match filename 'nutriserveFoodData.ts'.
+import { FOOD_LIBRARY } from './nutriserveFoodData';
 import { getRecipeIdForFoodItem } from './nutriserveFoodMap';
 
 export type NutrientStatus = 'low' | 'good' | 'high' | 'ok';
 
-export function getNutrientStatus(value: number, target: TargetBand | TargetMin | TargetMax): NutrientStatus {
-    if ('min' in target && 'max' in target) { // TargetBand
-        if (value < target.min) return 'low';
-        if (value > target.max) return 'high';
-        return 'good';
-    }
-    if ('min' in target) { // TargetMin
-        return value >= target.min ? 'good' : 'low';
-    }
-    if ('max' in target) { // TargetMax
-        return value <= target.max ? 'good' : 'high';
-    }
-    return 'ok';
+/**
+ * Determines if a nutrient value is low, good, or high compared to its target.
+ */
+export function getNutrientStatus(value: number, target: Target): NutrientStatus {
+  if ('min' in target && 'max' in target) { // TargetBand
+    if (value < target.min) return 'low';
+    if (value > target.max) return 'high';
+    return 'good';
+  }
+  if ('min' in target) { // TargetMin
+    return value >= target.min ? 'good' : 'low';
+  }
+  if ('max' in target) { // TargetMax
+    return value <= target.max ? 'good' : 'high';
+  }
+  return 'ok'; // Should not happen with valid targets
 }
 
-export function calculateTotalNutrients(plateItems: PlateItem[]): Nutrients {
-    const totals: Nutrients = { calories_kcal: 0, protein_g: 0, carbs_g: 0, fiber_g: 0, fat_g: 0, sodium_mg: 0 };
-    for (const item of plateItems) {
-        const multiplier = item.grams / 100;
-        for (const key of Object.keys(totals) as (keyof Nutrients)[]) {
-            totals[key] += item.foodItem.nutrients_per_100g[key] * multiplier;
-        }
+/**
+ * Calculates the total nutrients for all items on a plate.
+ */
+export function calculateMealTotals(plateItems: PlateItem[]): Nutrients {
+  const totals: Nutrients = { calories_kcal: 0, protein_g: 0, carbs_g: 0, fiber_g: 0, fat_g: 0, sodium_mg: 0 };
+  for (const item of plateItems) {
+    const multiplier = item.grams / 100;
+    for (const key in totals) {
+      const nutrientKey = key as keyof Nutrients;
+      totals[nutrientKey] += item.foodItem.nutrients_per_100g[nutrientKey] * multiplier;
     }
-    return totals;
+  }
+  return totals;
 }
 
-export function generateCustomerGoals(order: CustomerOrder): MealGoals {
-    const baseGoals = MEAL_GOALS[order.plateSize];
-    let protein_g: TargetMin;
-    let carbs_g: TargetMax;
-    let fat_g: TargetMax;
+/**
+ * Generates specific nutritional targets for a customer based on their order.
+ */
+export function generateCustomerWithTargets(character: Character): NutriServeCustomerWithTargets {
+    const goals: Partial<MealGoals> = {};
 
-    switch (order.diabetesMode) {
+    // 1. Set Calorie Targets based on Plate Size
+    switch (character.order.plateSize) {
+        case 'Light':
+            goals.calories_kcal = { min: 300, max: 450, target: 375 };
+            break;
+        case 'Regular':
+            goals.calories_kcal = { min: 450, max: 650, target: 550 };
+            break;
+        case 'Hearty':
+            goals.calories_kcal = { min: 650, max: 850, target: 750 };
+            break;
+    }
+
+    // 2. Set Macro Targets based on Diabetes Mode
+    switch (character.order.diabetesMode) {
         case 'Low-Carb':
-            protein_g = { min: baseGoals.calories_kcal.target * 0.3 / 4 }; // 30% from protein
-            carbs_g = { max: baseGoals.calories_kcal.target * 0.25 / 4 }; // 25% from carbs
-            fat_g = { max: baseGoals.calories_kcal.target * 0.45 / 9 }; // 45% from fat
+            goals.protein_g = { min: goals.calories_kcal.target * 0.075 }; // ~30% of calories
+            goals.carbs_g = { max: goals.calories_kcal.target * 0.0625 }; // ~25% of calories
+            goals.fat_g = { max: goals.calories_kcal.target * 0.05 }; // ~45% of calories
             break;
         case 'Balanced':
-            protein_g = { min: baseGoals.calories_kcal.target * 0.20 / 4 }; // 20%
-            carbs_g = { max: baseGoals.calories_kcal.target * 0.45 / 4 }; // 45%
-            fat_g = { max: baseGoals.calories_kcal.target * 0.35 / 9 }; // 35%
+            goals.protein_g = { min: goals.calories_kcal.target * 0.05 }; // ~20% of calories
+            goals.carbs_g = { max: goals.calories_kcal.target * 0.1125 }; // ~45% of calories
+            goals.fat_g = { max: goals.calories_kcal.target * 0.038 }; // ~35% of calories
             break;
         case 'None':
         default:
-            protein_g = { min: baseGoals.calories_kcal.target * 0.15 / 4 }; // 15%
-            carbs_g = { max: baseGoals.calories_kcal.target * 0.55 / 4 }; // 55%
-            fat_g = { max: baseGoals.calories_kcal.target * 0.30 / 9 }; // 30%
+            goals.protein_g = { min: goals.calories_kcal.target * 0.0375 }; // ~15% of calories
+            goals.carbs_g = { max: goals.calories_kcal.target * 0.125 }; // ~50% of calories
+            goals.fat_g = { max: goals.calories_kcal.target * 0.038 }; // ~35% of calories
             break;
     }
 
-    return { ...baseGoals, protein_g, carbs_g, fat_g };
+    // 3. Set Universal Micro Targets
+    goals.fiber_g = { min: 8 }; // General good target for a meal
+    goals.sodium_mg = { max: 800 }; // General healthy limit per meal
+
+    return {
+        ...character,
+        targets: goals as MealGoals,
+    };
 }
 
+/**
+ * Scores a meal against the customer's targets and provides feedback.
+ */
 export function calculateScoreAndFeedback(totals: Nutrients, targets: MealGoals): { score: number; feedback: Record<string, NutrientStatus> } {
     let score = 0;
     const feedback: Record<string, NutrientStatus> = {};
+    const MAX_SCORE_PER_NUTRIENT = 25;
 
-    const nutrientKeys: (keyof MealGoals)[] = ['calories_kcal', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g', 'sodium_mg'];
-    
-    for (const key of nutrientKeys) {
-        const status = getNutrientStatus(totals[key as keyof Nutrients], targets[key]);
-        feedback[key] = status;
+    for (const key in targets) {
+        const nutrient = key as keyof MealGoals;
+        const status = getNutrientStatus(totals[nutrient], targets[nutrient]);
+        feedback[nutrient] = status;
+
         if (status === 'good') {
+            score += MAX_SCORE_PER_NUTRIENT;
+        } else if (status === 'low') {
+            const { min } = targets[nutrient] as { min: number };
+            const ratio = totals[nutrient] / min;
+            if (ratio > 0.75) score += MAX_SCORE_PER_NUTRIENT * 0.5; // Close
+        } else if (status === 'high') {
+            const { max } = targets[nutrient] as { max: number };
+            const ratio = max / totals[nutrient];
+            if (ratio > 0.75) score += MAX_SCORE_PER_NUTRIENT * 0.5; // Close
+        }
+    }
+    
+    // Bonus for hitting the calorie sweet spot
+    const calStatus = getNutrientStatus(totals.calories_kcal, targets.calories_kcal);
+    if(calStatus === 'good') {
+        const calTarget = targets.calories_kcal.target;
+        const diff = Math.abs(totals.calories_kcal - calTarget);
+        if (diff < calTarget * 0.1) { // Within 10% of target
             score += 20;
-        } else if (status === 'high' && (key === 'carbs_g' || key === 'fat_g' || key === 'sodium_mg')) {
-            score -= 10;
-        } else if (status === 'low' && (key === 'protein_g' || key === 'fiber_g')) {
-            score -= 10;
         }
     }
     
-    // Bonus for hitting calorie target band
-    if (feedback.calories_kcal === 'good') { score += 20; }
-    else { score -= 15; }
-
-    return { score: Math.max(0, Math.round(score)), feedback };
+    return { score: Math.round(Math.min(150, score)), feedback };
 }
 
+
+/**
+ * Returns a random customer with their generated targets.
+ */
+export function getNewCustomer(): NutriServeCustomerWithTargets {
+    const randomCustomer = CUSTOMER_CHARACTERS[Math.floor(Math.random() * CUSTOMER_CHARACTERS.length)];
+    return generateCustomerWithTargets(randomCustomer);
+}
+
+/**
+ * Simulates a glycemic response curve based on meal composition.
+ * A simple model: Carbs increase the peak, while Fiber and Fat flatten and delay it.
+ */
 export function calculateGlycemicCurve(carbs: number, fiber: number, fat: number): { time: number; rise: number }[] {
-    if (carbs === 0) {
-        return Array.from({ length: 19 }, (_, i) => ({ time: i * 10, rise: 0 }));
-    }
+    if (carbs === 0) return [{ time: 0, rise: 0 }, { time: 180, rise: 0 }];
 
-    const peakTime = 45 + (fiber * 2) + (fat * 1.5);
-    const peakHeight = Math.max(10, carbs * 1.8 - (fiber * 3) - (fat * 2));
-    const duration = 120 + (fiber * 4) + (fat * 3);
+    const peakHeight = Math.max(10, carbs * 1.5 - fiber * 3 - fat * 1.5);
+    const peakTime = 45 + fiber * 2 + fat * 1; // Fiber and fat delay the peak
+    const curve: { time: number; rise: number }[] = [];
 
-    const points: { time: number; rise: number }[] = [];
     for (let time = 0; time <= 180; time += 10) {
-        let rise = 0;
-        if (time <= duration) {
-            const progress = time / duration;
-            const positionRelativeToPeak = time / peakTime;
-
-            if (time <= peakTime) {
-                rise = peakHeight * Math.sin((Math.PI / 2) * positionRelativeToPeak);
-            } else {
-                rise = peakHeight * Math.cos(((time - peakTime) / (duration - peakTime)) * (Math.PI / 2));
-            }
-        }
-        points.push({ time, rise: Math.max(0, rise) });
+        // Use a bell-like curve formula (Gaussian-like)
+        const rise = peakHeight * Math.exp(-Math.pow(time - peakTime, 2) / (2 * Math.pow(40 + fiber, 2)));
+        curve.push({ time, rise: Math.max(0, rise) });
     }
-    return points;
+    return curve;
 }
 
-export function getMainDishFromOrder(requiredItems: string[]): { foodItem: FoodItem, recipeId: string | null } | null {
-    if (!requiredItems || requiredItems.length === 0) return null;
-
-    const mainDishId = requiredItems[0];
-    const foodItem = FOOD_DATA.find(item => item.id === mainDishId);
-    if (!foodItem) return null;
+/**
+ * Helper to find the main dish from a customer's required items list.
+ */
+export function getMainDishFromOrder(requiredItems: string[]): { recipeId: string | null; foodItem: FoodItem } | null {
+    if (requiredItems.length === 0) return null;
     
-    const recipeId = getRecipeIdForFoodItem(mainDishId);
+    const allFoodItems = FOOD_LIBRARY.flatMap(group => group.items);
+    const foodItem = allFoodItems.find(item => item.id === requiredItems[0]);
+
+    if (!foodItem) return null;
+
+    const recipeId = getRecipeIdForFoodItem(foodItem.id);
 
     return { foodItem, recipeId };
 }

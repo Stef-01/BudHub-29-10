@@ -71,6 +71,9 @@ export interface TargetMax {
     max: number;
 }
 
+// FIX: Export the 'Target' union type to resolve an import error.
+export type Target = TargetBand | TargetMin | TargetMax;
+
 export interface MealGoals {
     calories_kcal: TargetBand;
     protein_g: TargetMin;

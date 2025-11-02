@@ -42,7 +42,7 @@ export function dataUriToBlob(dataUri: string): Blob {
 
 /**
  * Atomically saves image artifacts and their corresponding alias in a single transaction.
- * NEW: Implements dual-write to SQLite for persistence.
+ * IMPROVED: Implements dual-write to SQLite with existence check to prevent redundant writes.
  */
 export async function saveImageArtifacts(key: string, recipeId: string, artifacts: ImageArtifacts): Promise<void> {
     // Phase 1: Write to IndexedDB (as a cache)
@@ -55,21 +55,27 @@ export async function saveImageArtifacts(key: string, recipeId: string, artifact
 
     // Phase 2: Write to SQLite (for permanent storage)
     try {
-        await sqliteStore.saveImage({
-            key,
-            original: await blobToUint8Array(artifacts.original),
-            preview: await blobToUint8Array(artifacts.preview),
-            thumb: await blobToUint8Array(artifacts.thumb),
-            manifest: JSON.stringify(artifacts.manifest),
-            created_at: new Date().toISOString()
-        });
-        await sqliteStore.saveAlias({ recipe_id: recipeId, image_key: key });
+        const existingInSQLite = await sqliteStore.getImage(key);
+        
+        if (existingInSQLite) {
+            // Still update alias in case it changed, but skip the expensive blob write.
+            await sqliteStore.saveAlias({ recipe_id: recipeId, image_key: key });
+        } else {
+            // Convert blobs and save the full record
+            await sqliteStore.saveImage({
+                key,
+                original: await blobToUint8Array(artifacts.original),
+                preview: await blobToUint8Array(artifacts.preview),
+                thumb: await blobToUint8Array(artifacts.thumb),
+                manifest: JSON.stringify(artifacts.manifest),
+                created_at: new Date().toISOString()
+            });
+            await sqliteStore.saveAlias({ recipe_id: recipeId, image_key: key });
+            console.log(`Successfully saved image ${key} to SQLite.`);
+        }
     } catch (e) {
         console.error("Failed to save image artifacts to SQLite:", e);
-        // We don't re-throw here, as the app can function with just IndexedDB.
-        // In a real app, we might want to queue this write for later.
     }
-
 
     // Phase 3: Backup manifest to localStorage (failsafe)
     await backupImageManifest(key, artifacts)
@@ -112,7 +118,7 @@ export async function getAlias(recipeId: string): Promise<{ recipeId: string; ke
 
 /**
  * Retrieves the complete image state for a recipe, including managed object URLs.
- * NEW: Implements read-through cache pattern with SQLite fallback.
+ * IMPLEMENTED: Read-through cache pattern with SQLite fallback.
  */
 export async function getRecipeImageState(recipeId: string): Promise<ImageState | null> {
     // 1. Try IndexedDB first (fast cache)

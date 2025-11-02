@@ -21,12 +21,12 @@ const DishImageDisplay: React.FC<DishImageDisplayProps> = ({
   const [loading, setLoading] = React.useState(true);
   const { recipes } = useUserCookbook();
 
-  // Try to fetch the recipe image
+  // Try to fetch the recipe image from persistent storage
   React.useEffect(() => {
     let isMounted = true;
 
     const loadImage = async () => {
-      if (!recipeId) {
+      if (!recipeId || recipeId === 'no-image') {
         setLoading(false);
         return;
       }
@@ -49,20 +49,20 @@ const DishImageDisplay: React.FC<DishImageDisplayProps> = ({
     };
   }, [recipeId]);
 
-  // Fallback to emoji if no recipe image or visual available
-  const foodItem = React.useMemo(() => {
+  // Fallback to emoji if no recipe image available
+  const recipeEmoji = React.useMemo(() => {
     if (!recipeId) return null;
     const recipe = recipes.find(r => r.id === recipeId);
     return recipe?.image;
   }, [recipes, recipeId]);
 
-  if (loading && recipeId) {
+  if (loading && recipeId && recipeId !== 'no-image') {
     return (
       <div
         style={{ height: maxHeight, maxHeight }}
-        className="flex items-center justify-center bg-slate-100 rounded-lg"
+        className="flex items-center justify-center bg-slate-100 rounded-lg animate-pulse"
       >
-        <LoadingSpinner className="h-8 w-8 text-slate-500" />
+        <div className="h-8 w-8 border-4 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -71,26 +71,38 @@ const DishImageDisplay: React.FC<DishImageDisplayProps> = ({
   if (imageUrl) {
     return (
       <div
-        className="rounded-lg overflow-hidden shadow-md"
+        className="rounded-lg overflow-hidden shadow-md bg-white"
         style={{ height: maxHeight, maxHeight }}
       >
         <img
           src={imageUrl}
-          alt="Requested dish"
+          alt="Prepared dish"
           className="w-full h-full object-cover"
         />
       </div>
     );
   }
 
-  // Fallback to emoji or text
-  if (foodItem && typeof foodItem === 'string') {
+  // Fallback to custom visual component
+  if (FallbackVisual) {
+    return (
+      <div
+        style={{ height: maxHeight, maxHeight }}
+        className="flex items-center justify-center"
+      >
+        <FallbackVisual />
+      </div>
+    );
+  }
+
+  // Fallback to emoji
+  if (recipeEmoji && typeof recipeEmoji === 'string') {
     return (
       <div
         className="flex items-center justify-center text-6xl bg-slate-50 rounded-lg border-2 border-slate-200"
         style={{ height: maxHeight, maxHeight }}
       >
-        {foodItem}
+        {recipeEmoji}
       </div>
     );
   }

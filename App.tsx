@@ -11,6 +11,7 @@ import MainLayout from './components/layout/MainLayout';
 import TabRouter from './components/router/TabRouter';
 import LoadingScreen from './components/LoadingScreen';
 import GameScreen from './components/GameScreen';
+// FIX: Correctly import NutriServeGame as a module.
 import NutriServeGame from './components/games/NutriServeGame';
 
 const AppContent: React.FC = () => {

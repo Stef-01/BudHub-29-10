@@ -3,7 +3,7 @@ import React, { createContext, useState, useEffect, ReactNode, useRef, useCallba
 import type { Recipe } from '../types';
 import { useUserCookbook } from './UserCookbookContext';
 import { generateAndStoreRecipeImage } from '../services/imageService';
-import { saveAlias } from '../services/imageStoreService';
+import { saveAlias, getRecipeImageState } from '../services/imageStoreService';
 
 // Increased concurrency for better throughput
 const MAX_CONCURRENT_GENERATIONS = 2;
@@ -101,10 +101,32 @@ export const ImageGenerationProvider: React.FC<{ children: ReactNode }> = ({ chi
         };
     }, [processQueue]);
 
-    const enqueueRecipe = useCallback((recipe: Recipe) => {
-        // Check if image already exists
+    const enqueueRecipe = useCallback(async (recipe: Recipe) => {
+        // IMPROVEMENT: Check both metadata status AND actual storage to prevent redundant generation
         if (recipe.imageMetadata?.status === 'cached' || recipe.imageMetadata?.status === 'generated') {
           return;
+        }
+
+        // Additional check: verify image actually exists in storage (IndexedDB or SQLite)
+        try {
+            const imageState = await getRecipeImageState(recipe.id);
+            if (imageState) {
+                // Image exists, so we don't need to generate it. Update metadata to 'cached'.
+                const updatedRecipe: Recipe = {
+                    ...recipe,
+                    imageMetadata: { 
+                        ...(recipe.imageMetadata!),
+                        source: recipe.imageMetadata?.source || 'ai_generated', 
+                        status: 'cached', 
+                        image_key: imageState.key 
+                    },
+                };
+                await saveToTransientCache(updatedRecipe);
+                return;
+            }
+        } catch (err) {
+            console.warn(`Failed to check image state for recipe ${recipe.id} before enqueueing:`, err);
+            // Continue with enqueue if the check fails for any reason.
         }
 
         if (!enqueuedIdsRef.current.has(recipe.id) && !processingIdsRef.current.has(recipe.id)) {
@@ -113,7 +135,7 @@ export const ImageGenerationProvider: React.FC<{ children: ReactNode }> = ({ chi
             setQueueSize(q => q + 1);
             setTotalEnqueued(t => t + 1);
         }
-    }, []);
+    }, [saveToTransientCache]);
 
     const reEnqueueRecipe = useCallback(async (recipe: Recipe) => {
         enqueuedIdsRef.current.delete(recipe.id);

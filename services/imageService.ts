@@ -5,6 +5,7 @@ import type { Recipe } from '../types';
 import { buildKey, resizeImage, dataUriToBlob } from './imageProcessingService';
 import { saveImageArtifacts, saveAlias, type ImageArtifacts } from './imageStoreService';
 import { getDb, STORES } from './db';
+import { sqliteStore } from './sqliteStore';
 
 // This is also defined in geminiService.ts. It's better to keep it consistent.
 // Or even better, have a single point of initialization. For now, I'll just copy it.
@@ -17,7 +18,10 @@ if (!ai) {
 
 /**
  * Generates an image for a given recipe using the Gemini API,
- * processes it into different sizes, and stores it in IndexedDB.
+ * processes it into different sizes, and stores it in IndexedDB and SQLite.
+ * 
+ * IMPORTANT: Checks both IndexedDB and SQLite for existing images to prevent
+ * redundant generation, especially when IndexedDB cache is cleared.
  */
 export async function generateAndStoreRecipeImage(recipe: Recipe): Promise<{ key: string }> {
   if (!ai) {
@@ -41,16 +45,30 @@ export async function generateAndStoreRecipeImage(recipe: Recipe): Promise<{ key
 
   const key = await buildKey(generationSpec);
 
-  // Check if this key already exists in the database
+  // Check IndexedDB first
   const db = await getDb();
   const existingArtifacts = await db.get(STORES.IMAGE_ARTIFACTS, key);
+  
   if (existingArtifacts) {
-    console.log(`Image for recipe "${recipe.name}" already exists (key: ${key}). Skipping generation.`);
-    // Still ensure alias is created/updated
+    console.log(`Image for recipe "${recipe.name}" already exists in IndexedDB (key: ${key}). Skipping generation.`);
     await saveAlias(recipe.id, key);
     return { key };
   }
 
+  // Check SQLite as fallback
+  try {
+    const sqliteRecord = await sqliteStore.getImage(key);
+    if (sqliteRecord) {
+      console.log(`Image for recipe "${recipe.name}" found in SQLite but missing from IndexedDB (key: ${key}). Skipping generation.`);
+      // The read-through cache in getRecipeImageState will handle repopulation.
+      // We just need to ensure the alias exists so it can be found.
+      await saveAlias(recipe.id, key);
+      return { key };
+    }
+  } catch (sqliteError) {
+    console.warn(`SQLite check failed for key ${key}:`, sqliteError);
+    // Continue with generation if SQLite check fails
+  }
 
   console.log(`Generating image for recipe "${recipe.name}" with key: ${key}`);
 
@@ -115,7 +133,7 @@ export async function generateAndStoreRecipeImage(recipe: Recipe): Promise<{ key
 
 /**
  * Processes a user-uploaded image file for a recipe, resizes it,
- * generates a content-addressed key, and stores it in IndexedDB.
+ * generates a content-addressed key, and stores it in IndexedDB and SQLite.
  */
 export async function processAndStoreUserImage(recipe: Recipe, imageFile: File): Promise<{ key: string }> {
     const originalBlob = new Blob([imageFile], { type: imageFile.type });
