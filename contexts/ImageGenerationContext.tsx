@@ -102,6 +102,11 @@ export const ImageGenerationProvider: React.FC<{ children: ReactNode }> = ({ chi
     }, [processQueue]);
 
     const enqueueRecipe = useCallback((recipe: Recipe) => {
+        // Check if image already exists
+        if (recipe.imageMetadata?.status === 'cached' || recipe.imageMetadata?.status === 'generated') {
+          return;
+        }
+
         if (!enqueuedIdsRef.current.has(recipe.id) && !processingIdsRef.current.has(recipe.id)) {
             enqueuedIdsRef.current.add(recipe.id);
             queueRef.current.push(recipe);

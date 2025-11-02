@@ -14,7 +14,8 @@ interface MacroMeterProps {
   mode: 'band' | 'min' | 'max';
 }
 
-export default function MacroMeter({ name, value, unit, target, mode }: MacroMeterProps) {
+// FIX: Changed to React.FC to correctly handle reserved props like 'key'.
+const MacroMeter: React.FC<MacroMeterProps> = ({ name, value, unit, target, mode }) => {
   const status = getNutrientStatus(value, target);
   
   const statusColors = {
@@ -70,4 +71,6 @@ export default function MacroMeter({ name, value, unit, target, mode }: MacroMet
       </div>
     </div>
   );
-}
+};
+
+export default MacroMeter;

@@ -1,31 +1,35 @@
 // components/games/nutriserve-ui/DidYouKnowCard.tsx
 import React, { useState, useMemo } from 'react';
-import { IconInfoCircle } from './Icons';
-import { DID_YOU_KNOW_TIPS } from '../../../services/nutriserveFoodData';
+import { DID_YOU_KNOW_TIPS } from '../../../services/nutriServeFoodData';
+import { IconInfoCircle, IconArrowRightCircle } from './Icons';
 
 const DidYouKnowCard: React.FC = () => {
     const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * DID_YOU_KNOW_TIPS.length));
 
-    const currentTip = useMemo(() => DID_YOU_KNOW_TIPS[tipIndex], [tipIndex]);
-    
-    // This is simple, for a real app you might want to avoid showing the same tip twice in a row.
-    const showAnotherTip = () => {
-        setTipIndex(Math.floor(Math.random() * DID_YOU_KNOW_TIPS.length));
+    const nextTip = () => {
+        setTipIndex(prev => (prev + 1) % DID_YOU_KNOW_TIPS.length);
     };
 
+    const currentTip = useMemo(() => DID_YOU_KNOW_TIPS[tipIndex], [tipIndex]);
+
     return (
-        <div 
-            className="p-4 bg-sky-50 border border-sky-200 rounded-lg cursor-pointer"
-            onClick={showAnotherTip}
-            title="Click for another tip"
-        >
-            <div className="flex items-start gap-3">
-                <IconInfoCircle className="h-5 w-5 text-sky-500 flex-shrink-0 mt-0.5" />
+        <div className="bg-white p-6 rounded-2xl shadow-lg">
+            <div className="flex items-start gap-4">
+                <IconInfoCircle className="w-8 h-8 text-sky-500 flex-shrink-0 mt-1" />
                 <div>
-                    <h4 className="font-semibold text-sky-800">Did you know?</h4>
-                    <p className="text-sm text-sky-700 mt-1">{currentTip}</p>
+                    <h3 className="text-lg font-bold text-slate-800">Did You Know?</h3>
+                    <p className="text-sm text-slate-600 mt-2">
+                        {currentTip}
+                    </p>
                 </div>
             </div>
+             <button
+                onClick={nextTip}
+                className="w-full mt-4 flex items-center justify-center px-4 py-2 bg-slate-100 text-slate-600 font-semibold rounded-lg hover:bg-slate-200 transition-colors"
+            >
+                Next Tip
+                <IconArrowRightCircle className="ml-2 h-5 w-5"/>
+            </button>
         </div>
     );
 };

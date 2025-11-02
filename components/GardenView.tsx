@@ -1,4 +1,4 @@
-// Fix: Implemented GardenView component to resolve missing module errors.
+// components/GardenView.tsx
 import React, { useState } from 'react';
 import { useUserGarden } from '../contexts/UserGardenContext';
 import { useWeather } from '../contexts/WeatherContext';

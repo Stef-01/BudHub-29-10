@@ -38,6 +38,8 @@ export const UserCookbookProvider: React.FC<{ children: ReactNode }> = ({ childr
         const loadCookbook = async () => {
             setLoading(true);
             const [userRecipes, transientRecipes] = await Promise.all([getRecipes(), getTransientRecipes()]);
+            
+            console.log(`Loaded ${userRecipes.length} recipes and ${transientRecipes.length} transient recipes`);
 
             // Load main cookbook with self-healing
             let finalUserRecipes = userRecipes;

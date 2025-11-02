@@ -3,7 +3,8 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Recipe } from '../types';
 import { buildKey, resizeImage, dataUriToBlob } from './imageProcessingService';
-import { saveImageArtifacts, type ImageArtifacts } from './imageStoreService';
+import { saveImageArtifacts, saveAlias, type ImageArtifacts } from './imageStoreService';
+import { getDb, STORES } from './db';
 
 // This is also defined in geminiService.ts. It's better to keep it consistent.
 // Or even better, have a single point of initialization. For now, I'll just copy it.
@@ -39,6 +40,17 @@ export async function generateAndStoreRecipeImage(recipe: Recipe): Promise<{ key
   };
 
   const key = await buildKey(generationSpec);
+
+  // Check if this key already exists in the database
+  const db = await getDb();
+  const existingArtifacts = await db.get(STORES.IMAGE_ARTIFACTS, key);
+  if (existingArtifacts) {
+    console.log(`Image for recipe "${recipe.name}" already exists (key: ${key}). Skipping generation.`);
+    // Still ensure alias is created/updated
+    await saveAlias(recipe.id, key);
+    return { key };
+  }
+
 
   console.log(`Generating image for recipe "${recipe.name}" with key: ${key}`);
 

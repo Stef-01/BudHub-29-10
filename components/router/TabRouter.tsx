@@ -1,6 +1,6 @@
 // components/router/TabRouter.tsx
 import React from 'react';
-import type { Tab } from '../../types';
+import type { Tab, GameMode } from '../../types';
 import { COMMUNITY_EVENTS } from '../../constants';
 
 import GardenView from '../GardenView';
@@ -12,9 +12,10 @@ import AnimatedContent from '../ui/AnimatedContent';
 
 interface TabRouterProps {
     activeTab: Tab;
+    onPlayGame: (gameMode: GameMode) => void;
 }
 
-const TabRouter: React.FC<TabRouterProps> = ({ activeTab }) => {
+const TabRouter: React.FC<TabRouterProps> = ({ activeTab, onPlayGame }) => {
     const renderContent = () => {
         switch (activeTab) {
             case 'Garden':
@@ -26,7 +27,7 @@ const TabRouter: React.FC<TabRouterProps> = ({ activeTab }) => {
             case 'Events':
                 return <CommunityEvents events={COMMUNITY_EVENTS} />;
             case 'Games':
-                 return <GamesView />;
+                 return <GamesView onPlay={onPlayGame} />;
             default:
                 return null;
         }

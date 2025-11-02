@@ -1,120 +1,132 @@
 // components/games/nutriserve-ui/ServingSizeModal.tsx
 import React, { useState, useMemo } from 'react';
-import type { FoodItem, PlateItem, Nutrients } from '../NutriServeTypes';
-import { IconTrash } from './Icons';
+import type { FoodItem, PlateItem } from '../NutriServeTypes';
+import { IconXMark } from './Icons';
 
 interface ServingSizeModalProps {
   foodItem: FoodItem;
-  currentItem?: PlateItem;
-  onUpdate: (foodItem: FoodItem, grams: number, instanceId?: string) => void;
-  onRemove: (instanceId: string) => void;
+  onAdd: (plateItem: PlateItem) => void;
   onClose: () => void;
 }
 
-const ServingSizeModal: React.FC<ServingSizeModalProps> = ({ foodItem, currentItem, onUpdate, onRemove, onClose }) => {
-  const [grams, setGrams] = useState(currentItem?.grams || (foodItem.portion_g?.[0] || 100));
-  
-  const nutrients = useMemo((): Partial<Nutrients> => {
-    const multiplier = grams / 100;
-    const result: Partial<Nutrients> = {};
-    for (const key in foodItem.nutrients_per_100g) {
-        const nutrient = key as keyof Nutrients;
-        result[nutrient] = (foodItem.nutrients_per_100g[nutrient] || 0) * multiplier;
+const ServingSizeModal: React.FC<ServingSizeModalProps> = ({ foodItem, onAdd, onClose }) => {
+  const isVolumeBased = !!foodItem.volume_options_ml;
+  const isPortionBased = !!foodItem.portion_g;
+
+  const [grams, setGrams] = useState<number>(() => {
+    if(isPortionBased && foodItem.portion_g) return foodItem.portion_g[1] || foodItem.portion_g[0];
+    if(isVolumeBased && foodItem.volume_options_ml && foodItem.density_g_per_ml) {
+        const midVol = foodItem.volume_options_ml[1] || foodItem.volume_options_ml[0];
+        return midVol * foodItem.density_g_per_ml;
     }
-    return result;
-  }, [grams, foodItem.nutrients_per_100g]);
-  
-  const handleGramsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = parseInt(e.target.value, 10);
-      setGrams(isNaN(value) ? 0 : value);
-  };
-  
-  const handleSave = () => {
+    return 100;
+  });
+
+  const handleAdd = () => {
     if (grams > 0) {
-      onUpdate(foodItem, grams, currentItem?.instanceId);
-    } else if (currentItem) {
-      onRemove(currentItem.instanceId);
+      onAdd({
+        instanceId: `${foodItem.id}-${Date.now()}`,
+        foodItem,
+        grams,
+      });
     }
     onClose();
   };
-  
-  const handleRemove = () => {
-      if (currentItem) {
-          onRemove(currentItem.instanceId);
-      }
-      onClose();
-  }
 
-  const portionOptions = useMemo(() => {
-    if (foodItem.portion_g && foodItem.portion_labels) {
-        return foodItem.portion_labels.map((label, i) => ({ label, grams: foodItem.portion_g![i] }));
+  const options = useMemo(() => {
+    if (isVolumeBased && foodItem.volume_options_ml && foodItem.density_g_per_ml && foodItem.volume_labels) {
+        return foodItem.volume_labels.map((label, i) => ({
+            label,
+            grams: foodItem.volume_options_ml![i] * foodItem.density_g_per_ml!
+        }));
     }
-    if (foodItem.volume_options_ml && foodItem.volume_labels && foodItem.density_g_per_ml) {
-        return foodItem.volume_labels.map((label, i) => ({ label, grams: Math.round(foodItem.volume_options_ml![i] * foodItem.density_g_per_ml!) }));
+    if (isPortionBased && foodItem.portion_g && foodItem.portion_labels) {
+        return foodItem.portion_labels.map((label, i) => ({
+            label,
+            grams: foodItem.portion_g![i]
+        }));
     }
     return [];
-  }, [foodItem]);
+  }, [foodItem, isVolumeBased, isPortionBased]);
+  
+  const minGrams = Math.min(...options.map(o => o.grams), 10);
+  const maxGrams = Math.max(...options.map(o => o.grams), 500);
+
+  const nutrientsAtAmount = useMemo(() => {
+    const multiplier = grams / 100;
+    const nutrients = foodItem.nutrients_per_100g;
+    return {
+        calories: (nutrients.calories_kcal * multiplier).toFixed(0),
+        protein: (nutrients.protein_g * multiplier).toFixed(0),
+        carbs: (nutrients.carbs_g * multiplier).toFixed(0),
+        fat: (nutrients.fat_g * multiplier).toFixed(0),
+    }
+  }, [grams, foodItem.nutrients_per_100g]);
+
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-jump-in" onClick={e => e.stopPropagation()}>
-        <div className="text-center w-40 h-40 mx-auto">
-          <foodItem.visual grams={grams} />
-          <h3 className="text-2xl font-bold text-slate-800 mt-2">{foodItem.label}</h3>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 animate-jump-in flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex-shrink-0">
+            <div className="w-32 h-32 mx-auto">
+              <foodItem.visual grams={grams}/>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800 mt-2 text-center">{foodItem.label}</h2>
         </div>
 
-        {portionOptions.length > 0 && (
-            <div className="my-4">
-                <p className="text-sm font-semibold text-slate-600 mb-2 text-center">Quick Portions:</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                    {portionOptions.map(opt => (
-                        <button key={opt.label} onClick={() => setGrams(opt.grams)} className={`px-3 py-1.5 text-sm font-semibold rounded-full ${grams === opt.grams ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                            {opt.label} ({opt.grams}g)
-                        </button>
-                    ))}
+        <div className="flex-grow mt-6">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+                {options.map(opt => (
+                    <button
+                        key={opt.label}
+                        onClick={() => setGrams(opt.grams)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+                            Math.abs(grams - opt.grams) < 1 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        {opt.label} ({opt.grams.toFixed(0)}g)
+                    </button>
+                ))}
+            </div>
+            
+            <div className="mt-6">
+                <label htmlFor="grams-slider" className="text-sm font-medium text-slate-600 text-center block">Serving Size (grams)</label>
+                <div className="flex items-center gap-4 mt-2">
+                    <input
+                        id="grams-slider"
+                        type="range"
+                        min={minGrams}
+                        max={maxGrams}
+                        step="1"
+                        value={grams}
+                        onChange={(e) => setGrams(Number(e.target.value))}
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <input
+                        type="number"
+                        value={grams.toFixed(0)}
+                        onChange={(e) => setGrams(Number(e.target.value))}
+                        className="w-20 p-2 text-center border border-slate-300 rounded-lg"
+                    />
                 </div>
             </div>
-        )}
 
-        <div className="my-6">
-            <label htmlFor="grams-input" className="block text-sm font-medium text-gray-700 text-center">Serving Size (grams)</label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-                <input
-                    type="range"
-                    min="0"
-                    max={foodItem.portion_g ? Math.max(...foodItem.portion_g) * 2 : 500}
-                    step="5"
-                    value={grams}
-                    onChange={handleGramsChange}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                />
-                <input
-                    type="number"
-                    id="grams-input"
-                    value={grams}
-                    onChange={handleGramsChange}
-                    className="w-24 p-2 text-center font-bold text-lg border-2 border-slate-300 rounded-lg mx-auto mt-2 block"
-                />
+            <div className="mt-6 bg-slate-50 p-4 rounded-lg">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div><span className="font-semibold">Calories:</span> {nutrientsAtAmount.calories} kcal</div>
+                    <div><span className="font-semibold">Protein:</span> {nutrientsAtAmount.protein} g</div>
+                    <div><span className="font-semibold">Carbs:</span> {nutrientsAtAmount.carbs} g</div>
+                    <div><span className="font-semibold">Fat:</span> {nutrientsAtAmount.fat} g</div>
+                </div>
             </div>
         </div>
 
-        <div className="p-3 bg-slate-50 rounded-lg text-sm text-slate-600 grid grid-cols-2 gap-1">
-            <span>Calories: <b>{Math.round(nutrients.calories_kcal || 0)} kcal</b></span>
-            <span>Protein: <b>{Math.round(nutrients.protein_g || 0)} g</b></span>
-            <span>Carbs: <b>{Math.round(nutrients.carbs_g || 0)} g</b></span>
-            <span>Fat: <b>{Math.round(nutrients.fat_g || 0)} g</b></span>
-        </div>
-        
-        <div className="flex gap-3 mt-6">
-            {currentItem && (
-                <button onClick={handleRemove} className="w-1/4 flex-shrink-0 px-4 py-3 bg-rose-100 text-rose-700 font-semibold rounded-lg hover:bg-rose-200" aria-label="Remove item">
-                    <IconTrash className="h-6 w-6 mx-auto" />
-                </button>
-            )}
-            <button onClick={handleSave} className="flex-grow px-4 py-3 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700">
-              {currentItem ? 'Update Item' : 'Add to Plate'}
-            </button>
-        </div>
+        <button
+          onClick={handleAdd}
+          className="w-full mt-6 px-4 py-3 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 transition-colors flex-shrink-0"
+        >
+          Add to Plate
+        </button>
       </div>
     </div>
   );

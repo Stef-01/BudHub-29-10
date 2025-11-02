@@ -1,40 +1,40 @@
 // services/nutriServeService.ts
 import type { Recipe } from '../types';
 // FIX: Added FoodItem, FoodCategory, Order, and ScoreResult to import to resolve module export errors.
-import type { FoodItem, Order, ScoreResult, VisualProps } from '../components/games/NutriServeTypes';
+import type { FoodItem, FoodCategory, Order, ScoreResult, VisualProps, Nutrients } from '../components/games/NutriServeTypes';
 import React from 'react';
 
 // FIX: Added mock visual component to satisfy FoodItem type for what appears to be legacy code.
 const MockVisual: React.FC<VisualProps> = () => null;
 
 // FIX: Added placeholder nutrient data to satisfy the Nutrients type.
-const mockNutrients = { calories_kcal: 0, protein_g: 0, carbs_g: 0, fiber_g: 0, fat_g: 0, sodium_mg: 0 };
+const mockNutrients: Nutrients = { calories_kcal: 0, protein_g: 0, carbs_g: 0, fiber_g: 0, fat_g: 0, sodium_mg: 0 };
 
 // FIX: Updated data structure to match FoodItem type. Changed 'name' to 'label', removed 'emoji', and added required fields.
-export const FOOD_ITEMS: Omit<FoodItem, 'nutrients_per_100g' | 'category'>[] = [
+export const FOOD_ITEMS: FoodItem[] = [
     // Proteins
-    { id: 'chicken', label: 'Chicken', visual: MockVisual },
-    { id: 'fish', label: 'Fish', visual: MockVisual },
-    { id: 'beans', label: 'Beans', visual: MockVisual },
-    { id: 'tofu', label: 'Tofu', visual: MockVisual },
-    { id: 'egg', label: 'Egg', visual: MockVisual },
+    { id: 'chicken', label: 'Chicken', visual: MockVisual, category: 'Lentils & Curries', nutrients_per_100g: mockNutrients },
+    { id: 'fish', label: 'Fish', visual: MockVisual, category: 'Lentils & Curries', nutrients_per_100g: mockNutrients },
+    { id: 'beans', label: 'Beans', visual: MockVisual, category: 'Lentils & Curries', nutrients_per_100g: mockNutrients },
+    { id: 'tofu', label: 'Tofu', visual: MockVisual, category: 'Lentils & Curries', nutrients_per_100g: mockNutrients },
+    { id: 'egg', label: 'Egg', visual: MockVisual, category: 'Breads & Breakfast', nutrients_per_100g: mockNutrients },
     // Carbohydrates
-    { id: 'rice', label: 'Rice', visual: MockVisual },
-    { id: 'bread', label: 'Bread', visual: MockVisual },
-    { id: 'potato', label: 'Potato', visual: MockVisual },
-    { id: 'pasta', label: 'Pasta', visual: MockVisual },
+    { id: 'rice', label: 'Rice', visual: MockVisual, category: 'Grains', nutrients_per_100g: mockNutrients },
+    { id: 'bread', label: 'Bread', visual: MockVisual, category: 'Breads & Breakfast', nutrients_per_100g: mockNutrients },
+    { id: 'potato', label: 'Potato', visual: MockVisual, category: 'Vegetable Dishes', nutrients_per_100g: mockNutrients },
+    { id: 'pasta', label: 'Pasta', visual: MockVisual, category: 'Grains', nutrients_per_100g: mockNutrients },
     // Vegetables
-    { id: 'broccoli', label: 'Broccoli', visual: MockVisual },
-    { id: 'carrot', label: 'Carrot', visual: MockVisual },
-    { id: 'lettuce', label: 'Lettuce', visual: MockVisual },
-    { id: 'tomato', label: 'Tomato', visual: MockVisual },
-    { id: 'onion', label: 'Onion', visual: MockVisual },
+    { id: 'broccoli', label: 'Broccoli', visual: MockVisual, category: 'Vegetable Dishes', nutrients_per_100g: mockNutrients },
+    { id: 'carrot', label: 'Carrot', visual: MockVisual, category: 'Vegetable Dishes', nutrients_per_100g: mockNutrients },
+    { id: 'lettuce', label: 'Lettuce', visual: MockVisual, category: 'Soups, Salads & Sides', nutrients_per_100g: mockNutrients },
+    { id: 'tomato', label: 'Tomato', visual: MockVisual, category: 'Vegetable Dishes', nutrients_per_100g: mockNutrients },
+    { id: 'onion', label: 'Onion', visual: MockVisual, category: 'Vegetable Dishes', nutrients_per_100g: mockNutrients },
     // Fruits
-    { id: 'apple', label: 'Apple', visual: MockVisual },
-    { id: 'banana', label: 'Banana', visual: MockVisual },
+    { id: 'apple', label: 'Apple', visual: MockVisual, category: 'Treats', nutrients_per_100g: mockNutrients },
+    { id: 'banana', label: 'Banana', visual: MockVisual, category: 'Treats', nutrients_per_100g: mockNutrients },
     // Fats
-    { id: 'avocado', label: 'Avocado', visual: MockVisual },
-    { id: 'oil', label: 'Oil', visual: MockVisual },
+    { id: 'avocado', label: 'Avocado', visual: MockVisual, category: 'Soups, Salads & Sides', nutrients_per_100g: mockNutrients },
+    { id: 'oil', label: 'Oil', visual: MockVisual, category: 'Soups, Salads & Sides', nutrients_per_100g: mockNutrients },
 ];
 
 export function generateNewOrder(recipes: Recipe[]): Order | null {

@@ -1,4 +1,4 @@
-// services/nutriserveFoodData.ts
+// services/nutriServeFoodData.ts
 import type { FoodItem, FoodGroup, MealGoals } from '../components/games/NutriServeTypes';
 import {
     RiceVisual, DalVisual, SabziVisual, RaitaVisual, RotiVisual, PaneerVisual, ChickenCurryVisual, SaladVisual, ButterChickenVisual, ParathaVisual, CholeVisual, BhindiSabziVisual, YogurtVisual, BrownRiceVisual, RedRiceVisual, BeanCurryVisual, FriedFishVisual, PappadumVisual, MasalaDosaVisual, ChanaMasalaVisual, PalakDalVisual, MasoorDalVisual, MoongDalTadkaVisual, RajmaMasalaVisual, SambarVisual, BainganBhartaVisual, BhindiMasalaVisual, PalakPaneerVisual, MixedVegCurryVisual, MethiTheplaVisual, MoongDalCheelaVisual, PohaVisual, JowarRotiVisual, SproutsSaladVisual, LemonRiceVisual, MoongDalSoupVisual, TomatoSoupVisual, CucumberRaitaVisual, CorianderChutneyVisual, CookedBeansVisual, GarlicNaanVisual, CheeseNaanVisual, SamosaVisual, Chicken65Visual, LadduVisual, MurukkuVisual, JalebiVisual, BombayMixVisual, PuttuVisual, VadaVisual, PaniPuriVisual, UpmaVisual, AlooGobiVisual, DalMakhaniVisual, VegBiryaniVisual,

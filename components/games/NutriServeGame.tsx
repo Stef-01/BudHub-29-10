@@ -1,172 +1,200 @@
-// components/games/NutriServeGame.tsx
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useUserCookbook } from '../../../contexts/UserCookbookContext';
-import { useGameScores } from '../../../contexts/GameScoresContext';
-import { useGamification } from '../../../contexts/GamificationContext';
-import { generateCustomerTargets, getNutrientStatus, calculateTotalNutrients } from '../../../services/nutriserveUtils';
-import { CHARACTERS } from '../../../services/nutriserveCharacters';
-import { FOOD_DATA } from '../../../services/nutriserveFoodData';
-import type { FoodItem, PlateItem, NutriServeCustomerWithTargets, Nutrients } from './NutriServeTypes';
-import CustomerDisplay from './nutriserve-ui/CustomerDisplay';
+import React, { useState, useMemo, useCallback } from 'react';
+import type { PlateItem, NutriServeCustomerWithTargets, Nutrients, MealGoals } from './NutriServeTypes';
+import { useGameScores } from '../../contexts/GameScoresContext';
+import { useGamification } from '../../contexts/GamificationContext';
+
 import FoodLibrary from './nutriserve-ui/FoodLibrary';
 import Plate from './nutriserve-ui/Plate';
 import MealAnalysis from './nutriserve-ui/MealAnalysis';
-import ServingSizeModal from './nutriserve-ui/ServingSizeModal';
+import CustomerDisplay from './nutriserve-ui/CustomerDisplay';
 import ResultModal from './nutriserve-ui/ResultModal';
-import { IconXCircle } from './nutriserve-ui/Icons';
-import GameOverModal from '../GameOverModal';
+import DidYouKnowCard from './nutriserve-ui/DidYouKnowCard';
+import ChangelogModal from './nutriserve-ui/ChangelogModal';
+// FIX: Import ServingSizeModal component to resolve reference error.
+import ServingSizeModal from './nutriserve-ui/ServingSizeModal';
 
-const TOTAL_ROUNDS = 3;
+import { CHARACTERS } from '../../services/nutriserveCharacters';
+// FIX: Import FOOD_DATA to resolve reference error.
+// FIX: Corrected casing for nutriServeFoodData to resolve module conflicts.
+import { FOOD_DATA, MEAL_GOALS } from '../../services/nutriServeFoodData';
+import { calculateTotalNutrients, getNutrientStatus } from '../../services/nutriserveUtils';
+import { IconXCircle } from './nutriserve-ui/Icons';
+
+
+const GAME_ROUNDS = 3;
+
+const getCustomerWithTargets = (customer: typeof CHARACTERS[0]): NutriServeCustomerWithTargets => {
+    const baseGoals = MEAL_GOALS[customer.order.plateSize];
+    let protein_g: MealGoals['protein_g'] = { min: 20 };
+    let carbs_g: MealGoals['carbs_g'] = { max: 75 };
+    let fat_g: MealGoals['fat_g'] = { max: 25 };
+
+    if (customer.order.plateSize === 'Light') { protein_g.min = 15; carbs_g.max = 50; fat_g.max = 20; }
+    if (customer.order.plateSize === 'Hearty') { protein_g.min = 30; carbs_g.max = 90; fat_g.max = 30; }
+    
+    if (customer.order.diabetesMode === 'Low-Carb') carbs_g.max = 40;
+    if (customer.order.diabetesMode === 'Balanced') carbs_g.max = 60;
+    
+    return {
+        ...customer,
+        targets: { ...baseGoals, protein_g, carbs_g, fat_g },
+    };
+};
 
 const NutriServeGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
-    const [round, setRound] = useState(1);
-    const [totalScore, setTotalScore] = useState(0);
-    const [customer, setCustomer] = useState<NutriServeCustomerWithTargets | null>(null);
-    const [plate, setPlate] = useState<PlateItem[]>([]);
-    const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
-    const [editingItem, setEditingItem] = useState<PlateItem | null>(null);
-    const [showResultModal, setShowResultModal] = useState(false);
-    const [roundScore, setRoundScore] = useState(0);
-    const [roundFeedback, setRoundFeedback] = useState<Record<string, 'low' | 'good' | 'high' | 'ok'>>({});
-    
     const { saveScore } = useGameScores();
     const { addXp } = useGamification();
 
-    const getNewCustomer = useCallback(() => {
-        const randomCharacter = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
-        const targets = generateCustomerTargets(randomCharacter.order.plateSize, randomCharacter.order.diabetesMode);
-        setCustomer({ ...randomCharacter, targets });
-        setPlate([]);
+    const [round, setRound] = useState(0);
+    const [totalScore, setTotalScore] = useState(0);
+    const [plateItems, setPlateItems] = useState<PlateItem[]>([]);
+    const [isResultVisible, setIsResultVisible] = useState(false);
+    const [lastScore, setLastScore] = useState(0);
+    const [lastFeedback, setLastFeedback] = useState<Record<string, 'low' | 'good' | 'high' | 'ok'>>({});
+    const [selectedFood, setSelectedFood] = useState<any | null>(null);
+    const [showChangelog, setShowChangelog] = useState(false);
+    
+    const customers = useMemo(() => CHARACTERS.map(getCustomerWithTargets), []);
+    const currentCustomer = customers[round % customers.length];
+
+    const totalNutrients = useMemo(() => calculateTotalNutrients(plateItems), [plateItems]);
+
+    const handleAddItem = useCallback((item: PlateItem) => {
+        setPlateItems(prev => [...prev, item]);
+        setSelectedFood(null);
     }, []);
 
-    useEffect(() => {
-        getNewCustomer();
-    }, [getNewCustomer]);
+    const handleSelectItem = useCallback((foodItem: any) => {
+      setSelectedFood(foodItem);
+    }, []);
 
-    const handleUpdatePlate = (foodItem: FoodItem, grams: number, instanceId?: string) => {
-        setPlate(prevPlate => {
-            if (instanceId) {
-                return prevPlate.map(item => item.instanceId === instanceId ? { ...item, grams } : item);
-            } else {
-                return [...prevPlate, { foodItem, grams, instanceId: `${foodItem.id}_${Date.now()}` }];
-            }
-        });
-        setSelectedFood(null);
-        setEditingItem(null);
-    };
+    const handleRemoveItem = useCallback((instanceId: string) => {
+        setPlateItems(prev => prev.filter(item => item.instanceId !== instanceId));
+    }, []);
+    
+    const handleEditItem = useCallback((item: PlateItem) => {
+        const foodItem = plateItems.find(p => p.instanceId === item.instanceId)?.foodItem;
+        if (foodItem) {
+          setSelectedFood(foodItem);
+        }
+    }, [plateItems]);
 
-    const handleRemoveFromPlate = (instanceId: string) => {
-        setPlate(prev => prev.filter(item => item.instanceId !== instanceId));
-        setEditingItem(null);
-    };
+    const handleDropOnPlate = useCallback((foodItemId: string) => {
+        const foodItem = FOOD_DATA.find(f => f.id === foodItemId);
+        if(foodItem){
+            setSelectedFood(foodItem);
+        }
+    }, []);
+
 
     const handleServePlate = () => {
-        if (!customer) return;
-        const totalNutrients = calculateTotalNutrients(plate);
-        let score = 0;
-        const feedback: typeof roundFeedback = {};
+        let score = 100; // Start with a perfect score
+        const feedback: Record<string, 'low' | 'good' | 'high' | 'ok'> = {};
 
-        Object.keys(customer.targets).forEach(key => {
+        Object.keys(currentCustomer.targets).forEach(key => {
             const nutrient = key as keyof Nutrients;
-            const status = getNutrientStatus(totalNutrients[nutrient], customer.targets[nutrient]);
+            const status = getNutrientStatus(totalNutrients[nutrient], currentCustomer.targets[nutrient]);
             feedback[nutrient] = status;
-            if (status === 'good') score += 25;
-            else if (status === 'low' && nutrient !== 'carbs_g' && nutrient !== 'fat_g' && nutrient !== 'sodium_mg') score += 10;
-        });
-        
-        // Bonus for including required items
-        customer.order.required_items.forEach(reqId => {
-            const baseId = reqId.split('_')[0];
-            if (plate.some(p => p.foodItem.id.startsWith(baseId))) {
-                score += 30;
-            }
+            if (status !== 'good') score -= 20;
         });
 
-        // Penalty for treats
-        if (plate.some(p => p.foodItem.isTreat)) {
-            score -= 20;
-        }
+        const hasRequired = currentCustomer.order.required_items.every(reqId => plateItems.some(p => p.foodItem.id === reqId));
+        if (hasRequired) score += 20; else score -= 30;
 
         score = Math.max(0, Math.min(150, score));
-        setRoundScore(score);
-        setRoundFeedback(feedback);
-        setShowResultModal(true);
+        
+        setTotalScore(prev => prev + score);
+        setLastScore(score);
+        setLastFeedback(feedback);
+        setIsResultVisible(true);
     };
-
+    
     const handleNextRound = () => {
-        setTotalScore(s => s + roundScore);
-        addXp(roundScore > 100 ? 'High' : (roundScore > 50 ? 'Medium' : 'Low'), 'add');
-        setShowResultModal(false);
-
-        if (round < TOTAL_ROUNDS) {
-            setRound(r => r + 1);
-            getNewCustomer();
+        addXp('Medium', 'add');
+        if (round + 1 >= GAME_ROUNDS) {
+            saveScore('nutriserve', totalScore + lastScore);
+            onExit();
         } else {
-            // Game over
-            saveScore('nutriserve', totalScore + roundScore);
+            setRound(prev => prev + 1);
+            setPlateItems([]); // Clear plate for next round
+            setIsResultVisible(false);
         }
     };
     
-    if (!customer) return <div>Loading...</div>;
-
-    const isGameOver = round > TOTAL_ROUNDS;
+    const handleExitGame = () => {
+      if(totalScore > 0) saveScore('nutriserve', totalScore);
+      onExit();
+    }
 
     return (
-        <div className="bg-slate-100 min-h-screen p-4 md:p-6 lg:p-8">
-            <header className="flex justify-between items-center mb-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800">NutriServe Chef</h2>
-                    <p className="text-slate-500">Round {round}/{TOTAL_ROUNDS} | Total Score: {totalScore}</p>
+        <div className="bg-slate-100 min-h-screen font-sans">
+            <header className="bg-white/80 backdrop-blur-sm shadow-sm py-3 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <h1 className="text-xl font-bold text-slate-800">NutriPlate Planner</h1>
+                <div className="flex items-center space-x-4 text-slate-500">
+                    {/* Placeholder for future icons */}
                 </div>
-                <button onClick={onExit} className="p-2 rounded-full text-slate-500 hover:bg-slate-200"><IconXCircle className="h-8 w-8" /></button>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-6">
-                    <CustomerDisplay customer={customer} />
-                    <div className="relative">
-                        <Plate items={plate} onSelectItem={setEditingItem} isServing={showResultModal} />
-                    </div>
-                    <button
-                        onClick={handleServePlate}
-                        disabled={plate.length === 0}
-                        className="w-full py-4 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-emerald-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
+            <main className="p-4 sm:p-6 lg:p-8">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                        NutriServe <span className="text-2xl">🥗</span>
+                    </h2>
+                    <button 
+                        onClick={() => setShowChangelog(true)} 
+                        className="text-sm font-semibold text-emerald-600 hover:text-emerald-800 transition-colors"
                     >
-                        Serve Plate
+                        Changelog
                     </button>
                 </div>
-                <div className="grid grid-rows-[minmax(0,_1fr)_minmax(0,_1fr)] gap-6 h-[80vh] lg:h-auto">
-                    <FoodLibrary onSelectFood={setSelectedFood} />
-                    <MealAnalysis plate={plate} customer={customer} />
-                </div>
-            </div>
 
-            {(selectedFood || editingItem) && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="lg:col-span-1 xl:col-span-1 h-[calc(100vh-160px)]">
+                        <FoodLibrary onSelectItem={handleSelectItem}/>
+                    </div>
+
+                    <div className="lg:col-span-2 xl:col-span-2 space-y-6">
+                        <CustomerDisplay 
+                          customer={currentCustomer} 
+                          onServe={handleServePlate} 
+                          isPlateEmpty={plateItems.length === 0} 
+                        />
+                        <Plate 
+                          items={plateItems} 
+                          onEditItem={handleEditItem} 
+                          onRemoveItem={handleRemoveItem}
+                          onDropItem={handleDropOnPlate}
+                          plateSize={currentCustomer.order.plateSize}
+                        />
+                    </div>
+
+                    <div className="lg:col-span-3 xl:col-span-1 space-y-6">
+                        <MealAnalysis totals={totalNutrients} targets={currentCustomer.targets} />
+                        <DidYouKnowCard />
+                    </div>
+                </div>
+            </main>
+
+            {selectedFood && (
                 <ServingSizeModal
-                    foodItem={selectedFood || editingItem!.foodItem}
-                    currentItem={editingItem || undefined}
-                    onUpdate={handleUpdatePlate}
-                    onRemove={handleRemoveFromPlate}
-                    onClose={() => { setSelectedFood(null); setEditingItem(null); }}
+                    foodItem={selectedFood}
+                    onClose={() => setSelectedFood(null)}
+                    onAdd={handleAddItem}
                 />
             )}
-            
-            {showResultModal && (
+
+            {isResultVisible && (
                 <ResultModal
-                    score={roundScore}
-                    customer={customer}
-                    feedback={roundFeedback}
+                    score={lastScore}
+                    customer={currentCustomer}
+                    feedback={lastFeedback}
                     onNext={handleNextRound}
-                    isLastRound={round === TOTAL_ROUNDS}
+                    isLastRound={round + 1 >= GAME_ROUNDS}
                 />
             )}
             
-            {isGameOver && (
-                <GameOverModal
-                    score={totalScore}
-                    onPlayAgain={() => { /* Not implemented for this game, just exit */ onExit(); }}
-                    onExit={onExit}
-                />
+            {showChangelog && (
+                <ChangelogModal onClose={() => setShowChangelog(false)} />
             )}
         </div>
     );
