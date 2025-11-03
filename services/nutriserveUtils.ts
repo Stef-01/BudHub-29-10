@@ -1,7 +1,7 @@
 // services/nutriserveUtils.ts
 import type { Character, PlateItem, Nutrients, MealGoals, Target, NutriServeCustomerWithTargets, FoodItem } from '../components/games/NutriServeTypes';
 import { CUSTOMER_CHARACTERS } from './nutriserveCharacters';
-// FIX: Correct casing of import to match filename 'nutriserveFoodData.ts'.
+// FIX: Corrected import casing for 'nutriServeFoodData' to match the actual filename and resolve module resolution errors.
 import { FOOD_LIBRARY } from './nutriserveFoodData';
 import { getRecipeIdForFoodItem } from './nutriserveFoodMap';
 

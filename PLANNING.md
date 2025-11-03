@@ -1,56 +1,81 @@
-# NutriServe Feature Plan: Dish Photo on Score Screen + Image Storage Verification
+# SQLite WASM Permanent Storage Implementation Plan
 
-## Executive Summary
+## 1. Executive Summary
 
-**Goal 1**: Display the requested dish's recipe image on the NutriServe result/scoring page when the customer receives their plate.
+**Goal**: To replace the current non-functional, mock implementation of the `sqliteStore.ts` service with a full, production-ready implementation using the `@sqlite.org/sqlite-wasm` library. This will provide a truly persistent storage layer for AI-generated recipe images using the browser's Origin Private File System (OPFS), ensuring images survive browser cache and IndexedDB clearing.
 
-**Goal 2**: Verify and ensure the image storage database is working properly so AI-generated images persist permanently and don't regenerate, even if the IndexedDB cache is cleared.
-
----
-
-## Part 1: Display Dish Photo on NutriServe Score Screen
-
-### Challenge: Mapping Food Items to Recipe Images
-
-The NutriServe game uses **`FoodItem`** objects, but the image database stores images based on **`Recipe`** IDs. A bridge is needed to link game items to their corresponding recipe images.
-
-**Solution**: A mapping system (`nutriserveFoodMap.ts`) will be created to link food item IDs to recipe IDs. This will allow the `ResultModal` to fetch and display the correct image using a new `DishImageDisplay` component.
-
-### Implementation Steps
-
-1.  **Create Food-to-Recipe Mapping**: A new file, `services/nutriserveFoodMap.ts`, will define a constant mapping `FOOD_TO_RECIPE_MAP` and helper functions.
-2.  **Extend Utilities**: The `services/nutriserveUtils.ts` file will be extended with a `getMainDishFromOrder` function to extract the primary dish from a customer's order.
-3.  **Create `DishImageDisplay` Component**: A new reusable component, `components/games/nutriserve-ui/DishImageDisplay.tsx`, will be created to handle the logic of fetching an image from storage and displaying it, with appropriate loading and fallback states.
-4.  **Integrate into `ResultModal`**: The `DishImageDisplay` component will be integrated into `components/games/nutriserve-ui/ResultModal.tsx` to show the prepared dish's image.
+**Strategy**:
+1.  **Implement Core Service**: Replace the mock `sqliteStore.ts` with a functional service that initializes a real SQLite database in the OPFS.
+2.  **Verify Module Loading**: Ensure the `index.html` import map is correctly configured to load the SQLite WASM library from the designated CDN.
+3.  **Preserve Architecture**: The new service will seamlessly integrate with the existing dual-write and read-through cache patterns already established in `imageStoreService.ts` and `db.ts`.
 
 ---
 
-## Part 2: Image Storage Verification & Permanent Storage
+## 2. Current State Analysis & Problem
 
-### Challenge: Redundant Image Generation
-
-Currently, the image generation service might re-generate an image if it's missing from IndexedDB, even if it already exists in the permanent SQLite store. This is inefficient and costly.
-
-**Solution**: The image generation and storage services will be enhanced to check for an image's existence in **both** IndexedDB and SQLite before triggering a new AI generation request.
-
-### Implementation Steps
-
-1.  **Audit `imageService.ts`**: The `generateAndStoreRecipeImage` function will be modified to add a check against the SQLite database. If an image key exists in SQLite but not in IndexedDB, the generation will be skipped, and the system will rely on the read-through cache to repopulate IndexedDB.
-2.  **Audit `imageStoreService.ts`**: The `saveImageArtifacts` function will be improved to check if an image key already exists in SQLite before attempting a write. This avoids redundant blob conversions and database operations.
-3.  **Verify `ImageGenerationContext.tsx`**: The `enqueueRecipe` function will be enhanced to not only check the recipe's metadata but also perform a check against the actual storage (`getRecipeImageState`) to more robustly prevent enqueueing already-generated images.
+-   **Critical Flaw**: The `sqliteStore.ts` service is currently a mock that uses an in-memory `Map`. It does **not** persist any data, rendering the permanent storage feature non-functional.
+-   **Potential Loading Failure**: The application's stability is entirely dependent on the `index.html` import map correctly pointing to the `@sqlite.org/sqlite-wasm` module. Any misconfiguration will cause the entire persistence layer to fail.
+-   **Impact**: Users' AI-generated images are not being stored permanently and are lost if the IndexedDB cache is cleared, defeating the purpose of the feature.
 
 ---
 
-## Part 3: Success Criteria
+## 3. Implementation Plan
 
-### Functional
--   The dish photo for the customer's required item appears on the NutriServe result screen.
--   If an image does not exist, a graceful fallback (emoji or placeholder) is shown.
--   Clearing the browser's IndexedDB cache does **not** trigger a re-generation of existing images.
--   New images are still generated correctly and saved to both IndexedDB and SQLite.
+### Phase 1: Infrastructure Setup
 
-### Technical
--   The dual-write and read-through cache patterns are correctly implemented.
--   No breaking changes are introduced to existing APIs or component signatures.
--   The system remains performant, with image loading from SQLite being fast and not blocking the UI.
--   The solution is fully backward-compatible.
+#### Step 1.1: Implement the SQLite Service
+**File**: `services/sqliteStore.ts`
+**Action**: Replace the entire mock implementation with the full, robust service.
+**Technical Requirements**:
+-   Use the `sqlite3.oo1.OpfsDb` class from `@sqlite.org/sqlite-wasm` to create a database file named `/nutriserve-images.db` in the Origin Private File System.
+-   Implement an `initDb` function with a singleton pattern to ensure only one database connection is opened.
+-   On initialization, execute `CREATE TABLE IF NOT EXISTS` statements for the `image_artifacts` and `image_aliases` tables, matching the schema below.
+-   All public methods (`getImage`, `saveImage`, `getAlias`, `saveAlias`, `migrateFromIndexedDB`) will be implemented to execute real, parameterized SQL queries against the database.
+-   Handle data conversion: `Blob` objects from the app will be converted to `Uint8Array` for storage as `BLOB` in SQLite.
+
+#### Step 1.2: Verify Module Loader Configuration
+**File**: `index.html`
+**Action**: Ensure the `importmap` contains a valid, direct path to the `@sqlite.org/sqlite-wasm` async bundle on the CDN. This is the root fix for any potential module loading errors.
+
+### Phase 2: Integration & Migration
+
+#### Step 2.1: Data Migration
+**File**: `services/sqliteStore.ts` (within the new `migrateFromIndexedDB` implementation)
+**Action**: The migration logic will be implemented to:
+1.  Open an atomic transaction in the new SQLite database.
+2.  Read all image artifacts and aliases from the existing IndexedDB stores.
+3.  For each record, check if it already exists in SQLite to prevent duplicates during re-runs.
+4.  Convert image `Blob`s to `Uint8Array`s.
+5.  Execute `INSERT` statements to copy the data into the SQLite tables.
+6.  Commit the transaction, or roll back if any errors occur.
+
+#### Step 2.2: Verify Existing Integrations (No Code Change Needed)
+-   **Dual-Write**: Confirm that `imageStoreService.ts`'s `saveImageArtifacts` function will call the new, functional `sqliteStore.saveImage`.
+-   **Read-Through Cache**: Confirm that `imageStoreService.ts`'s `getRecipeImageState` function will correctly fall back to the new, functional `sqliteStore.getImage` on an IndexedDB cache miss.
+-   **Migration Trigger**: Confirm that `db.ts` calls `sqliteStore.migrateFromIndexedDB` on application startup.
+
+---
+
+## 4. Database Schema (SQLite)
+
+**Table: `image_artifacts`**
+-   `key` (TEXT PRIMARY KEY): The content-addressed SHA-256 hash.
+-   `original` (BLOB): The full-resolution image data.
+-   `preview` (BLOB): The 1024px preview image data.
+-   `thumb` (BLOB): The 256px thumbnail image data.
+-   `manifest` (TEXT): JSON stringified metadata about the image.
+-   `created_at` (TEXT): ISO 8601 timestamp of creation.
+
+**Table: `image_aliases`**
+-   `recipe_id` (TEXT PRIMARY KEY): The recipe's unique identifier.
+-   `image_key` (TEXT): A foreign key referencing `image_artifacts.key`.
+
+---
+
+## 5. Success Criteria
+
+1.  **Functionality**: Images must persist even after the browser's IndexedDB and site cache are manually cleared.
+2.  **Performance**: The application must load without errors. Image retrieval from SQLite should be performant and not block the UI.
+3.  **Backward Compatibility**: The one-time migration must successfully and non-destructively copy all existing images from IndexedDB to SQLite.
+4.  **No Regressions**: All existing features, including AI image generation and user uploads, must continue to function correctly through the new persistence layer.
+5.  **Error Handling**: The system must gracefully handle potential SQLite initialization or query failures without crashing the entire application.
