@@ -23,20 +23,23 @@ const NavItem: React.FC<{
   onClick: () => void;
 }> = ({ item, isActive, onClick }) => {
   const Icon = item.icon;
-  const activeClass = isActive ? 'text-green-600' : 'text-gray-500';
+  const activeClass = isActive ? 'text-green-600 bg-green-50' : 'text-gray-500';
   return (
-    <button onClick={onClick} className={`flex-1 flex flex-col items-center justify-center p-2 rounded-lg transition-colors hover:bg-green-100 ${activeClass}`}>
-      <Icon className="h-6 w-6" />
-      <span className="text-xs font-medium mt-1">{item.label}</span>
+    <button
+      onClick={onClick}
+      className={`flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-lg transition-all duration-200 hover:bg-green-100 ${activeClass}`}
+    >
+      <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+      <span className="text-[10px] sm:text-xs font-medium mt-1 whitespace-nowrap">{item.label}</span>
     </button>
   );
 };
 
 const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-t border-gray-200 shadow-t-md z-40">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-        <div className="flex justify-around items-center h-16">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg z-40">
+      <div className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4">
+        <div className="flex justify-between items-center h-16 gap-0.5 sm:gap-1">
           {navItems.map(item => (
             <NavItem
               key={item.tab}
