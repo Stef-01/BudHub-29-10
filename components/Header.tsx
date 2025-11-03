@@ -1,6 +1,6 @@
 // components/Header.tsx
 import React from 'react';
-import { useGamification } from '../../contexts/GamificationContext';
+import { useGamification } from '../contexts/GamificationContext';
 import ProgressBar from './ProgressBar';
 import LevelUpModal from './LevelUpModal';
 
