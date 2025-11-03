@@ -117,6 +117,18 @@ async function initDb(): Promise<any> {
                 );
             `);
 
+            // Create recipe images table for shared dataset
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS recipe_images (
+                    recipe_id TEXT PRIMARY KEY,
+                    image_key TEXT NOT NULL,
+                    original BLOB NOT NULL,
+                    preview BLOB NOT NULL,
+                    thumb BLOB NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+            `);
+
             console.log('[SQLite] Tables and indexes created successfully');
             return db;
 
@@ -506,6 +518,133 @@ async function getAllFoodImageIds(): Promise<string[]> {
 }
 
 /**
+ * Saves a recipe image to the shared dataset.
+ *
+ * @param recipeImageRecord - Record containing recipe_id, image_key, blobs, etc.
+ */
+async function saveRecipeImage(recipeImageRecord: {
+    recipe_id: string;
+    image_key: string;
+    original: Uint8Array;
+    preview: Uint8Array;
+    thumb: Uint8Array;
+    created_at: string;
+}): Promise<void> {
+    try {
+        const db = await initDb();
+
+        // Use REPLACE to handle both insert and update atomically
+        db.exec({
+            sql: `
+                REPLACE INTO recipe_images
+                (recipe_id, image_key, original, preview, thumb, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `,
+            bind: [
+                recipeImageRecord.recipe_id,
+                recipeImageRecord.image_key,
+                recipeImageRecord.original,
+                recipeImageRecord.preview,
+                recipeImageRecord.thumb,
+                recipeImageRecord.created_at
+            ]
+        });
+
+        console.log(`[SQLite] Saved recipe image for ${recipeImageRecord.recipe_id}`);
+
+    } catch (error) {
+        console.error(`[SQLite] Error saving recipe image ${recipeImageRecord.recipe_id}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Retrieves a recipe image by recipe_id.
+ *
+ * @param recipeId - The recipe identifier
+ * @returns Recipe image record or null if not found
+ */
+async function getRecipeImage(recipeId: string): Promise<{
+    recipe_id: string;
+    image_key: string;
+    original: Uint8Array;
+    preview: Uint8Array;
+    thumb: Uint8Array;
+    created_at: string;
+} | null> {
+    try {
+        const db = await initDb();
+
+        const result = db.exec({
+            sql: 'SELECT * FROM recipe_images WHERE recipe_id = ?',
+            bind: [recipeId],
+            returnValue: 'resultRows',
+            rowMode: 'object'
+        });
+
+        if (!result || result.length === 0) {
+            return null;
+        }
+
+        const row = result[0];
+        return {
+            recipe_id: row.recipe_id,
+            image_key: row.image_key,
+            original: row.original,
+            preview: row.preview,
+            thumb: row.thumb,
+            created_at: row.created_at
+        };
+
+    } catch (error) {
+        console.error(`[SQLite] Error retrieving recipe image ${recipeId}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Deletes a recipe image.
+ *
+ * @param recipeId - The recipe identifier
+ */
+async function deleteRecipeImage(recipeId: string): Promise<void> {
+    try {
+        const db = await initDb();
+        db.exec({
+            sql: 'DELETE FROM recipe_images WHERE recipe_id = ?',
+            bind: [recipeId]
+        });
+        console.log(`[SQLite] Deleted recipe image for ${recipeId}`);
+    } catch (error) {
+        console.error(`[SQLite] Error deleting recipe image ${recipeId}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Gets all recipe IDs that have images.
+ *
+ * @returns Array of recipe IDs
+ */
+async function getAllRecipeImageIds(): Promise<string[]> {
+    try {
+        const db = await initDb();
+
+        const result = db.exec({
+            sql: 'SELECT recipe_id FROM recipe_images',
+            returnValue: 'resultRows',
+            rowMode: 'object'
+        });
+
+        return result ? result.map((row: any) => row.recipe_id) : [];
+
+    } catch (error) {
+        console.error('[SQLite] Error getting all recipe image IDs:', error);
+        return [];
+    }
+}
+
+/**
  * Export the SQLite store interface.
  * This matches the mock interface, so no changes are needed in calling code.
  */
@@ -520,4 +659,9 @@ export const sqliteStore = {
     getFoodImage,
     deleteFoodImage,
     getAllFoodImageIds,
+    // Recipe dataset methods
+    saveRecipeImage,
+    getRecipeImage,
+    deleteRecipeImage,
+    getAllRecipeImageIds,
 };
