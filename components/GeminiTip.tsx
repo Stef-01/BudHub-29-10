@@ -1,8 +1,8 @@
 // components/GeminiTip.tsx
 import React, { useState, useEffect } from 'react';
-import { useWeather } from '../../contexts/WeatherContext';
-import { useUserGarden } from '../../contexts/UserGardenContext';
-import { getGardeningTip } from '../../services/geminiService';
+import { useWeather } from '../contexts/WeatherContext';
+import { useUserGarden } from '../contexts/UserGardenContext';
+import { getGardeningTip } from '../services/geminiService';
 import { SparklesIcon, LoadingSpinner } from './icons/Icons';
 
 const GeminiTip: React.FC = () => {
