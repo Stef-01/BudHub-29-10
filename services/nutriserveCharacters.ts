@@ -12,13 +12,13 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterASad,
         },
         order: {
-            description: "I need a high-protein, hearty meal to refuel after my workout. Not too heavy on the carbs, please!",
+            description: "I'm pre-diabetic and need protein! I'll take the Chana Masala - high protein, good for my blood sugar.",
             plateSize: 'Hearty',
             diabetesMode: 'Low-Carb',
             required_items: ['chana_masala'],
         },
         dialogue: {
-            intro: "I'm ready to eat! What've you got?",
+            intro: "I need something protein-rich for my condition!",
             positive: "This looks perfect! Just the fuel I needed. Thanks!",
             neutral: "It's okay, but I was hoping for a bit more protein.",
             negative: "This isn't quite right for my diet. I feel sluggish already.",
@@ -33,14 +33,14 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterBSad,
         },
         order: {
-            description: "I'm looking for a balanced, regular-sized meal. Something with good fiber to keep me full. I'm watching my blood sugar.",
+            description: "I have Type 2 diabetes. I'd like the Palak Dal please - good fiber and it won't spike my blood sugar!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['palak_dal'],
         },
         dialogue: {
-            intro: "Hello! I'd like something healthy and balanced, please.",
-            positive: "Delicious and I feel great! This is exactly what balanced tastes like.",
+            intro: "Hello! I need a diabetes-friendly dal please.",
+            positive: "Delicious and I feel great! This won't spike my sugar at all!",
             neutral: "It's good, but the balance feels a little off. Maybe too many carbs?",
             negative: "Oh, this is going to spike my sugar. Not what I was hoping for.",
         }
@@ -54,13 +54,13 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterCSad,
         },
         order: {
-            description: "Just a light lunch for me, please. I'm not too hungry but need to keep my energy up. Low salt would be great.",
+            description: "I'm diabetic and watching my weight. Light portion of Sambar please - low in fat!",
             plateSize: 'Light',
-            diabetesMode: 'None',
+            diabetesMode: 'Balanced',
             required_items: ['sambar'],
         },
         dialogue: {
-            intro: "Something light and tasty, if you don't mind.",
+            intro: "Something light and diabetic-friendly please!",
             positive: "This is the perfect portion! So fresh and light. Thank you!",
             neutral: "It's a little more than I wanted, but tasty.",
             negative: "Whoa, that's way too heavy for me! And it tastes quite salty.",
@@ -75,16 +75,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterDSad,
         },
         order: {
-            description: "I want something really filling with lots of protein! I'm training for a marathon and need the fuel.",
+            description: "I'm pre-diabetic and training for a marathon. I need the Chicken Curry - high protein, low carb!",
             plateSize: 'Hearty',
-            diabetesMode: 'None',
+            diabetesMode: 'Low-Carb',
             required_items: ['chicken_curry'],
         },
         dialogue: {
-            intro: "Hey! I need a big meal with lots of protein today!",
-            positive: "Perfect! This will fuel my training perfectly. Thanks so much!",
+            intro: "Hey! I need a diabetes-friendly protein meal!",
+            positive: "Perfect! This will fuel my training without spiking my sugar!",
             neutral: "It's good, but I was hoping for more protein.",
-            negative: "This doesn't have enough protein for my needs. I'm still hungry!",
+            negative: "This has too many carbs for my condition!",
         }
     },
     {
@@ -96,13 +96,13 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterESad,
         },
         order: {
-            description: "Doctor's orders - I need to watch my sodium intake. Something light and flavorful but low in salt, please.",
+            description: "I'm diabetic with high blood pressure. Doctor says low sodium! I'll take the Sprouts Salad.",
             plateSize: 'Light',
-            diabetesMode: 'None',
+            diabetesMode: 'Balanced',
             required_items: ['sprouts_salad'],
         },
         dialogue: {
-            intro: "Hi there! I need something low in sodium today.",
+            intro: "Hi! I need diabetic-friendly, low-sodium food.",
             positive: "This is perfect and so flavorful without all the salt! Thank you!",
             neutral: "It's okay, but seems a bit salty for my diet.",
             negative: "Oh no, this is way too salty for me. My doctor won't be happy.",
@@ -117,16 +117,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterFSad,
         },
         order: {
-            description: "Morning! I'd love a traditional breakfast that's not too heavy. Something with good fiber to start my day right.",
+            description: "Morning! I'm pre-diabetic, need a breakfast with good fiber. Idli please!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['idli_plain'],
         },
         dialogue: {
-            intro: "Good morning! I need a healthy breakfast, please.",
-            positive: "This is exactly what I needed! Light, healthy, and delicious!",
+            intro: "Good morning! I need a diabetes-friendly breakfast.",
+            positive: "This is exactly what I needed! Light, healthy, and blood sugar friendly!",
             neutral: "It's nice, but maybe a bit too much for breakfast.",
-            negative: "This is too heavy for a morning meal. I feel sluggish already.",
+            negative: "This is too heavy and will spike my sugar!",
         }
     },
     {
@@ -138,16 +138,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterGSad,
         },
         order: {
-            description: "I'm vegetarian and watching my carbs. Can you make me something nutritious with lots of veggies?",
+            description: "I'm diabetic and vegetarian. Low-carb please! Palak Paneer would be perfect.",
             plateSize: 'Regular',
             diabetesMode: 'Low-Carb',
             required_items: ['palak_paneer'],
         },
         dialogue: {
-            intro: "Hi! I need a veggie-packed, lower-carb meal.",
-            positive: "Excellent! So many vegetables and perfect nutrition. Love it!",
+            intro: "Hi! I need veggie-packed, low-carb, diabetic-friendly meal.",
+            positive: "Excellent! Perfect nutrition and won't spike my sugar!",
             neutral: "Good flavor, but maybe too many carbs for what I wanted.",
-            negative: "This has way too many carbs! I specifically asked for low-carb.",
+            negative: "This has way too many carbs! My blood sugar will spike!",
         }
     },
     {
@@ -159,16 +159,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterHSad,
         },
         order: {
-            description: "I'm all about that fiber life! Need something with great fiber content to keep me going all day.",
+            description: "I'm Type 2 diabetic. Doctor says I need more fiber! Rajma Masala is perfect for me.",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['rajma_masala'],
         },
         dialogue: {
-            intro: "Hello! I'm looking for a high-fiber meal today.",
-            positive: "Wow, this is fiber-rich and delicious! My gut will thank you!",
+            intro: "Hello! I need high-fiber, diabetes-friendly meal!",
+            positive: "Wow, this is fiber-rich and my blood sugar will stay stable!",
             neutral: "It's tasty, but could use more fiber.",
-            negative: "This doesn't have nearly enough fiber. I'll be hungry in an hour.",
+            negative: "This doesn't have enough fiber and has too many simple carbs!",
         }
     },
     {
@@ -180,16 +180,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterISad,
         },
         order: {
-            description: "Just finished my workout. Need a hearty meal with good protein and some carbs to recover!",
+            description: "Pre-diabetic athlete here! Post-workout - I need Brown Rice, good carbs and won't spike my sugar!",
             plateSize: 'Hearty',
-            diabetesMode: 'None',
+            diabetesMode: 'Low-Carb',
             required_items: ['brown_rice'],
         },
         dialogue: {
-            intro: "Post-workout hunger is real! I need a big meal!",
-            positive: "This hits the spot! Perfect recovery meal. Thanks!",
-            neutral: "It's alright, but I was hoping for more after that workout.",
-            negative: "This isn't enough! I burned way more calories than this covers!",
+            intro: "Post-workout and pre-diabetic - need the right carbs!",
+            positive: "This hits the spot! Perfect recovery without spiking blood sugar!",
+            neutral: "It's alright, but I was hoping for lower glycemic options.",
+            negative: "This will spike my blood sugar! Wrong type of carbs!",
         }
     },
     {
@@ -201,16 +201,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterJSad,
         },
         order: {
-            description: "Missing home! Can you make me something from Kerala cuisine? Preferably something traditional.",
+            description: "I'm diabetic and missing home! Kerala Parippu Curry please - traditional and diabetes-friendly!",
             plateSize: 'Regular',
-            diabetesMode: 'None',
+            diabetesMode: 'Balanced',
             required_items: ['kerala_parippu_curry'],
         },
         dialogue: {
-            intro: "I'm craving some authentic Kerala food!",
-            positive: "Oh my! This tastes just like home! Thank you so much!",
-            neutral: "It's good, but not quite authentic Kerala style.",
-            negative: "This doesn't taste like Kerala food at all. I'm disappointed.",
+            intro: "I need authentic Kerala food that's diabetic-friendly!",
+            positive: "Oh my! This tastes like home AND is good for my blood sugar!",
+            neutral: "It's good, but not quite right for my condition.",
+            negative: "This will spike my sugar! Not authentic or diabetes-friendly!",
         }
     },
     {
@@ -222,16 +222,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterKSad,
         },
         order: {
-            description: "I believe in balance! A regular-sized meal with all the food groups in good proportions, please.",
+            description: "Type 2 diabetic - I need balanced nutrition. Mixed Veg Curry has everything in the right proportions!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['mixed_veg_curry'],
         },
         dialogue: {
-            intro: "I'd like a well-balanced, nutritious meal please.",
-            positive: "Perfect balance of everything! This is textbook nutrition!",
-            neutral: "Close to balanced, but something feels off in the proportions.",
-            negative: "This is way out of balance! Too much of one thing, not enough of others.",
+            intro: "I need a well-balanced, diabetes-friendly meal!",
+            positive: "Perfect balance! Great for my blood sugar control!",
+            neutral: "Close to balanced, but something feels off.",
+            negative: "This is way out of balance! My sugar will spike!",
         }
     },
     {
@@ -243,16 +243,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterLSad,
         },
         order: {
-            description: "I'm not very hungry today. Just something light and refreshing, please!",
+            description: "I'm pre-diabetic and not very hungry. Just a light Raita please!",
             plateSize: 'Light',
-            diabetesMode: 'None',
+            diabetesMode: 'Balanced',
             required_items: ['raita'],
         },
         dialogue: {
-            intro: "Just a light snack for me today, thanks!",
-            positive: "This is perfect! Light, refreshing, and just the right amount!",
-            neutral: "It's a bit more than I wanted, but still okay.",
-            negative: "This is way too much food! I said I wanted something light!",
+            intro: "Just a light, diabetes-friendly snack please!",
+            positive: "This is perfect! Light and won't affect my blood sugar!",
+            neutral: "It's a bit more than I wanted.",
+            negative: "This is way too much! And too many carbs!",
         }
     },
     {
@@ -264,16 +264,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterMSad,
         },
         order: {
-            description: "I'm diabetic and need to be careful with carbs. Something hearty but low-carb would be great!",
+            description: "I'm diabetic, need low-carb but filling! Masoor Dal is perfect - protein and fiber!",
             plateSize: 'Hearty',
             diabetesMode: 'Low-Carb',
             required_items: ['masoor_dal'],
         },
         dialogue: {
-            intro: "Hi! I'm diabetic, so I need a low-carb meal please.",
-            positive: "Excellent! This will keep my blood sugar stable. Thank you!",
+            intro: "Hi! Diabetic here, need low-carb filling meal!",
+            positive: "Excellent! This will keep my blood sugar stable all day!",
             neutral: "It's okay, but a bit more carbs than I'd prefer.",
-            negative: "Way too many carbs! This will spike my blood sugar for sure.",
+            negative: "Way too many carbs! This will spike my blood sugar!",
         }
     },
     {
@@ -285,16 +285,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterNSad,
         },
         order: {
-            description: "Give me something traditional - rice, dal, and vegetables. Simple, satisfying, and balanced!",
+            description: "I'm diabetic. Give me traditional Dal Tadka - simple and blood sugar friendly!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['dal_tadka'],
         },
         dialogue: {
-            intro: "I'd like a traditional Indian thali, please!",
-            positive: "Just like grandmother used to make! Perfect traditional meal!",
-            neutral: "Good, but missing that authentic home-cooked feel.",
-            negative: "This isn't what I expected at all. Where's the traditional touch?",
+            intro: "I'd like traditional, diabetes-friendly dal!",
+            positive: "Just like grandmother used to make! And good for my sugar!",
+            neutral: "Good, but not quite right for my condition.",
+            negative: "This isn't diabetes-friendly at all!",
         }
     },
     {
@@ -306,16 +306,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterOSad,
         },
         order: {
-            description: "I love spicy food! Give me something with a kick - maybe a Kerala curry? Regular portion!",
+            description: "Pre-diabetic but I love spicy! Kadala Curry - spicy and low glycemic index!",
             plateSize: 'Regular',
-            diabetesMode: 'None',
+            diabetesMode: 'Low-Carb',
             required_items: ['kadala_curry'],
         },
         dialogue: {
-            intro: "I'm in the mood for something spicy!",
-            positive: "Yes! This has the perfect amount of heat! Love it!",
-            neutral: "Good flavor, but could be spicier.",
-            negative: "This is barely spicy at all! I wanted heat!",
+            intro: "I need spicy food that's diabetes-friendly!",
+            positive: "Yes! Perfect heat and won't spike my sugar!",
+            neutral: "Good flavor, but could be spicier and lower carb.",
+            negative: "Not spicy enough and too many carbs!",
         }
     },
     {
@@ -327,16 +327,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterPSad,
         },
         order: {
-            description: "I'm on a wellness journey. Need something light, high in fiber, with lots of nutrition!",
+            description: "I'm pre-diabetic on wellness journey. Moringa Leaf Thoran - super nutritious and low carb!",
             plateSize: 'Light',
             diabetesMode: 'Balanced',
             required_items: ['moringa_leaf_thoran'],
         },
         dialogue: {
-            intro: "Looking for something healthy and nutritious!",
-            positive: "This is so wholesome! I can feel the nutrition. Thank you!",
-            neutral: "Healthy, but maybe missing some key nutrients.",
-            negative: "This doesn't feel nutritious at all. Not what I needed.",
+            intro: "Looking for diabetes-friendly superfood!",
+            positive: "This is so wholesome! Perfect for my blood sugar!",
+            neutral: "Healthy, but maybe not ideal for diabetes.",
+            negative: "This doesn't feel diabetes-friendly at all!",
         }
     },
     {
@@ -348,16 +348,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterQSad,
         },
         order: {
-            description: "I love seafood! Can you make me something with fish? Regular portion with good protein!",
+            description: "I'm diabetic and love seafood! Mathi Sardine Curry - high protein, omega-3s, low carb!",
             plateSize: 'Regular',
-            diabetesMode: 'None',
+            diabetesMode: 'Low-Carb',
             required_items: ['mathi_sardine_curry'],
         },
         dialogue: {
-            intro: "I'm craving some good fish today!",
-            positive: "The fish is cooked perfectly! This is amazing!",
-            neutral: "The fish is okay, but could be better.",
-            negative: "The fish doesn't taste fresh. I'm disappointed.",
+            intro: "I'm craving diabetes-friendly fish!",
+            positive: "The fish is perfect! Great for my blood sugar!",
+            neutral: "The fish is okay, but too many carbs in the sauce.",
+            negative: "Too many carbs! This will spike my sugar!",
         }
     },
     {
@@ -369,16 +369,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterRSad,
         },
         order: {
-            description: "I'm being very careful with what I eat. Light portion, balanced nutrition, watching carbs and sodium.",
+            description: "I'm diabetic being very careful. Light Beans & Carrot Thoran - low carb, high fiber!",
             plateSize: 'Light',
             diabetesMode: 'Balanced',
             required_items: ['beans_carrot_thoran'],
         },
         dialogue: {
-            intro: "I need something light and very balanced, please.",
-            positive: "This is exactly what I needed! Light and perfectly balanced!",
-            neutral: "Almost right, but something's a bit off nutritionally.",
-            negative: "This has way too much of something. Not balanced at all!",
+            intro: "I need light, balanced, diabetes-safe food.",
+            positive: "This is exactly what I needed! Perfect for my condition!",
+            neutral: "Almost right, but something's a bit off.",
+            negative: "This has way too much! Not safe for diabetics!",
         }
     },
     {
@@ -390,16 +390,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterSSad,
         },
         order: {
-            description: "I'm starving! Need a huge hearty meal with everything - carbs, protein, the works!",
+            description: "I'm pre-diabetic and starving! Veg Biryani - hearty but need balanced version!",
             plateSize: 'Hearty',
-            diabetesMode: 'None',
+            diabetesMode: 'Balanced',
             required_items: ['veg_biryani'],
         },
         dialogue: {
-            intro: "I'm so hungry I could eat a horse!",
-            positive: "Finally! This is the feast I needed! Thank you!",
-            neutral: "Good, but I'm still a bit hungry.",
-            negative: "That's it? I asked for hearty! I'm still starving!",
+            intro: "I'm so hungry but need diabetes-friendly!",
+            positive: "Finally! This is hearty AND blood sugar friendly!",
+            neutral: "Good, but might spike my sugar a bit.",
+            negative: "This will spike my blood sugar way too much!",
         }
     },
     {
@@ -411,16 +411,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterTSad,
         },
         order: {
-            description: "Early morning, not too hungry yet. Just want a light breakfast to wake me up gently.",
+            description: "Early morning, I'm diabetic. Light Plain Dosa - slow-release carbs!",
             plateSize: 'Light',
-            diabetesMode: 'None',
+            diabetesMode: 'Balanced',
             required_items: ['dosa_plain'],
         },
         dialogue: {
-            intro: "Just need something light to start my day!",
-            positive: "Perfect wake-up food! Light and energizing!",
-            neutral: "A bit much for early morning, but tasty.",
-            negative: "This is way too heavy for breakfast! I feel stuffed!",
+            intro: "Light diabetes-friendly breakfast please!",
+            positive: "Perfect wake-up food! Won't spike my sugar!",
+            neutral: "A bit much for early morning and my condition.",
+            negative: "This is too heavy and will spike my blood sugar!",
         }
     },
     {
@@ -432,16 +432,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterUSad,
         },
         order: {
-            description: "Fitness is my lifestyle. High protein, low carb, hearty portion - I need fuel for gains!",
+            description: "Pre-diabetic bodybuilder! Kerala Lamb Curry - high protein, low carb for gains!",
             plateSize: 'Hearty',
             diabetesMode: 'Low-Carb',
             required_items: ['kerala_lamb_curry'],
         },
         dialogue: {
-            intro: "I need serious protein for my gains!",
-            positive: "Yes! High protein, low carb - perfect for muscle building!",
-            neutral: "Decent, but could use more protein.",
-            negative: "Where's the protein?! This won't help my gains at all!",
+            intro: "I need diabetes-safe protein for gains!",
+            positive: "Yes! High protein, low carb - perfect for my condition!",
+            neutral: "Decent, but could use more protein or fewer carbs.",
+            negative: "Where's the protein?! And too many carbs for a diabetic!",
         }
     },
     {
@@ -453,16 +453,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterVSad,
         },
         order: {
-            description: "Need some comfort food today. Something warm, satisfying, and balanced. Regular portion!",
+            description: "I'm diabetic and need comfort food. Moru Curry - traditional and blood sugar friendly!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['moru_curry_pulissery'],
         },
         dialogue: {
-            intro: "I need some comfort food today...",
-            positive: "Ahh, this is so comforting! Just what I needed!",
-            neutral: "It's nice, but not quite the comfort I was hoping for.",
-            negative: "This doesn't feel comforting at all. I'm still sad.",
+            intro: "I need diabetes-safe comfort food...",
+            positive: "Ahh, this is comforting AND good for my blood sugar!",
+            neutral: "It's nice, but not ideal for my condition.",
+            negative: "This will spike my sugar! Not comforting at all!",
         }
     },
     {
@@ -474,16 +474,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterWSad,
         },
         order: {
-            description: "Long day ahead! Need sustained energy - good carbs, some protein, fiber. Regular portion!",
+            description: "Pre-diabetic with long day ahead! Lemon Rice - sustained energy without sugar spike!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['lemon_rice'],
         },
         dialogue: {
-            intro: "Need energy for a long day ahead!",
-            positive: "Perfect! I can feel the sustained energy already!",
-            neutral: "It's okay, but I might need a snack later.",
-            negative: "This won't give me enough energy. I'll crash in an hour!",
+            intro: "Need diabetes-safe sustained energy!",
+            positive: "Perfect! Sustained energy without spiking sugar!",
+            neutral: "It's okay, but might need to check my sugar later.",
+            negative: "This will give me a sugar crash, not sustained energy!",
         }
     },
     {
@@ -495,16 +495,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterXSad,
         },
         order: {
-            description: "Keep it simple for me - just dal and rice. Light portion, easy on the stomach.",
+            description: "I'm diabetic, keep it simple! Moong Dal Tadka - easy on stomach and blood sugar!",
             plateSize: 'Light',
-            diabetesMode: 'None',
+            diabetesMode: 'Balanced',
             required_items: ['moong_dal_tadka'],
         },
         dialogue: {
-            intro: "Simple dal-rice for me, please!",
-            positive: "Simple, clean, delicious! Perfect!",
-            neutral: "Good, but maybe too much going on for simple food.",
-            negative: "I said simple! This is too complicated!",
+            intro: "Simple, diabetes-safe dal please!",
+            positive: "Simple, clean, and perfect for my blood sugar!",
+            neutral: "Good, but maybe too complex for my condition.",
+            negative: "I said simple and diabetes-safe! This isn't!",
         }
     },
     {
@@ -516,16 +516,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterYSad,
         },
         order: {
-            description: "Load me up with vegetables! I want a hearty, veggie-packed meal with great nutrition!",
+            description: "I'm diabetic vegetable lover! Aloo Gobi - load of veggies, balanced carbs!",
             plateSize: 'Hearty',
-            diabetesMode: 'None',
+            diabetesMode: 'Balanced',
             required_items: ['aloo_gobi'],
         },
         dialogue: {
-            intro: "Give me all the vegetables you've got!",
-            positive: "So many veggies! This is vegetable heaven!",
-            neutral: "Good veggies, but was hoping for more variety.",
-            negative: "Where are all the vegetables? I expected more!",
+            intro: "Give me diabetes-friendly vegetables!",
+            positive: "So many veggies! Great for my blood sugar!",
+            neutral: "Good veggies, but maybe too many potatoes.",
+            negative: "Where are the low-carb vegetables? This will spike my sugar!",
         }
     },
     {
@@ -537,16 +537,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterZSad,
         },
         order: {
-            description: "I love trying new things! Something unique and flavorful, regular portion, balanced nutrition!",
+            description: "I'm pre-diabetic trying new things! Banana Flower Thoran - unique and low glycemic!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['banana_flower_thoran'],
         },
         dialogue: {
-            intro: "Surprise me with something unique!",
-            positive: "Wow, this is so unique and delicious! Love trying new things!",
-            neutral: "Interesting, but not as unique as I hoped.",
-            negative: "This is too plain! I wanted something exciting!",
+            intro: "Surprise me with something diabetes-friendly and unique!",
+            positive: "Wow, unique and perfect for my blood sugar!",
+            neutral: "Interesting, but not sure if it's right for diabetics.",
+            negative: "This is boring and not diabetes-safe!",
         }
     },
     {
@@ -558,16 +558,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterAASad,
         },
         order: {
-            description: "In a rush! Something quick, light, but satisfying. Low sodium preferred!",
+            description: "Diabetic in a rush! Quick Upma - fast, filling, low glycemic index!",
             plateSize: 'Light',
-            diabetesMode: 'None',
+            diabetesMode: 'Balanced',
             required_items: ['upma'],
         },
         dialogue: {
-            intro: "Quick meal, I'm in a hurry!",
-            positive: "Perfect for a quick meal! Thanks!",
-            neutral: "Okay, but took longer than expected.",
-            negative: "This is too heavy for a quick meal! Now I'm really late!",
+            intro: "Quick diabetes-safe meal!",
+            positive: "Perfect for quick meal! Won't spike my sugar!",
+            neutral: "Okay, but worried about my blood sugar.",
+            negative: "This is too heavy and not diabetes-safe!",
         }
     },
     {
@@ -579,16 +579,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterABSad,
         },
         order: {
-            description: "I love whole grains! Something with red or brown rice, balanced and filling. Regular portion!",
+            description: "I'm diabetic and love whole grains! Red Rice - low GI, perfect for blood sugar!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['red_rice'],
         },
         dialogue: {
-            intro: "I want something with nutritious whole grains!",
-            positive: "These whole grains are perfect! So nutritious!",
-            neutral: "Good, but I was expecting more whole grain benefits.",
-            negative: "Where are the whole grains? This seems refined!",
+            intro: "I need diabetes-safe whole grains!",
+            positive: "These whole grains are perfect for my blood sugar!",
+            neutral: "Good, but not sure about the glycemic impact.",
+            negative: "These aren't whole grains! This will spike my sugar!",
         }
     },
     {
@@ -600,16 +600,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterACSad,
         },
         order: {
-            description: "Light meal but with good protein. I'm not that hungry but want to hit my protein goals!",
+            description: "Pre-diabetic, light but protein-rich! Chana Masala - perfect protein without carb overload!",
             plateSize: 'Light',
-            diabetesMode: 'None',
+            diabetesMode: 'Low-Carb',
             required_items: ['chana_masala'],
         },
         dialogue: {
-            intro: "Light portion but make it protein-rich!",
-            positive: "Perfect! Light but packed with protein!",
-            neutral: "Decent protein, but portion's a bit much.",
-            negative: "This is either too heavy or not enough protein!",
+            intro: "Light, protein-rich, diabetes-safe please!",
+            positive: "Perfect! Light, protein-packed, and blood sugar friendly!",
+            neutral: "Decent protein, but portion or carbs are off.",
+            negative: "Too heavy or too many carbs for a diabetic!",
         }
     },
     {
@@ -621,16 +621,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterADSad,
         },
         order: {
-            description: "I've been wanting to try jackfruit seeds! Something with that, regular portion, balanced!",
+            description: "I'm diabetic, want to try Jackfruit Seeds Thoran - heard it's diabetes-friendly!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['jackfruit_seeds_thoran'],
         },
         dialogue: {
-            intro: "I hear jackfruit seeds are nutritious!",
-            positive: "The jackfruit seeds are so good! Never had them before!",
-            neutral: "Interesting taste, but not sure about it.",
-            negative: "The seeds don't taste good at all. Disappointing!",
+            intro: "I heard jackfruit seeds are good for diabetics!",
+            positive: "The jackfruit seeds are perfect for my blood sugar!",
+            neutral: "Interesting, but not sure about my sugar levels.",
+            negative: "This doesn't taste good and will spike my sugar!",
         }
     },
     {
@@ -642,16 +642,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterAESad,
         },
         order: {
-            description: "Big appetite but watching my blood sugar. Hearty portion with balanced carbs, lots of fiber!",
+            description: "I'm diabetic with big appetite! Sambar - hearty, balanced, blood sugar friendly!",
             plateSize: 'Hearty',
             diabetesMode: 'Balanced',
             required_items: ['sambar'],
         },
         dialogue: {
-            intro: "I need a big meal that's blood-sugar friendly!",
-            positive: "This is hearty AND balanced! Perfect for my needs!",
-            neutral: "Filling, but my blood sugar might spike a bit.",
-            negative: "This is going to mess with my blood sugar! Too many simple carbs!",
+            intro: "I need hearty diabetes-friendly meal!",
+            positive: "This is hearty AND my blood sugar will stay stable!",
+            neutral: "Filling, but might spike my sugar a bit.",
+            negative: "This will mess with my blood sugar! Too many simple carbs!",
         }
     },
     {
@@ -663,16 +663,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterAFSad,
         },
         order: {
-            description: "I love yogurt-based dishes! Something cooling and balanced, regular portion!",
+            description: "I'm pre-diabetic, love yogurt! Okra Pachadi - probiotics and blood sugar control!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
             required_items: ['okra_pachadi'],
         },
         dialogue: {
-            intro: "Craving something cool and yogurt-based!",
-            positive: "The yogurt base is perfect! So cooling and delicious!",
-            neutral: "Good, but the yogurt flavor could be stronger.",
-            negative: "Barely any yogurt flavor! This isn't what I wanted!",
+            intro: "Craving diabetes-safe yogurt dish!",
+            positive: "The yogurt is perfect! Great for my gut and blood sugar!",
+            neutral: "Good, but not sure if it's optimal for diabetics.",
+            negative: "Barely any yogurt and will spike my sugar!",
         }
     },
     {
@@ -684,16 +684,16 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             sad: visuals.CharacterAGSad,
         },
         order: {
-            description: "I'm a meat lover! Give me a hearty portion with good meat - Kerala style beef if you have it!",
+            description: "I'm diabetic meat lover! Kerala Beef Curry - high protein, low carb, blood sugar safe!",
             plateSize: 'Hearty',
-            diabetesMode: 'None',
+            diabetesMode: 'Low-Carb',
             required_items: ['kerala_beef_curry'],
         },
         dialogue: {
-            intro: "I need a good, hearty meat dish!",
-            positive: "The meat is cooked to perfection! This is amazing!",
-            neutral: "Good meat, but could be more tender.",
-            negative: "The meat is tough and lacking flavor. Not impressed.",
+            intro: "I need diabetes-safe hearty meat!",
+            positive: "The meat is perfect! High protein, won't spike my sugar!",
+            neutral: "Good meat, but worried about the carbs in sauce.",
+            negative: "Too many carbs! This will spike my blood sugar!",
         }
     },
 ];

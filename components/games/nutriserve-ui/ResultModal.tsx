@@ -52,10 +52,11 @@ const ResultModal: React.FC<ResultModalProps> = ({ score, customer, feedback, on
         {mainDish && (
           <div className="my-4">
             <p className="text-sm text-slate-600 font-semibold mb-2">
-              You prepared:
+              You prepared: {mainDish.foodItem.label}
             </p>
             <DishImageDisplay
               foodItemId={mainDish.foodItem.id}
+              fallbackVisual={mainDish.foodItem.visual}
               maxHeight="180px"
             />
           </div>
