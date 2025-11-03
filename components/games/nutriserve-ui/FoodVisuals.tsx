@@ -677,7 +677,7 @@ export const DalMakhaniVisual: React.FC<VisualProps> = () => (
 );
 
 export const VegBiryaniVisual: React.FC<VisualProps> = ({ volume_ml }) => {
-    const currentVolume = volume_ml ?? 250; 
+    const currentVolume = volume_ml ?? 250;
     const clipRadius = interpolate(currentVolume, [150, 350], [220, 350]);
     return (
         <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
@@ -699,3 +699,208 @@ export const VegBiryaniVisual: React.FC<VisualProps> = ({ volume_ml }) => {
         </svg>
     );
 };
+
+// --- KERALA CUISINE VISUALS ---
+
+export const KeralaParippuCurryVisual: React.FC<VisualProps> = () => (
+    <Bowl id="kerala-parippu" fill="url(#kerala-parippu-grad)">
+        <defs>
+            <radialGradient id="kerala-parippu-grad">
+                <stop offset="0%" stopColor="#fde047" />
+                <stop offset="100%" stopColor="#facc15" />
+            </radialGradient>
+            <path id="curry-leaf-parippu" d="M10 10 Q 15 5, 20 10 T 10 10 M15 7.5 Q 12.5 12.5, 10 15 M15 7.5 Q 17.5 12.5, 20 15" fill="#166534" />
+        </defs>
+        <circle cx="50" cy="50" r="2" fill="#854d0e" opacity="0.5"/>
+        <circle cx="45" cy="48" r="1.5" fill="#854d0e" opacity="0.5"/>
+        <circle cx="58" cy="53" r="1.5" fill="#854d0e" opacity="0.5"/>
+        <path d="M40 50 C 45 45, 55 45, 60 50" stroke="#f0fdf4" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        <use href="#curry-leaf-parippu" x="42" y="36" transform="scale(0.5)" />
+    </Bowl>
+);
+
+export const BeansCarrotThoranVisual: React.FC<VisualProps> = () => (
+    <Bowl id="beans-carrot-thoran" fill="rgba(254, 243, 199, 0.3)">
+        <rect x="40" y="45" width="15" height="3" fill="#4ade80" rx="1" transform="rotate(25 47.5 46.5)"/>
+        <rect x="50" y="50" width="15" height="3" fill="#4ade80" rx="1" transform="rotate(-15 57.5 51.5)"/>
+        <rect x="35" y="55" width="15" height="3" fill="#fb923c" rx="1" transform="rotate(45 42.5 56.5)"/>
+        <rect x="55" y="55" width="15" height="3" fill="#fb923c" rx="1" transform="rotate(-35 62.5 56.5)"/>
+        <circle cx="48" cy="52" r="1.5" fill="#f8fafc" opacity="0.8"/>
+        <circle cx="55" cy="48" r="1.5" fill="#f8fafc" opacity="0.8"/>
+    </Bowl>
+);
+
+export const TapiocaKappaVisual: React.FC<VisualProps> = () => (
+    <Bowl id="tapioca-kappa" fill="url(#tapioca-color)">
+        <defs>
+            <radialGradient id="tapioca-color">
+                <stop offset="0%" stopColor="#fefce8" />
+                <stop offset="100%" stopColor="#fef3c7" />
+            </radialGradient>
+            <filter id="tapioca-texture">
+                <feTurbulence type="fractalNoise" baseFrequency="0.3" numOctaves="2" result="t"/>
+                <feDisplacementMap in="SourceGraphic" in2="t" scale="2"/>
+            </filter>
+        </defs>
+        <ellipse cx="50" cy="50" rx="40" ry="15" fill="url(#tapioca-color)" filter="url(#tapioca-texture)"/>
+    </Bowl>
+);
+
+export const KadalaCurryVisual: React.FC<VisualProps> = () => (
+    <Bowl id="kadala-curry" fill="url(#kadala-gravy)">
+        <defs>
+            <radialGradient id="kadala-gravy">
+                <stop offset="0%" stopColor="#92400e" />
+                <stop offset="100%" stopColor="#78350f" />
+            </radialGradient>
+            <path id="curry-leaf-kadala" d="M10 10 Q 15 5, 20 10 T 10 10 M15 7.5 Q 12.5 12.5, 10 15 M15 7.5 Q 17.5 12.5, 20 15" fill="#166534" />
+        </defs>
+        <ellipse cx="45" cy="48" rx="6" ry="8" fill="#a16207" transform="rotate(20 45 48)"/>
+        <ellipse cx="60" cy="55" rx="6" ry="8" fill="#a16207" transform="rotate(-10 60 55)"/>
+        <ellipse cx="40" cy="58" rx="6" ry="8" fill="#a16207" transform="rotate(5 40 58)"/>
+        <use href="#curry-leaf-kadala" x="55" y="38" transform="scale(0.5)" />
+    </Bowl>
+);
+
+export const MoringaLeafThoranVisual: React.FC<VisualProps> = () => (
+    <Bowl id="moringa-thoran" fill="rgba(222, 247, 236, 0.5)">
+        <path d="M40 50 Q 45 45, 50 50 T 60 50" fill="#16a34a" opacity="0.8"/>
+        <path d="M45 55 Q 50 50, 55 55 T 65 55" fill="#22c55e" opacity="0.8"/>
+        <path d="M35 58 Q 40 53, 45 58 T 55 58" fill="#16a34a" opacity="0.8"/>
+        <circle cx="48" cy="52" r="1.5" fill="#f8fafc" opacity="0.8"/>
+        <circle cx="56" cy="54" r="1.5" fill="#f8fafc" opacity="0.8"/>
+    </Bowl>
+);
+
+export const BananaFlowerThoranVisual: React.FC<VisualProps> = () => (
+    <Bowl id="banana-flower-thoran" fill="rgba(254, 226, 226, 0.3)">
+        <path d="M45 48 C 48 45, 52 45, 55 48 C 58 51, 55 54, 50 52" fill="#e11d48" opacity="0.7"/>
+        <path d="M40 55 C 43 52, 47 52, 50 55 C 53 58, 50 61, 45 59" fill="#be123c" opacity="0.7"/>
+        <path d="M55 55 C 58 52, 62 52, 65 55 C 68 58, 65 61, 60 59" fill="#e11d48" opacity="0.7"/>
+        <circle cx="50" cy="52" r="1.5" fill="#f8fafc" opacity="0.8"/>
+    </Bowl>
+);
+
+export const OkraPachadiVisual: React.FC<VisualProps> = () => (
+    <Bowl id="okra-pachadi" fill="#fef3c7">
+        <path d="M40 45 L 55 48 L 52 56 Z" fill="#65a30d" opacity="0.7"/>
+        <path d="M60 47 L 68 49 L 65 57 Z" fill="#65a30d" opacity="0.7"/>
+        <path d="M38 55 L 48 60 L 43 58 Z" fill="#65a30d" opacity="0.7"/>
+        <circle cx="45" cy="50" r="1.5" fill="white" />
+        <circle cx="62" cy="52" r="1.5" fill="white" />
+        <path d="M48 48 C 51 46, 55 46, 58 48" stroke="#f0fdf4" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+    </Bowl>
+);
+
+export const JackfruitSeedsThoranVisual: React.FC<VisualProps> = () => (
+    <Bowl id="jackfruit-seeds-thoran" fill="rgba(254, 243, 199, 0.4)">
+        <ellipse cx="45" cy="50" rx="8" ry="6" fill="#fef3c7" stroke="#eab308" strokeWidth="1" transform="rotate(15 45 50)"/>
+        <ellipse cx="58" cy="52" rx="8" ry="6" fill="#fef3c7" stroke="#eab308" strokeWidth="1" transform="rotate(-20 58 52)"/>
+        <ellipse cx="42" cy="58" rx="8" ry="6" fill="#fef3c7" stroke="#eab308" strokeWidth="1" transform="rotate(10 42 58)"/>
+        <circle cx="50" cy="54" r="1.5" fill="#f8fafc" opacity="0.8"/>
+    </Bowl>
+);
+
+export const MathiSardineCurryVisual: React.FC<VisualProps> = () => (
+    <Bowl id="mathi-curry" fill="url(#mathi-gravy)">
+        <defs>
+            <radialGradient id="mathi-gravy">
+                <stop offset="0%" stopColor="#dc2626" />
+                <stop offset="100%" stopColor="#b91c1c" />
+            </radialGradient>
+            <path id="curry-leaf-mathi" d="M10 10 Q 15 5, 20 10 T 10 10 M15 7.5 Q 12.5 12.5, 10 15 M15 7.5 Q 17.5 12.5, 20 15" fill="#166534" />
+        </defs>
+        <path d="M35 50 C 45 40, 65 40, 75 50 S 60 65, 55 58" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1.5"/>
+        <path d="M40 58 C 48 52, 62 52, 68 58" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1.5"/>
+        <use href="#curry-leaf-mathi" x="55" y="35" transform="scale(0.5)" />
+    </Bowl>
+);
+
+export const MoruCurryPulisseryVisual: React.FC<VisualProps> = () => (
+    <Bowl id="moru-curry" fill="url(#moru-color)">
+        <defs>
+            <radialGradient id="moru-color">
+                <stop offset="0%" stopColor="#fefce8" />
+                <stop offset="100%" stopColor="#fef08a" />
+            </radialGradient>
+            <path id="curry-leaf-moru" d="M10 10 Q 15 5, 20 10 T 10 10 M15 7.5 Q 12.5 12.5, 10 15 M15 7.5 Q 17.5 12.5, 20 15" fill="#166534" />
+        </defs>
+        <circle cx="50" cy="50" r="2" fill="#854d0e" opacity="0.3"/>
+        <circle cx="45" cy="48" r="1.5" fill="#854d0e" opacity="0.3"/>
+        <use href="#curry-leaf-moru" x="55" y="38" transform="scale(0.5)" />
+    </Bowl>
+);
+
+export const KeralaLambCurryVisual: React.FC<VisualProps> = () => (
+    <Bowl id="kerala-lamb-curry" fill="url(#lamb-gravy)">
+        <defs>
+            <radialGradient id="lamb-gravy">
+                <stop offset="0%" stopColor="#92400e" />
+                <stop offset="100%" stopColor="#78350f" />
+            </radialGradient>
+            <path id="curry-leaf-lamb" d="M10 10 Q 15 5, 20 10 T 10 10 M15 7.5 Q 12.5 12.5, 10 15 M15 7.5 Q 17.5 12.5, 20 15" fill="#166534" />
+        </defs>
+        <path d="M42 46 C 36 42, 32 48, 38 54 C 44 60, 50 54, 46 48" fill="#fef3c7" stroke="#b45309" strokeWidth="1.5"/>
+        <path d="M62 52 C 56 50, 54 58, 60 62 C 66 66, 72 60, 66 54" fill="#fef3c7" stroke="#b45309" strokeWidth="1.5"/>
+        <use href="#curry-leaf-lamb" x="52" y="36" transform="scale(0.5)" />
+    </Bowl>
+);
+
+export const KeralaBeefCurryVisual: React.FC<VisualProps> = () => (
+    <Bowl id="kerala-beef-curry" fill="url(#beef-gravy)">
+        <defs>
+            <radialGradient id="beef-gravy">
+                <stop offset="0%" stopColor="#78350f" />
+                <stop offset="100%" stopColor="#57280d" />
+            </radialGradient>
+            <path id="curry-leaf-beef" d="M10 10 Q 15 5, 20 10 T 10 10 M15 7.5 Q 12.5 12.5, 10 15 M15 7.5 Q 17.5 12.5, 20 15" fill="#166534" />
+        </defs>
+        <path d="M42 46 C 36 42, 32 48, 38 54 C 44 60, 50 54, 46 48" fill="#d97706" stroke="#92400e" strokeWidth="1.5"/>
+        <path d="M62 52 C 56 50, 54 58, 60 62 C 66 66, 72 60, 66 54" fill="#d97706" stroke="#92400e" strokeWidth="1.5"/>
+        <path d="M50 58 C 46 56, 44 62, 48 65" fill="#d97706" stroke="#92400e" strokeWidth="1.5"/>
+        <use href="#curry-leaf-beef" x="54" y="35" transform="scale(0.5)" />
+        <ellipse cx="53" cy="47" rx="3" ry="2" fill="#f8fafc" opacity="0.6"/>
+    </Bowl>
+);
+
+export const DosaPlainVisual: React.FC<VisualProps> = () => (
+    <svg viewBox="0 0 100 100" className="w-full h-full">
+        <defs>
+            <radialGradient id="dosa-color-plain">
+                <stop offset="0%" stopColor="#fef3c7" />
+                <stop offset="80%" stopColor="#fde68a" />
+                <stop offset="100%" stopColor="#facc15" />
+            </radialGradient>
+            <filter id="dosa-texture">
+                <feTurbulence type="fractalNoise" baseFrequency="0.15" numOctaves="2" result="turbulence"/>
+                <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="2" />
+            </filter>
+        </defs>
+        <path d="M20 30 C 40 15, 75 25, 88 45 L 82 70 C 65 88, 35 80, 22 62 Z" fill="url(#dosa-color-plain)" filter="url(#dosa-texture)"/>
+        <path d="M35 40 Q 45 35, 55 40 T 35 40" fill="#ca8a04" opacity="0.3" transform="rotate(15 45 40)"/>
+        <path d="M65 60 Q 72 55, 78 60 T 65 60" fill="#ca8a04" opacity="0.3" transform="rotate(-20 71.5 60)"/>
+    </svg>
+);
+
+export const IdliPlainVisual: React.FC<VisualProps> = () => (
+    <svg viewBox="0 0 100 100" className="w-full h-full">
+        <defs>
+            <radialGradient id="idli-color">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="80%" stopColor="#f8fafc" />
+                <stop offset="100%" stopColor="#f1f5f9" />
+            </radialGradient>
+            <filter id="idli-texture">
+                <feTurbulence type="fractalNoise" baseFrequency="0.2" numOctaves="2" result="t"/>
+                <feDisplacementMap in="SourceGraphic" in2="t" scale="1.5"/>
+            </filter>
+            <radialGradient id="idli-shadow">
+                <stop offset="0%" stopColor="rgba(0,0,0,0.1)" />
+                <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            </radialGradient>
+        </defs>
+        <ellipse cx="50" cy="75" rx="30" ry="5" fill="url(#idli-shadow)"/>
+        <ellipse cx="50" cy="50" rx="32" ry="20" fill="url(#idli-color)" filter="url(#idli-texture)"/>
+        <ellipse cx="50" cy="45" rx="30" ry="15" fill="#ffffff" opacity="0.5"/>
+    </svg>
+);
