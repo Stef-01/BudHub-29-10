@@ -1,6 +1,6 @@
 // components/Navigation.tsx
 import React from 'react';
-import type { Tab } from '../../types';
+import type { Tab } from '../types';
 import { GardenIcon, TasksIcon, RecipeBookIcon, CommunityIcon, GameControllerIcon, AdminIcon } from './icons/Icons';
 
 interface NavigationProps {
