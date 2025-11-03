@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import type { FoodGroup, FoodItem } from '../NutriServeTypes';
 // FIX: Corrected import casing for 'nutriserveFoodData' to match the actual filename and resolve module resolution errors.
-import { FOOD_LIBRARY } from '../../../services/nutriserveFoodData';
+import { FOOD_LIBRARY } from '../../../services/nutriServeFoodData';
 import { IconChevronDown } from './Icons';
 import DidYouKnowCard from './DidYouKnowCard';
 

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useReducer, useCallback } from 'react';
 import type { NutriServeCustomerWithTargets, PlateItem, FoodItem } from './NutriServeTypes';
 import { getNewCustomer, calculateMealTotals, calculateScoreAndFeedback } from '../../services/nutriserveUtils';
 // FIX: Corrected import casing for 'nutriserveFoodData' for consistency across the module.
-import { FOOD_LIBRARY } from '../../services/nutriserveFoodData';
+import { FOOD_LIBRARY } from '../../services/nutriServeFoodData';
 import { useGameScores } from '../../contexts/GameScoresContext';
 import { useGamification } from '../../contexts/GamificationContext';
 

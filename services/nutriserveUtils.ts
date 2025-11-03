@@ -2,7 +2,7 @@
 import type { Character, PlateItem, Nutrients, MealGoals, Target, NutriServeCustomerWithTargets, FoodItem } from '../components/games/NutriServeTypes';
 import { CUSTOMER_CHARACTERS } from './nutriserveCharacters';
 // FIX: Corrected import casing for 'nutriServeFoodData' to match the actual filename and resolve module resolution errors.
-import { FOOD_LIBRARY } from './nutriserveFoodData';
+import { FOOD_LIBRARY } from './nutriServeFoodData';
 import { getRecipeIdForFoodItem } from './nutriserveFoodMap';
 
 export type NutrientStatus = 'low' | 'good' | 'high' | 'ok';
