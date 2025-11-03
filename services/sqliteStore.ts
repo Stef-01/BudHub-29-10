@@ -30,7 +30,7 @@ async function initDb(): Promise<any> {
     dbPromise = (async () => {
         try {
             console.log('[SQLite] Initializing SQLite WASM with OPFS...');
-            
+
             // Import the SQLite WASM module from the import map
             const sqlite3InitModule = (await import('@sqlite.org/sqlite-wasm')).default;
             const sqlite3 = await sqlite3InitModule({
@@ -39,11 +39,45 @@ async function initDb(): Promise<any> {
             });
 
             console.log('[SQLite] SQLite WASM version:', sqlite3.version.libVersion);
+            console.log('[SQLite] Available APIs:', Object.keys(sqlite3));
+            console.log('[SQLite] oo1 APIs:', sqlite3.oo1 ? Object.keys(sqlite3.oo1) : 'oo1 not available');
 
-            // Open database in OPFS (persistent storage)
-            // Using 'c' mode to create if it doesn't exist
-            const db = new sqlite3.oo1.OpfsDb('/nutriserve-images.db', 'c');
-            console.log('[SQLite] Database opened successfully in OPFS');
+            // Try different storage backends in order of preference
+            let db;
+            try {
+                // Try OPFS first (most persistent)
+                if (typeof sqlite3.oo1?.OpfsDb === 'function') {
+                    console.log('[SQLite] Trying OpfsDb constructor...');
+                    db = new sqlite3.oo1.OpfsDb('/nutriserve-images.db', 'c');
+                    console.log('[SQLite] ✓ Using OPFS storage (most persistent)');
+                } else if (sqlite3.oo1?.OpfsDb?.create) {
+                    console.log('[SQLite] Trying OpfsDb.create()...');
+                    db = await sqlite3.oo1.OpfsDb.create('/nutriserve-images.db');
+                    console.log('[SQLite] ✓ Using OPFS storage via create() (most persistent)');
+                } else {
+                    throw new Error('OpfsDb not available');
+                }
+            } catch (opfsError) {
+                console.warn('[SQLite] OPFS not available:', opfsError);
+
+                try {
+                    // Fallback to JsStorageDb (localStorage/IndexedDB based)
+                    if (typeof sqlite3.oo1?.JsStorageDb === 'function') {
+                        console.log('[SQLite] Trying JsStorageDb...');
+                        db = new sqlite3.oo1.JsStorageDb('/nutriserve-images.db');
+                        console.log('[SQLite] ✓ Using JsStorageDb (localStorage-backed)');
+                    } else {
+                        throw new Error('JsStorageDb not available');
+                    }
+                } catch (jsStorageError) {
+                    console.warn('[SQLite] JsStorageDb not available:', jsStorageError);
+
+                    // Last resort: in-memory database
+                    console.log('[SQLite] Falling back to in-memory database');
+                    db = new sqlite3.oo1.DB(':memory:', 'c');
+                    console.log('[SQLite] ⚠ Using in-memory DB (data will be lost on refresh!)');
+                }
+            }
 
             // Create tables if they don't exist
             db.exec(`
@@ -67,8 +101,32 @@ async function initDb(): Promise<any> {
 
             // Create index for faster lookups
             db.exec(`
-                CREATE INDEX IF NOT EXISTS idx_image_aliases_key 
+                CREATE INDEX IF NOT EXISTS idx_image_aliases_key
                 ON image_aliases(image_key);
+            `);
+
+            // Create food images table for shared dataset
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS food_images (
+                    food_id TEXT PRIMARY KEY,
+                    image_key TEXT NOT NULL,
+                    original BLOB NOT NULL,
+                    preview BLOB NOT NULL,
+                    thumb BLOB NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+            `);
+
+            // Create recipe images table for shared dataset
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS recipe_images (
+                    recipe_id TEXT PRIMARY KEY,
+                    image_key TEXT NOT NULL,
+                    original BLOB NOT NULL,
+                    preview BLOB NOT NULL,
+                    thumb BLOB NOT NULL,
+                    created_at TEXT NOT NULL
+                );
             `);
 
             console.log('[SQLite] Tables and indexes created successfully');
@@ -333,6 +391,260 @@ async function saveAlias(aliasRecord: { recipe_id: string; image_key: string }):
 }
 
 /**
+ * Saves a food image to the shared dataset.
+ *
+ * @param foodImageRecord - Record containing food_id, image_key, blobs, etc.
+ */
+async function saveFoodImage(foodImageRecord: {
+    food_id: string;
+    image_key: string;
+    original: Uint8Array;
+    preview: Uint8Array;
+    thumb: Uint8Array;
+    created_at: string;
+}): Promise<void> {
+    try {
+        const db = await initDb();
+
+        // Use REPLACE to handle both insert and update atomically
+        db.exec({
+            sql: `
+                REPLACE INTO food_images
+                (food_id, image_key, original, preview, thumb, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `,
+            bind: [
+                foodImageRecord.food_id,
+                foodImageRecord.image_key,
+                foodImageRecord.original,
+                foodImageRecord.preview,
+                foodImageRecord.thumb,
+                foodImageRecord.created_at
+            ]
+        });
+
+        console.log(`[SQLite] Saved food image for ${foodImageRecord.food_id}`);
+
+    } catch (error) {
+        console.error(`[SQLite] Error saving food image ${foodImageRecord.food_id}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Retrieves a food image by food_id.
+ *
+ * @param foodId - The food item identifier
+ * @returns Food image record or null if not found
+ */
+async function getFoodImage(foodId: string): Promise<{
+    food_id: string;
+    image_key: string;
+    original: Uint8Array;
+    preview: Uint8Array;
+    thumb: Uint8Array;
+    created_at: string;
+} | null> {
+    try {
+        const db = await initDb();
+
+        const result = db.exec({
+            sql: 'SELECT * FROM food_images WHERE food_id = ?',
+            bind: [foodId],
+            returnValue: 'resultRows',
+            rowMode: 'object'
+        });
+
+        if (!result || result.length === 0) {
+            return null;
+        }
+
+        const row = result[0];
+        return {
+            food_id: row.food_id,
+            image_key: row.image_key,
+            original: row.original,
+            preview: row.preview,
+            thumb: row.thumb,
+            created_at: row.created_at
+        };
+
+    } catch (error) {
+        console.error(`[SQLite] Error retrieving food image ${foodId}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Deletes a food image.
+ *
+ * @param foodId - The food item identifier
+ */
+async function deleteFoodImage(foodId: string): Promise<void> {
+    try {
+        const db = await initDb();
+        db.exec({
+            sql: 'DELETE FROM food_images WHERE food_id = ?',
+            bind: [foodId]
+        });
+        console.log(`[SQLite] Deleted food image for ${foodId}`);
+    } catch (error) {
+        console.error(`[SQLite] Error deleting food image ${foodId}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Gets all food IDs that have images.
+ *
+ * @returns Array of food IDs
+ */
+async function getAllFoodImageIds(): Promise<string[]> {
+    try {
+        const db = await initDb();
+
+        const result = db.exec({
+            sql: 'SELECT food_id FROM food_images',
+            returnValue: 'resultRows',
+            rowMode: 'object'
+        });
+
+        return result ? result.map((row: any) => row.food_id) : [];
+
+    } catch (error) {
+        console.error('[SQLite] Error getting all food image IDs:', error);
+        return [];
+    }
+}
+
+/**
+ * Saves a recipe image to the shared dataset.
+ *
+ * @param recipeImageRecord - Record containing recipe_id, image_key, blobs, etc.
+ */
+async function saveRecipeImage(recipeImageRecord: {
+    recipe_id: string;
+    image_key: string;
+    original: Uint8Array;
+    preview: Uint8Array;
+    thumb: Uint8Array;
+    created_at: string;
+}): Promise<void> {
+    try {
+        const db = await initDb();
+
+        // Use REPLACE to handle both insert and update atomically
+        db.exec({
+            sql: `
+                REPLACE INTO recipe_images
+                (recipe_id, image_key, original, preview, thumb, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `,
+            bind: [
+                recipeImageRecord.recipe_id,
+                recipeImageRecord.image_key,
+                recipeImageRecord.original,
+                recipeImageRecord.preview,
+                recipeImageRecord.thumb,
+                recipeImageRecord.created_at
+            ]
+        });
+
+        console.log(`[SQLite] Saved recipe image for ${recipeImageRecord.recipe_id}`);
+
+    } catch (error) {
+        console.error(`[SQLite] Error saving recipe image ${recipeImageRecord.recipe_id}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Retrieves a recipe image by recipe_id.
+ *
+ * @param recipeId - The recipe identifier
+ * @returns Recipe image record or null if not found
+ */
+async function getRecipeImage(recipeId: string): Promise<{
+    recipe_id: string;
+    image_key: string;
+    original: Uint8Array;
+    preview: Uint8Array;
+    thumb: Uint8Array;
+    created_at: string;
+} | null> {
+    try {
+        const db = await initDb();
+
+        const result = db.exec({
+            sql: 'SELECT * FROM recipe_images WHERE recipe_id = ?',
+            bind: [recipeId],
+            returnValue: 'resultRows',
+            rowMode: 'object'
+        });
+
+        if (!result || result.length === 0) {
+            return null;
+        }
+
+        const row = result[0];
+        return {
+            recipe_id: row.recipe_id,
+            image_key: row.image_key,
+            original: row.original,
+            preview: row.preview,
+            thumb: row.thumb,
+            created_at: row.created_at
+        };
+
+    } catch (error) {
+        console.error(`[SQLite] Error retrieving recipe image ${recipeId}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Deletes a recipe image.
+ *
+ * @param recipeId - The recipe identifier
+ */
+async function deleteRecipeImage(recipeId: string): Promise<void> {
+    try {
+        const db = await initDb();
+        db.exec({
+            sql: 'DELETE FROM recipe_images WHERE recipe_id = ?',
+            bind: [recipeId]
+        });
+        console.log(`[SQLite] Deleted recipe image for ${recipeId}`);
+    } catch (error) {
+        console.error(`[SQLite] Error deleting recipe image ${recipeId}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Gets all recipe IDs that have images.
+ *
+ * @returns Array of recipe IDs
+ */
+async function getAllRecipeImageIds(): Promise<string[]> {
+    try {
+        const db = await initDb();
+
+        const result = db.exec({
+            sql: 'SELECT recipe_id FROM recipe_images',
+            returnValue: 'resultRows',
+            rowMode: 'object'
+        });
+
+        return result ? result.map((row: any) => row.recipe_id) : [];
+
+    } catch (error) {
+        console.error('[SQLite] Error getting all recipe image IDs:', error);
+        return [];
+    }
+}
+
+/**
  * Export the SQLite store interface.
  * This matches the mock interface, so no changes are needed in calling code.
  */
@@ -342,4 +654,14 @@ export const sqliteStore = {
     saveImage,
     getAlias,
     saveAlias,
+    // Food dataset methods
+    saveFoodImage,
+    getFoodImage,
+    deleteFoodImage,
+    getAllFoodImageIds,
+    // Recipe dataset methods
+    saveRecipeImage,
+    getRecipeImage,
+    deleteRecipeImage,
+    getAllRecipeImageIds,
 };

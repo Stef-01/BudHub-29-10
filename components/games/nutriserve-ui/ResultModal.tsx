@@ -56,7 +56,6 @@ const ResultModal: React.FC<ResultModalProps> = ({ score, customer, feedback, on
             </p>
             <DishImageDisplay
               foodItemId={mainDish.foodItem.id}
-              recipeId={mainDish.recipeId}
               maxHeight="180px"
             />
           </div>

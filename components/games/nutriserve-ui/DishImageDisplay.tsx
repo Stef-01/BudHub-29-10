@@ -1,43 +1,42 @@
 // components/games/nutriserve-ui/DishImageDisplay.tsx
-import React, { useMemo } from 'react';
-import { getRecipeImageState } from '../../../services/imageStoreService';
-import { useUserCookbook } from '../../../contexts/UserCookbookContext';
-import { LoadingSpinner } from '../../icons/Icons';
+import React from 'react';
+import { getFoodImage } from '../../../services/foodImageDataset';
 
 interface DishImageDisplayProps {
   foodItemId: string;
-  recipeId: string | null;
   fallbackVisual?: React.FC<any>;
   maxHeight?: string;
 }
 
+/**
+ * Displays food images from the permanent dataset.
+ * No AI generation - uses pre-uploaded images from the admin panel.
+ */
 const DishImageDisplay: React.FC<DishImageDisplayProps> = ({
   foodItemId,
-  recipeId,
   fallbackVisual: FallbackVisual,
   maxHeight = '200px',
 }) => {
   const [imageUrl, setImageUrl] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const { recipes } = useUserCookbook();
 
-  // Try to fetch the recipe image from persistent storage
+  // Load food image from permanent dataset
   React.useEffect(() => {
     let isMounted = true;
 
     const loadImage = async () => {
-      if (!recipeId || recipeId === 'no-image') {
+      if (!foodItemId) {
         setLoading(false);
         return;
       }
 
       try {
-        const imageState = await getRecipeImageState(recipeId);
-        if (isMounted && imageState) {
-          setImageUrl(imageState.urls.preview);
+        const foodImage = await getFoodImage(foodItemId);
+        if (isMounted && foodImage) {
+          setImageUrl(foodImage.urls.preview);
         }
       } catch (error) {
-        console.warn(`Failed to load image for recipe ${recipeId}:`, error);
+        console.warn(`Failed to load food image for ${foodItemId}:`, error);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -47,16 +46,9 @@ const DishImageDisplay: React.FC<DishImageDisplayProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [recipeId]);
+  }, [foodItemId]);
 
-  // Fallback to emoji if no recipe image available
-  const recipeEmoji = React.useMemo(() => {
-    if (!recipeId) return null;
-    const recipe = recipes.find(r => r.id === recipeId);
-    return recipe?.image;
-  }, [recipes, recipeId]);
-
-  if (loading && recipeId && recipeId !== 'no-image') {
+  if (loading) {
     return (
       <div
         style={{ height: maxHeight, maxHeight }}
@@ -67,7 +59,7 @@ const DishImageDisplay: React.FC<DishImageDisplayProps> = ({
     );
   }
 
-  // If we have an image URL, display it
+  // If we have a dataset image, display it
   if (imageUrl) {
     return (
       <div
@@ -76,44 +68,33 @@ const DishImageDisplay: React.FC<DishImageDisplayProps> = ({
       >
         <img
           src={imageUrl}
-          alt="Prepared dish"
+          alt="Food dish"
           className="w-full h-full object-cover"
         />
       </div>
     );
   }
 
-  // Fallback to custom visual component
+  // Fallback to custom visual component (SVG illustrations)
   if (FallbackVisual) {
     return (
       <div
         style={{ height: maxHeight, maxHeight }}
-        className="flex items-center justify-center"
+        className="flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg"
       >
         <FallbackVisual />
       </div>
     );
   }
 
-  // Fallback to emoji
-  if (recipeEmoji && typeof recipeEmoji === 'string') {
-    return (
-      <div
-        className="flex items-center justify-center text-6xl bg-slate-50 rounded-lg border-2 border-slate-200"
-        style={{ height: maxHeight, maxHeight }}
-      >
-        {recipeEmoji}
-      </div>
-    );
-  }
-
-  // Last resort: placeholder
+  // Last resort: placeholder with upload hint
   return (
     <div
-      className="flex items-center justify-center bg-slate-100 rounded-lg border-2 border-dashed border-slate-300"
+      className="flex flex-col items-center justify-center bg-slate-100 rounded-lg border-2 border-dashed border-slate-300"
       style={{ height: maxHeight, maxHeight }}
     >
-      <p className="text-slate-400 text-sm">No image available</p>
+      <p className="text-slate-400 text-sm">No image uploaded</p>
+      <p className="text-slate-300 text-xs mt-1">Use admin panel to add</p>
     </div>
   );
 };
