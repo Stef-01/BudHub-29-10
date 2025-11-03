@@ -30,7 +30,7 @@ async function initDb(): Promise<any> {
     dbPromise = (async () => {
         try {
             console.log('[SQLite] Initializing SQLite WASM with OPFS...');
-            
+
             // Import the SQLite WASM module from the import map
             const sqlite3InitModule = (await import('@sqlite.org/sqlite-wasm')).default;
             const sqlite3 = await sqlite3InitModule({
@@ -39,11 +39,45 @@ async function initDb(): Promise<any> {
             });
 
             console.log('[SQLite] SQLite WASM version:', sqlite3.version.libVersion);
+            console.log('[SQLite] Available APIs:', Object.keys(sqlite3));
+            console.log('[SQLite] oo1 APIs:', sqlite3.oo1 ? Object.keys(sqlite3.oo1) : 'oo1 not available');
 
-            // Open database in OPFS (persistent storage)
-            // Using 'c' mode to create if it doesn't exist
-            const db = new sqlite3.oo1.OpfsDb('/nutriserve-images.db', 'c');
-            console.log('[SQLite] Database opened successfully in OPFS');
+            // Try different storage backends in order of preference
+            let db;
+            try {
+                // Try OPFS first (most persistent)
+                if (typeof sqlite3.oo1?.OpfsDb === 'function') {
+                    console.log('[SQLite] Trying OpfsDb constructor...');
+                    db = new sqlite3.oo1.OpfsDb('/nutriserve-images.db', 'c');
+                    console.log('[SQLite] ✓ Using OPFS storage (most persistent)');
+                } else if (sqlite3.oo1?.OpfsDb?.create) {
+                    console.log('[SQLite] Trying OpfsDb.create()...');
+                    db = await sqlite3.oo1.OpfsDb.create('/nutriserve-images.db');
+                    console.log('[SQLite] ✓ Using OPFS storage via create() (most persistent)');
+                } else {
+                    throw new Error('OpfsDb not available');
+                }
+            } catch (opfsError) {
+                console.warn('[SQLite] OPFS not available:', opfsError);
+
+                try {
+                    // Fallback to JsStorageDb (localStorage/IndexedDB based)
+                    if (typeof sqlite3.oo1?.JsStorageDb === 'function') {
+                        console.log('[SQLite] Trying JsStorageDb...');
+                        db = new sqlite3.oo1.JsStorageDb('/nutriserve-images.db');
+                        console.log('[SQLite] ✓ Using JsStorageDb (localStorage-backed)');
+                    } else {
+                        throw new Error('JsStorageDb not available');
+                    }
+                } catch (jsStorageError) {
+                    console.warn('[SQLite] JsStorageDb not available:', jsStorageError);
+
+                    // Last resort: in-memory database
+                    console.log('[SQLite] Falling back to in-memory database');
+                    db = new sqlite3.oo1.DB(':memory:', 'c');
+                    console.log('[SQLite] ⚠ Using in-memory DB (data will be lost on refresh!)');
+                }
+            }
 
             // Create tables if they don't exist
             db.exec(`
