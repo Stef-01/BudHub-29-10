@@ -294,3 +294,10 @@ export const RetryIcon: React.FC<IconProps> = (props) => (
         <path d="M21 3v6h-6"/>
     </svg>
 );
+
+export const AdminIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M12 1v6m0 6v6m8.66-15l-3 5.196M6.34 15.804l-3 5.196M23 12h-6m-6 0H5m15.464-6.464l-4.242 4.242M9.778 14.222l-4.242 4.242M23 20.66l-5.196-3M6.196 9.34L1 6.34"></path>
+    </svg>
+);

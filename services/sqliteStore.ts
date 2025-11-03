@@ -67,8 +67,20 @@ async function initDb(): Promise<any> {
 
             // Create index for faster lookups
             db.exec(`
-                CREATE INDEX IF NOT EXISTS idx_image_aliases_key 
+                CREATE INDEX IF NOT EXISTS idx_image_aliases_key
                 ON image_aliases(image_key);
+            `);
+
+            // Create food images table for shared dataset
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS food_images (
+                    food_id TEXT PRIMARY KEY,
+                    image_key TEXT NOT NULL,
+                    original BLOB NOT NULL,
+                    preview BLOB NOT NULL,
+                    thumb BLOB NOT NULL,
+                    created_at TEXT NOT NULL
+                );
             `);
 
             console.log('[SQLite] Tables and indexes created successfully');
@@ -333,6 +345,133 @@ async function saveAlias(aliasRecord: { recipe_id: string; image_key: string }):
 }
 
 /**
+ * Saves a food image to the shared dataset.
+ *
+ * @param foodImageRecord - Record containing food_id, image_key, blobs, etc.
+ */
+async function saveFoodImage(foodImageRecord: {
+    food_id: string;
+    image_key: string;
+    original: Uint8Array;
+    preview: Uint8Array;
+    thumb: Uint8Array;
+    created_at: string;
+}): Promise<void> {
+    try {
+        const db = await initDb();
+
+        // Use REPLACE to handle both insert and update atomically
+        db.exec({
+            sql: `
+                REPLACE INTO food_images
+                (food_id, image_key, original, preview, thumb, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `,
+            bind: [
+                foodImageRecord.food_id,
+                foodImageRecord.image_key,
+                foodImageRecord.original,
+                foodImageRecord.preview,
+                foodImageRecord.thumb,
+                foodImageRecord.created_at
+            ]
+        });
+
+        console.log(`[SQLite] Saved food image for ${foodImageRecord.food_id}`);
+
+    } catch (error) {
+        console.error(`[SQLite] Error saving food image ${foodImageRecord.food_id}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Retrieves a food image by food_id.
+ *
+ * @param foodId - The food item identifier
+ * @returns Food image record or null if not found
+ */
+async function getFoodImage(foodId: string): Promise<{
+    food_id: string;
+    image_key: string;
+    original: Uint8Array;
+    preview: Uint8Array;
+    thumb: Uint8Array;
+    created_at: string;
+} | null> {
+    try {
+        const db = await initDb();
+
+        const result = db.exec({
+            sql: 'SELECT * FROM food_images WHERE food_id = ?',
+            bind: [foodId],
+            returnValue: 'resultRows',
+            rowMode: 'object'
+        });
+
+        if (!result || result.length === 0) {
+            return null;
+        }
+
+        const row = result[0];
+        return {
+            food_id: row.food_id,
+            image_key: row.image_key,
+            original: row.original,
+            preview: row.preview,
+            thumb: row.thumb,
+            created_at: row.created_at
+        };
+
+    } catch (error) {
+        console.error(`[SQLite] Error retrieving food image ${foodId}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Deletes a food image.
+ *
+ * @param foodId - The food item identifier
+ */
+async function deleteFoodImage(foodId: string): Promise<void> {
+    try {
+        const db = await initDb();
+        db.exec({
+            sql: 'DELETE FROM food_images WHERE food_id = ?',
+            bind: [foodId]
+        });
+        console.log(`[SQLite] Deleted food image for ${foodId}`);
+    } catch (error) {
+        console.error(`[SQLite] Error deleting food image ${foodId}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Gets all food IDs that have images.
+ *
+ * @returns Array of food IDs
+ */
+async function getAllFoodImageIds(): Promise<string[]> {
+    try {
+        const db = await initDb();
+
+        const result = db.exec({
+            sql: 'SELECT food_id FROM food_images',
+            returnValue: 'resultRows',
+            rowMode: 'object'
+        });
+
+        return result ? result.map((row: any) => row.food_id) : [];
+
+    } catch (error) {
+        console.error('[SQLite] Error getting all food image IDs:', error);
+        return [];
+    }
+}
+
+/**
  * Export the SQLite store interface.
  * This matches the mock interface, so no changes are needed in calling code.
  */
@@ -342,4 +481,9 @@ export const sqliteStore = {
     saveImage,
     getAlias,
     saveAlias,
+    // Food dataset methods
+    saveFoodImage,
+    getFoodImage,
+    deleteFoodImage,
+    getAllFoodImageIds,
 };

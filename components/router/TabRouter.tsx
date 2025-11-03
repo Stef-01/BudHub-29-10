@@ -8,6 +8,7 @@ import TaskBoard from '../TaskBoard';
 import RecipeBook from '../RecipeBook';
 import CommunityEvents from '../CommunityEvents';
 import GamesView from '../GamesView';
+import AdminView from '../AdminView';
 import AnimatedContent from '../ui/AnimatedContent';
 
 interface TabRouterProps {
@@ -28,6 +29,8 @@ const TabRouter: React.FC<TabRouterProps> = ({ activeTab, onPlayGame }) => {
                 return <CommunityEvents events={COMMUNITY_EVENTS} />;
             case 'Games':
                  return <GamesView onPlay={onPlayGame} />;
+            case 'Admin':
+                return <AdminView />;
             default:
                 return null;
         }
