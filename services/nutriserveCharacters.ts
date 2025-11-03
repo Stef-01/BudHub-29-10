@@ -15,7 +15,7 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             description: "I need a high-protein, hearty meal to refuel after my workout. Not too heavy on the carbs, please!",
             plateSize: 'Hearty',
             diabetesMode: 'Low-Carb',
-            required_items: ['chana_masala'],
+            required_items: ['chicken_curry'], // High protein option with image
         },
         dialogue: {
             intro: "I'm ready to eat! What've you got?",
@@ -36,7 +36,7 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             description: "I'm looking for a balanced, regular-sized meal. Something with good fiber to keep me full. I'm watching my blood sugar.",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
-            required_items: ['palak_dal'],
+            required_items: ['palak_paneer'], // Balanced veggie dish with image
         },
         dialogue: {
             intro: "Hello! I'd like something healthy and balanced, please.",
@@ -57,7 +57,7 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             description: "Just a light lunch for me, please. I'm not too hungry but need to keep my energy up. Low salt would be great.",
             plateSize: 'Light',
             diabetesMode: 'None',
-            required_items: ['sambar'],
+            required_items: ['masala_dosa'], // Light breakfast option with image
         },
         dialogue: {
             intro: "Something light and tasty, if you don't mind.",
