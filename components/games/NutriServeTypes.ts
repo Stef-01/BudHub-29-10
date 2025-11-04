@@ -89,6 +89,7 @@ export interface CustomerOrder {
     plateSize: 'Light' | 'Regular' | 'Hearty';
     diabetesMode: 'None' | 'Balanced' | 'Low-Carb';
     required_items: string[];
+    healthConditions?: string[]; // e.g., ['diabetes', 'hypertension', 'high_cholesterol']
 }
 
 export interface Character {
@@ -99,7 +100,9 @@ export interface Character {
         happy: React.FC;
         sad: React.FC;
     };
-    order: CustomerOrder;
+    // Support both single order (legacy) and multiple variations
+    order?: CustomerOrder;
+    orderVariations?: CustomerOrder[];
     dialogue: {
         intro: string;
         positive: string;

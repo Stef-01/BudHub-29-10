@@ -18,7 +18,7 @@ import GameOverModal from '../GameOverModal';
 import { IconXCircle } from './nutriserve-ui/Icons';
 
 
-const MAX_ROUNDS = 10;
+const MAX_ROUNDS = 20;
 
 type GameState = {
   round: number;
@@ -160,16 +160,16 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
       </div>
 
       {/* Food Request Header Bar */}
-      <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-xl shadow-lg p-4 mb-3">
+      <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-xl shadow-lg p-4 mb-3 animate-slide-down">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white shadow-md">
+          <div className="w-14 h-14 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white shadow-md animate-bounce-in">
             <CharacterVisual />
           </div>
-          <div className="flex-grow">
+          <div className="flex-grow animate-fade-in">
             <p className="text-white font-bold text-lg">{gameState.customer.name}</p>
             <p className="text-slate-200 italic text-base">"{gameState.customer.order.description}"</p>
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 animate-fade-in">
             <span className="bg-white/20 text-white px-4 py-1.5 rounded-full text-sm font-semibold">
               Round {gameState.round}/{MAX_ROUNDS}
             </span>
@@ -196,7 +196,7 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
           <button
             onClick={handleServe}
             disabled={gameState.plateItems.length === 0}
-            className="mt-4 px-8 py-2.5 bg-emerald-600 text-white font-bold text-base rounded-lg shadow-md hover:bg-emerald-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+            className="mt-4 px-8 py-2.5 bg-emerald-600 text-white font-bold text-base rounded-lg shadow-md hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all duration-200 disabled:bg-slate-300 disabled:cursor-not-allowed disabled:hover:scale-100 animate-pulse-slow"
           >
             Serve Plate
           </button>

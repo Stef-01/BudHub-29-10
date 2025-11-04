@@ -22,9 +22,9 @@ const FoodItemCard: React.FC<FoodItemCardProps> = ({ item }) => {
     <div
       draggable
       onDragStart={handleDragStart}
-      className="p-2 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col items-center text-center cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
+      className="p-2 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col items-center text-center cursor-grab active:cursor-grabbing hover:shadow-md hover:scale-105 hover:border-emerald-300 transition-all duration-200 animate-scale-in"
     >
-      <div className="w-14 h-14 mb-1">
+      <div className="w-14 h-14 mb-1 transition-transform duration-200">
         <FoodVisual />
       </div>
       <p className="text-[10px] font-semibold text-slate-700 leading-tight">{item.label}</p>
