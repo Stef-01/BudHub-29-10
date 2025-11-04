@@ -28,10 +28,12 @@ export const useRecipeImage = (recipe: Recipe): {
 
         const resolveImage = async () => {
             setIsLoading(true);
+            console.log(`[useRecipeImage] Loading image for recipe: ${recipe.id} (${recipe.name})`);
 
             const stateFromDb = await getRecipeImageState(recipe.id);
 
             if (isStillMounted) {
+                console.log(`[useRecipeImage] Image state for ${recipe.id}:`, stateFromDb ? `Found (${stateFromDb.key})` : 'Not found, will use emoji');
                 setImageState(stateFromDb);
                 setIsLoading(false);
             }

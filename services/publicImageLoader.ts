@@ -27,13 +27,17 @@ async function imageExists(path: string): Promise<boolean> {
  * Returns the URL if found, null otherwise.
  */
 async function findImageWithExtension(basePath: string, id: string): Promise<string | null> {
+    console.log(`[publicImageLoader] Searching for ${id} in ${basePath}...`);
     for (const ext of IMAGE_EXTENSIONS) {
         const url = `${basePath}${id}.${ext}`;
-        if (await imageExists(url)) {
-            console.log(`Found image: ${url}`);
+        const exists = await imageExists(url);
+        console.log(`[publicImageLoader] Checking ${url}: ${exists ? 'FOUND' : 'not found'}`);
+        if (exists) {
+            console.log(`[publicImageLoader] ✓ Found image: ${url}`);
             return url;
         }
     }
+    console.log(`[publicImageLoader] ✗ No image found for ${id} in ${basePath}`);
     return null;
 }
 
@@ -65,25 +69,35 @@ export async function getRecipeImageUrl(recipeId: string): Promise<string | null
  * @returns Image URL or null if not found
  */
 export async function getRecipeImageUrlUnified(recipeId: string): Promise<string | null> {
+    console.log(`[getRecipeImageUrlUnified] Looking for image for recipe: ${recipeId}`);
+
     // 1. Try recipe images folder first (exact match)
     let imageUrl = await getRecipeImageUrl(recipeId);
-    if (imageUrl) return imageUrl;
+    if (imageUrl) {
+        console.log(`[getRecipeImageUrlUnified] ✓ Found in recipe-images: ${imageUrl}`);
+        return imageUrl;
+    }
 
     // 2. Try food images folder with prefix stripping
     // Recipe IDs use "rcp_<name>", food IDs use "<name>"
     if (recipeId.startsWith('rcp_')) {
         const foodId = recipeId.substring(4); // Remove "rcp_" prefix
+        console.log(`[getRecipeImageUrlUnified] Trying food-images with stripped ID: ${foodId}`);
         imageUrl = await getFoodImageUrl(foodId);
         if (imageUrl) {
-            console.log(`Recipe ${recipeId} using food image for ${foodId} (unified system)`);
+            console.log(`[getRecipeImageUrlUnified] ✓ Recipe ${recipeId} using food image: ${imageUrl}`);
             return imageUrl;
         }
     }
 
     // 3. Try exact match in food images (in case recipe ID format matches food ID)
     imageUrl = await getFoodImageUrl(recipeId);
-    if (imageUrl) return imageUrl;
+    if (imageUrl) {
+        console.log(`[getRecipeImageUrlUnified] ✓ Found in food-images (exact match): ${imageUrl}`);
+        return imageUrl;
+    }
 
+    console.log(`[getRecipeImageUrlUnified] ✗ No image found for ${recipeId}`);
     return null;
 }
 

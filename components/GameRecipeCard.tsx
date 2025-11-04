@@ -14,7 +14,10 @@ interface GameRecipeCardProps {
 }
 
 const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSelected, isCorrect, isRevealed, gameMode }) => {
-  const { imageUrl, isGenerating } = useRecipeImage(recipe);
+  const { imageUrl, isGenerating, status } = useRecipeImage(recipe);
+
+  // Debug logging
+  console.log(`[GameRecipeCard] ${recipe.name}: imageUrl="${imageUrl}", status="${status}", isGenerating=${isGenerating}`);
 
   const getBorderColor = () => {
     if (!isRevealed) {
@@ -31,6 +34,8 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
   
   // Check if imageUrl is a renderable image (URL or data URI), not just an emoji
   const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
+
+  console.log(`[GameRecipeCard] ${recipe.name}: isRenderableImage=${isRenderableImage}, imageUrl starts with: ${imageUrl?.substring(0, 20)}...`);
 
   const feedbackText = useMemo(() => {
     switch (gameMode) {
