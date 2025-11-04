@@ -61,11 +61,11 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
   }, [gameMode, recipe]);
 
   return (
-    <div className="relative w-full h-full" style={{ perspective: '1000px' }}>
+    <div className="relative w-full" style={{ perspective: '1000px' }}>
       <button
         onClick={() => onClick(recipe.id)}
         disabled={isRevealed}
-        className={`w-full bg-white rounded-xl shadow-md overflow-hidden border-4 ${getBorderColor()} transition-all duration-700 transform-gpu`}
+        className={`w-full min-h-80 bg-white rounded-xl shadow-md overflow-hidden border-4 ${getBorderColor()} transition-all duration-700 transform-gpu`}
         style={{
           transformStyle: 'preserve-3d',
           transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
