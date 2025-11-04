@@ -93,7 +93,7 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
         } else {
           setIsGameOver(true);
         }
-      }, 2000);
+      }, 3500);
       return;
     }
 
@@ -126,7 +126,7 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
           setIsGameOver(true);
         }
       }
-    }, 2000); // Reveal for 2 seconds
+    }, 3500); // Reveal for 3.5 seconds to see nutrient values
   };
 
   const handlePlayAgain = () => {

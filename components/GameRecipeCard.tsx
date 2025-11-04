@@ -45,16 +45,41 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
     setImageLoadFailed(true);
   };
 
-  const feedbackText = useMemo(() => {
+  // Get nutrient data for display
+  const nutrientData = useMemo(() => {
     switch (gameMode) {
         case 'high_protein':
-            return recipe.protein_grams != null ? `Protein: ${recipe.protein_grams}g` : (recipe.high_protein ? 'High Protein' : 'Not High Protein');
+            return {
+              value: recipe.protein_grams,
+              unit: 'g',
+              label: 'Protein',
+              maxScale: 25, // For visual bar scaling
+              isHigh: recipe.high_protein,
+            };
         case 'high_fiber':
-            return recipe.fiber_grams != null ? `Fiber: ${recipe.fiber_grams}g` : (recipe.high_fiber ? 'High Fiber' : 'Not High Fiber');
+            return {
+              value: recipe.fiber_grams,
+              unit: 'g',
+              label: 'Fiber',
+              maxScale: 20,
+              isHigh: recipe.high_fiber,
+            };
         case 'low_carb':
-            return recipe.carbs_grams != null ? `Carbs: ${recipe.carbs_grams}g` : (recipe.low_carb ? 'Low Carb' : 'Not Low Carb');
+            return {
+              value: recipe.carbs_grams,
+              unit: 'g',
+              label: 'Carbs',
+              maxScale: 60,
+              isHigh: !recipe.low_carb, // Inverted - high carbs is NOT low carb
+            };
         case 'diabetic_friendly':
-            return recipe.diabetic_friendly ? 'Diabetic Friendly' : 'Not Recommended';
+            return {
+              value: null, // No numeric value for diabetic friendly
+              unit: '',
+              label: 'Blood Sugar Impact',
+              maxScale: 1,
+              isHigh: !recipe.diabetic_friendly, // Inverted - NOT diabetic friendly means high impact
+            };
         default:
             return null;
     }
@@ -95,7 +120,7 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
           </div>
         </div>
 
-        {/* Back Face */}
+        {/* Back Face - Enhanced Nutrient Display */}
         <div
           className="absolute inset-0 backface-hidden"
           style={{
@@ -103,14 +128,48 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
             transform: 'rotateY(180deg)',
           }}
         >
-          <div className={`h-full w-full flex flex-col items-center justify-center p-6 ${isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
-            <div className="text-6xl mb-4">{isCorrect ? '✓' : '✗'}</div>
-            <h3 className="font-bold text-xl text-slate-800 mb-4 text-center">{recipe.name}</h3>
-            {feedbackText && (
-              <div className="text-center">
-                <p className={`font-bold text-2xl ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                  {feedbackText}
-                </p>
+          <div className={`h-full w-full flex flex-col items-center justify-between p-6 ${isCorrect ? 'bg-gradient-to-br from-green-50 to-emerald-100' : 'bg-gradient-to-br from-red-50 to-rose-100'}`}>
+            {/* Result Icon */}
+            <div className={`text-5xl font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+              {isCorrect ? '✓ CORRECT' : '✗ WRONG'}
+            </div>
+
+            {/* Recipe Name */}
+            <h3 className="font-bold text-lg text-slate-800 text-center px-2">{recipe.name}</h3>
+
+            {/* Nutrient Display */}
+            {nutrientData && (
+              <div className="w-full space-y-3">
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-1">
+                    {nutrientData.label}
+                  </p>
+                  {nutrientData.value !== null ? (
+                    <>
+                      <p className={`text-4xl font-bold ${isCorrect ? 'text-green-700' : 'text-slate-800'}`}>
+                        {nutrientData.value}{nutrientData.unit}
+                      </p>
+                      {/* Visual bar showing relative amount */}
+                      <div className="w-full bg-slate-200 rounded-full h-3 mt-3">
+                        <div
+                          className={`h-3 rounded-full transition-all ${
+                            nutrientData.isHigh
+                              ? (isCorrect ? 'bg-green-600' : 'bg-amber-500')
+                              : (isCorrect ? 'bg-blue-500' : 'bg-slate-400')
+                          }`}
+                          style={{ width: `${Math.min(100, (nutrientData.value / nutrientData.maxScale) * 100)}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {nutrientData.isHigh ? (gameMode === 'low_carb' ? 'Higher carbs' : 'High amount') : (gameMode === 'low_carb' ? 'Lower carbs' : 'Lower amount')}
+                      </p>
+                    </>
+                  ) : (
+                    <p className={`text-2xl font-bold ${isCorrect ? 'text-green-700' : 'text-rose-700'}`}>
+                      {recipe.diabetic_friendly ? 'Low Impact ✓' : 'High Impact'}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
