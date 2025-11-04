@@ -33,8 +33,27 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
   const [currentMetric, setCurrentMetric] = useState<'high_protein' | 'high_fiber' | 'low_carb' | 'diabetic_friendly'>('high_protein');
 
   const nextQuestion = useCallback(() => {
+    console.log('[UnifiedNutrientGame] Attempting to generate question...');
+    console.log('[UnifiedNutrientGame] Total recipes in cookbook:', recipes.length);
+
+    if (recipes.length === 0) {
+      console.error('[UnifiedNutrientGame] ❌ No recipes available!');
+      setIsGameOver(true);
+      return;
+    }
+
+    // Show recipe property distribution for debugging
+    const distribution = {
+      high_protein: recipes.filter(r => r.high_protein).length,
+      high_fiber: recipes.filter(r => r.high_fiber).length,
+      low_carb: recipes.filter(r => r.low_carb).length,
+      diabetic_friendly: recipes.filter(r => r.diabetic_friendly).length,
+    };
+    console.log('[UnifiedNutrientGame] Recipe distribution:', distribution);
+
     const newQuestion = generateDynamicNutrientQuestion(recipes);
     if (newQuestion) {
+      console.log('[UnifiedNutrientGame] ✓ Question generated successfully');
       setQuestion(newQuestion);
       setSelectedAnswerId(null);
       setIsRevealed(false);
@@ -49,6 +68,7 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
         else if (correctRecipe.diabetic_friendly) setCurrentMetric('diabetic_friendly');
       }
     } else {
+      console.error('[UnifiedNutrientGame] ❌ Failed to generate question - not enough valid recipes');
       // Not enough recipes to continue, end the game.
       setIsGameOver(true);
     }
