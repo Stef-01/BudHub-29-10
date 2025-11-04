@@ -1,6 +1,6 @@
 // components/GameRecipeCard.tsx
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Recipe, GameMode } from '../types';
 import { useRecipeImage } from '../hooks/useRecipeImage';
 
@@ -15,6 +15,7 @@ interface GameRecipeCardProps {
 
 const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSelected, isCorrect, isRevealed, gameMode }) => {
   const { imageUrl, isGenerating, status } = useRecipeImage(recipe);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
   // Debug logging
   console.log(`[GameRecipeCard] ${recipe.name}: imageUrl="${imageUrl}", status="${status}", isGenerating=${isGenerating}`);
@@ -33,9 +34,16 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
   };
   
   // Check if imageUrl is a renderable image (URL or data URI), not just an emoji
-  const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
+  // If image failed to load, don't try to render it
+  const isRenderableImage = !imageLoadFailed && imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
 
-  console.log(`[GameRecipeCard] ${recipe.name}: isRenderableImage=${isRenderableImage}, imageUrl starts with: ${imageUrl?.substring(0, 20)}...`);
+  console.log(`[GameRecipeCard] ${recipe.name}: isRenderableImage=${isRenderableImage}, imageLoadFailed=${imageLoadFailed}, imageUrl starts with: ${imageUrl?.substring(0, 20)}...`);
+
+  // Handle image load error by falling back to emoji
+  const handleImageError = () => {
+    console.log(`[GameRecipeCard] Image failed to load for ${recipe.name}, falling back to emoji`);
+    setImageLoadFailed(true);
+  };
 
   const feedbackText = useMemo(() => {
     switch (gameMode) {
@@ -71,10 +79,15 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
           <div className="relative h-48 w-full bg-green-50">
             {isGenerating ? (
               <div className="h-full w-full flex items-center justify-center text-gray-500">Loading...</div>
+            ) : isRenderableImage ? (
+              <img
+                className="h-full w-full object-cover"
+                src={imageUrl}
+                alt={recipe.name}
+                onError={handleImageError}
+              />
             ) : (
-              isRenderableImage ?
-              <img className="h-full w-full object-cover" src={imageUrl} alt={recipe.name} /> :
-              <div className="h-full w-full flex items-center justify-center text-6xl">{imageUrl}</div>
+              <div className="h-full w-full flex items-center justify-center text-6xl">{recipe.image || imageUrl}</div>
             )}
           </div>
           <div className="p-4 text-center">
