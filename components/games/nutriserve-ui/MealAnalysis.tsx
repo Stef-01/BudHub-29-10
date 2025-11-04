@@ -18,22 +18,22 @@ const MealAnalysis: React.FC<MealAnalysisProps> = ({ totals, targets }) => {
   };
 
   return (
-    <div className="bg-white p-3 rounded-xl shadow-lg h-full flex flex-col">
-       <div className="flex justify-between items-center mb-2">
-          <h2 className="text-base font-bold text-slate-800">
-              {analysisView === 'meters' ? 'Nutrition Analysis' : 'Glycemic Forecast'}
+    <div className="bg-white p-2 rounded-xl shadow-lg h-full flex flex-col">
+       <div className="flex justify-between items-center mb-1.5">
+          <h2 className="text-sm font-bold text-slate-800">
+              {analysisView === 'meters' ? 'Nutrition' : 'Glycemic'}
           </h2>
-          <div className="flex items-center space-x-1.5">
-              <button onClick={toggleView} className="p-0.5 text-slate-400 hover:text-emerald-600 transition-colors rounded-full"><IconArrowLeftCircle className="w-4 h-4"/></button>
-              <div className="flex space-x-1">
-                  <div className={`w-1.5 h-1.5 rounded-full transition-colors ${analysisView === 'meters' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                  <div className={`w-1.5 h-1.5 rounded-full transition-colors ${analysisView === 'forecast' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+          <div className="flex items-center space-x-1">
+              <button onClick={toggleView} className="p-0.5 text-slate-400 hover:text-emerald-600 transition-colors rounded-full"><IconArrowLeftCircle className="w-3.5 h-3.5"/></button>
+              <div className="flex space-x-0.5">
+                  <div className={`w-1 h-1 rounded-full transition-colors ${analysisView === 'meters' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                  <div className={`w-1 h-1 rounded-full transition-colors ${analysisView === 'forecast' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
               </div>
-              <button onClick={toggleView} className="p-0.5 text-slate-400 hover:text-emerald-600 transition-colors rounded-full"><IconArrowRightCircle className="w-4 h-4"/></button>
+              <button onClick={toggleView} className="p-0.5 text-slate-400 hover:text-emerald-600 transition-colors rounded-full"><IconArrowRightCircle className="w-3.5 h-3.5"/></button>
           </div>
        </div>
        {analysisView === 'meters' ? (
-          <div className="grid grid-cols-1 gap-2 flex-1">
+          <div className="grid grid-cols-1 gap-1.5 flex-1">
               <MacroMeter name="Calories" value={totals.calories_kcal} unit="kcal" target={targets.calories_kcal} mode="band" />
               <MacroMeter name="Protein" value={totals.protein_g} unit="g" target={targets.protein_g} mode="min" />
               <MacroMeter name="Carbs" value={totals.carbs_g} unit="g" target={targets.carbs_g} mode="max" />

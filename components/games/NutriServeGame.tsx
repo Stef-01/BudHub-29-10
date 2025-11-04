@@ -18,7 +18,7 @@ import GameOverModal from '../GameOverModal';
 import { IconXCircle } from './nutriserve-ui/Icons';
 
 
-const MAX_ROUNDS = 3;
+const MAX_ROUNDS = 10;
 
 type GameState = {
   round: number;
@@ -53,12 +53,13 @@ const initialState: GameState = {
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'START_GAME':
-      return { ...initialState, customer: getNewCustomer(), round: 1 };
+      return { ...initialState, customer: getNewCustomer(1), round: 1 };
     case 'NEXT_CUSTOMER':
       if (state.round >= MAX_ROUNDS) {
         return { ...state, view: 'gameover' };
       }
-      return { ...state, round: state.round + 1, customer: getNewCustomer(), plateItems: [], view: 'playing', resultData: null };
+      const nextRound = state.round + 1;
+      return { ...state, round: nextRound, customer: getNewCustomer(nextRound), plateItems: [], view: 'playing', resultData: null };
     case 'ADD_ITEM':
       return { ...state, plateItems: [...state.plateItems, action.payload] };
     case 'REMOVE_ITEM':
@@ -159,17 +160,17 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
       </div>
 
       {/* Food Request Header Bar */}
-      <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl shadow-lg p-3 mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white shadow-md">
+      <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-xl shadow-lg p-4 mb-3">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white shadow-md">
             <CharacterVisual />
           </div>
           <div className="flex-grow">
-            <p className="text-white font-semibold text-sm">{gameState.customer.name}</p>
-            <p className="text-emerald-50 italic text-sm">"{gameState.customer.order.description}"</p>
+            <p className="text-white font-bold text-lg">{gameState.customer.name}</p>
+            <p className="text-slate-200 italic text-base">"{gameState.customer.order.description}"</p>
           </div>
           <div className="flex-shrink-0">
-            <span className="bg-white/20 text-white px-3 py-1 rounded-full text-xs font-semibold">
+            <span className="bg-white/20 text-white px-4 py-1.5 rounded-full text-sm font-semibold">
               Round {gameState.round}/{MAX_ROUNDS}
             </span>
           </div>
