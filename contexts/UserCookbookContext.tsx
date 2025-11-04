@@ -36,35 +36,49 @@ export const UserCookbookProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     useEffect(() => {
         const loadCookbook = async () => {
-            setLoading(true);
-            const [userRecipes, transientRecipes] = await Promise.all([getRecipes(), getTransientRecipes()]);
-            
-            console.log(`Loaded ${userRecipes.length} recipes and ${transientRecipes.length} transient recipes`);
+            try {
+                setLoading(true);
+                console.log('[CookbookContext] Starting cookbook load...');
 
-            // Load main cookbook with self-healing
-            let finalUserRecipes = userRecipes;
-            if (userRecipes.length === 0) {
-                const backupRecipes = restoreUserCookbook();
-                if (backupRecipes && backupRecipes.length > 0) {
-                    // Save all recipes in parallel for faster loading
-                    await Promise.all(backupRecipes.map(recipe => dbSaveRecipe(recipe)));
-                    finalUserRecipes = backupRecipes;
-                } else {
-                    console.log(`[CookbookContext] Initializing cookbook with ${INITIAL_COOKBOOK.length} recipes...`);
-                    // Save all recipes in parallel for faster loading
-                    await Promise.all(INITIAL_COOKBOOK.map(recipe => dbSaveRecipe(recipe)));
-                    finalUserRecipes = INITIAL_COOKBOOK;
-                    console.log(`[CookbookContext] ✓ Cookbook initialized successfully`);
+                const [userRecipes, transientRecipes] = await Promise.all([getRecipes(), getTransientRecipes()]);
+
+                console.log(`[CookbookContext] Loaded ${userRecipes.length} recipes and ${transientRecipes.length} transient recipes`);
+
+                // Load main cookbook with self-healing
+                let finalUserRecipes = userRecipes;
+                if (userRecipes.length === 0) {
+                    const backupRecipes = restoreUserCookbook();
+                    if (backupRecipes && backupRecipes.length > 0) {
+                        console.log(`[CookbookContext] Restoring ${backupRecipes.length} recipes from backup...`);
+                        // Save all recipes in parallel for faster loading
+                        await Promise.all(backupRecipes.map(recipe => dbSaveRecipe(recipe)));
+                        finalUserRecipes = backupRecipes;
+                        console.log(`[CookbookContext] ✓ Backup restored successfully`);
+                    } else {
+                        console.log(`[CookbookContext] Initializing cookbook with ${INITIAL_COOKBOOK.length} recipes...`);
+                        // Save all recipes in parallel for faster loading
+                        await Promise.all(INITIAL_COOKBOOK.map(recipe => dbSaveRecipe(recipe)));
+                        finalUserRecipes = INITIAL_COOKBOOK;
+                        console.log(`[CookbookContext] ✓ Cookbook initialized successfully`);
+                    }
                 }
-            }
-            setRecipes(finalUserRecipes);
+                setRecipes(finalUserRecipes);
 
-            // Load persisted transient state
-            if (transientRecipes.length > 0) {
-                setTransientRecipeState(new Map(transientRecipes.map(r => [r.id, r])));
-            }
+                // Load persisted transient state
+                if (transientRecipes.length > 0) {
+                    setTransientRecipeState(new Map(transientRecipes.map(r => [r.id, r])));
+                }
 
-            setLoading(false);
+                console.log('[CookbookContext] ✓ Cookbook loading complete');
+            } catch (error) {
+                console.error('[CookbookContext] ❌ Error loading cookbook:', error);
+                // Set empty recipes to allow app to load even if there's an error
+                setRecipes([]);
+            } finally {
+                // Always set loading to false, even if there's an error
+                setLoading(false);
+                console.log('[CookbookContext] Loading state set to false');
+            }
         };
         loadCookbook();
     }, []);

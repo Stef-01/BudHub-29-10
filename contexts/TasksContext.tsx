@@ -30,10 +30,18 @@ export const TasksProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   useEffect(() => {
     const loadTaskStates = async () => {
-      setDbStatesLoading(true);
-      const states = await getTaskStates();
-      setCompletedTasks(states);
-      setDbStatesLoading(false);
+      try {
+        setDbStatesLoading(true);
+        console.log('[TasksContext] Loading task states...');
+        const states = await getTaskStates();
+        setCompletedTasks(states);
+        console.log('[TasksContext] ✓ Task states loaded successfully:', Object.keys(states).length, 'tasks');
+      } catch (error) {
+        console.error('[TasksContext] ❌ Error loading task states:', error);
+        setCompletedTasks({});
+      } finally {
+        setDbStatesLoading(false);
+      }
     };
     loadTaskStates();
   }, []);

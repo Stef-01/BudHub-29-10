@@ -20,36 +20,44 @@ export const UserGardenProvider: React.FC<{ children: ReactNode }> = ({ children
 
   useEffect(() => {
     const loadPlants = async () => {
-      setLoading(true);
-      let plants = await getMyPlants();
+      try {
+        setLoading(true);
+        console.log('[UserGardenContext] Loading plants...');
+        let plants = await getMyPlants();
 
-      // Self-Healing Logic
-      if (plants.length === 0) {
-        console.log("Primary garden store is empty, checking for backup...");
-        const backupPlantIds = restoreUserGarden();
-        if (backupPlantIds) {
-          console.log("Found garden backup, restoring...");
-          const restoredPlants = backupPlantIds
-            .map(id => PLANT_CATALOG.find(p => p.id === id))
-            .filter((p): p is Plant => !!p);
-          
-          // Write the restored data back to the primary DB
-          for (const plant of restoredPlants) {
-            await dbAddPlant(plant.id);
-          }
-          plants = restoredPlants;
-          console.log("Garden restored from backup.");
-        } else {
-            console.log("No backup found, initializing with default garden.");
-            // If still no plants, initialize with default. This only runs on true first launch.
-            for (const plant of INITIAL_GARDEN) {
-                await dbAddPlant(plant.id);
+        // Self-Healing Logic
+        if (plants.length === 0) {
+          console.log("Primary garden store is empty, checking for backup...");
+          const backupPlantIds = restoreUserGarden();
+          if (backupPlantIds) {
+            console.log("Found garden backup, restoring...");
+            const restoredPlants = backupPlantIds
+              .map(id => PLANT_CATALOG.find(p => p.id === id))
+              .filter((p): p is Plant => !!p);
+
+            // Write the restored data back to the primary DB
+            for (const plant of restoredPlants) {
+              await dbAddPlant(plant.id);
             }
-            plants = INITIAL_GARDEN;
+            plants = restoredPlants;
+            console.log("Garden restored from backup.");
+          } else {
+              console.log("No backup found, initializing with default garden.");
+              // If still no plants, initialize with default. This only runs on true first launch.
+              for (const plant of INITIAL_GARDEN) {
+                  await dbAddPlant(plant.id);
+              }
+              plants = INITIAL_GARDEN;
+          }
         }
+        setMyPlants(plants);
+        console.log('[UserGardenContext] ✓ Plants loaded successfully:', plants.length, 'plants');
+      } catch (error) {
+        console.error('[UserGardenContext] ❌ Error loading plants:', error);
+        setMyPlants([]);
+      } finally {
+        setLoading(false);
       }
-      setMyPlants(plants);
-      setLoading(false);
     };
     loadPlants();
   }, []);

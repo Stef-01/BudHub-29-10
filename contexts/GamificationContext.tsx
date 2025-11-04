@@ -24,12 +24,22 @@ export const GamificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   useEffect(() => {
     const loadState = async () => {
+      try {
         setLoading(true);
+        console.log('[GamificationContext] Loading gamification state...');
         const { xp, level } = await getGamificationState();
         setXp(xp);
         setLevel(level);
         setPrevLevel(level);
+        console.log('[GamificationContext] ✓ State loaded successfully: Level', level, 'XP', xp);
+      } catch (error) {
+        console.error('[GamificationContext] ❌ Error loading gamification state:', error);
+        setXp(0);
+        setLevel(1);
+        setPrevLevel(1);
+      } finally {
         setLoading(false);
+      }
     };
     loadState();
   }, []);
