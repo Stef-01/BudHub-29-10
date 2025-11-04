@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { GameQuestion } from '../types';
-import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { useGameScores } from '../contexts/GameScoresContext';
 import { useGamification } from '../contexts/GamificationContext';
 import { generateDynamicNutrientQuestion } from '../services/gameService';
+import { RECIPE_CATALOG } from '../constants';
 import GameRecipeCard from './GameRecipeCard';
 import GameOverModal from './GameOverModal';
 import { XIcon } from './icons/Icons';
@@ -19,7 +19,9 @@ interface UnifiedNutrientGameProps {
 type DynamicQuestion = GameQuestion & { challenge: string };
 
 const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => {
-  const { recipes } = useUserCookbook();
+  // Use full RECIPE_CATALOG like the discovery carousel does!
+  // This gives us all 68 recipes with proper distribution
+  const recipes = RECIPE_CATALOG;
   const { saveScore } = useGameScores();
   const { addXp } = useGamification();
 

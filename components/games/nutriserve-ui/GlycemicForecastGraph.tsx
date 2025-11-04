@@ -17,10 +17,10 @@ const GlycemicForecastGraph: React.FC<GlycemicForecastGraphProps> = ({ totalNutr
   const { carbs_g, fiber_g, fat_g } = totalNutrients;
   const curveData = calculateGlycemicCurve(carbs_g, fiber_g, fat_g);
 
-  // SVG dimensions and padding (20% smaller for glucose curve)
-  const width = 240;
-  const height = 144;
-  const padding = { top: 16, right: 16, bottom: 24, left: 24 };
+  // SVG dimensions and padding (30% smaller from original for glucose curve)
+  const width = 210;
+  const height = 126;
+  const padding = { top: 14, right: 14, bottom: 21, left: 21 };
 
   // Calculate scales
   const maxTime = 180; // 3 hours
