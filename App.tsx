@@ -13,6 +13,7 @@ import LoadingScreen from './components/LoadingScreen';
 import GameScreen from './components/GameScreen';
 // FIX: Correctly import NutriServeGame as a module.
 import NutriServeGame from './components/games/NutriServeGame';
+import UnifiedNutrientGame from './components/UnifiedNutrientGame';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('Garden');
@@ -43,6 +44,9 @@ const AppContent: React.FC = () => {
   if (activeGame) {
     if (activeGame === 'nutriserve') {
       return <NutriServeGame onExit={handleExitGame} />;
+    }
+    if (activeGame === 'unified_nutrient') {
+      return <UnifiedNutrientGame onExit={handleExitGame} />;
     }
     return <GameScreen gameMode={activeGame} onExit={handleExitGame} />;
   }

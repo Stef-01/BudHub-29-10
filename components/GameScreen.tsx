@@ -17,13 +17,14 @@ interface GameScreenProps {
   onExit: () => void;
 }
 
-// FIX: Add 'nutriserve' to satisfy the GameMode type.
+// FIX: Add 'nutriserve' and 'unified_nutrient' to satisfy the GameMode type.
 const gameTitles: Record<GameMode, string> = {
     diabetic_friendly: 'Sugar Smart',
     high_protein: 'Protein Packed',
     high_fiber: 'Fiber Finder',
     low_carb: 'Carb Counter',
     nutriserve: 'NutriServe Chef',
+    unified_nutrient: 'Nutrient Challenge',
 };
 
 

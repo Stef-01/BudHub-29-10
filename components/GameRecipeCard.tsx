@@ -47,30 +47,57 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
   }, [gameMode, recipe]);
 
   return (
-    <button
-      onClick={() => onClick(recipe.id)}
-      disabled={isRevealed}
-      className={`w-full bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 border-4 ${getBorderColor()}`}
-    >
-      <div className="relative h-48 w-full bg-green-50">
-        {isGenerating ? (
-          <div className="h-full w-full flex items-center justify-center text-gray-500">Loading...</div>
-        ) : (
-          isRenderableImage ?
-          <img className="h-full w-full object-cover" src={imageUrl} alt={recipe.name} /> :
-          <div className="h-full w-full flex items-center justify-center text-6xl">{imageUrl}</div>
-        )}
+    <div className="relative w-full h-full" style={{ perspective: '1000px' }}>
+      <button
+        onClick={() => onClick(recipe.id)}
+        disabled={isRevealed}
+        className={`w-full bg-white rounded-xl shadow-md overflow-hidden border-4 ${getBorderColor()} transition-all duration-700 transform-gpu`}
+        style={{
+          transformStyle: 'preserve-3d',
+          transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
+        }}
+      >
+        {/* Front Face */}
+        <div
+          className="absolute inset-0 backface-hidden"
+          style={{ backfaceVisibility: 'hidden' }}
+        >
+          <div className="relative h-48 w-full bg-green-50">
+            {isGenerating ? (
+              <div className="h-full w-full flex items-center justify-center text-gray-500">Loading...</div>
+            ) : (
+              isRenderableImage ?
+              <img className="h-full w-full object-cover" src={imageUrl} alt={recipe.name} /> :
+              <div className="h-full w-full flex items-center justify-center text-6xl">{imageUrl}</div>
+            )}
+          </div>
+          <div className="p-4 text-center">
+            <h3 className="font-bold text-lg text-green-900 truncate">{recipe.name}</h3>
+          </div>
+        </div>
 
-        {isRevealed && feedbackText && (
-            <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-2 text-center">
-                <p className="text-white font-bold text-sm">{feedbackText}</p>
-            </div>
-        )}
-      </div>
-      <div className="p-4 text-center">
-        <h3 className="font-bold text-lg text-green-900 truncate">{recipe.name}</h3>
-      </div>
-    </button>
+        {/* Back Face */}
+        <div
+          className="absolute inset-0 backface-hidden"
+          style={{
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)',
+          }}
+        >
+          <div className={`h-full w-full flex flex-col items-center justify-center p-6 ${isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
+            <div className="text-6xl mb-4">{isCorrect ? '✓' : '✗'}</div>
+            <h3 className="font-bold text-xl text-slate-800 mb-4 text-center">{recipe.name}</h3>
+            {feedbackText && (
+              <div className="text-center">
+                <p className={`font-bold text-2xl ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                  {feedbackText}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </button>
+    </div>
   );
 };
 
