@@ -1898,12 +1898,8 @@ export const RECIPE_CATALOG: Recipe[] = [
     }
 ];
 
-export const INITIAL_COOKBOOK: Recipe[] = RECIPE_CATALOG.filter(r => [
-    'rcp_chana_masala', 
-    'rcp_palak_dal',
-    'rcp_bhindi_masala',
-    'rcp_baingan_bharta',
-].includes(r.id));
+// Load all recipes into the initial cookbook to ensure games have enough variety
+export const INITIAL_COOKBOOK: Recipe[] = RECIPE_CATALOG;
 
 // --- COMMUNITY EVENTS ---
 export const COMMUNITY_EVENTS: CommunityEvent[] = [

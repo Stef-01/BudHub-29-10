@@ -32,29 +32,23 @@ const metricChallenges: Record<NutrientMetric, string> = {
     diabetic_friendly: 'Pick the most diabetic-friendly recipe (lowest blood sugar impact)'
 };
 
-// Generate a question with a random metric challenge
-export function generateDynamicNutrientQuestion(allRecipes: Recipe[]): (GameQuestion & { challenge: string }) | null {
-    // Pick a random metric for this question
-    const metric = METRICS[Math.floor(Math.random() * METRICS.length)];
-
-    // 1. Filter for recipes that have images available
-    const eligibleRecipes = allRecipes.filter(hasImageAvailable);
-
-    // 2. Separate recipes into correct and incorrect piles based on the metric
+// Helper function to generate a question for a specific metric
+function generateDynamicNutrientQuestionWithMetric(
+    eligibleRecipes: Recipe[],
+    metric: NutrientMetric
+): (GameQuestion & { challenge: string }) | null {
+    // Separate recipes into correct and incorrect piles
     const correctPile = eligibleRecipes.filter(r => r[metric]);
     const incorrectPile = eligibleRecipes.filter(r => !r[metric]);
 
-    // 3. Check if a valid question can be formed
     if (correctPile.length < 1 || incorrectPile.length < 2) {
-        console.warn(`Cannot generate a '${metric}' question. Not enough recipes.
-            Correct: ${correctPile.length}, Incorrect: ${incorrectPile.length}`);
         return null;
     }
 
-    // 4. Randomly select one recipe from the correct pile
+    // Randomly select one recipe from the correct pile
     const correctRecipe = correctPile[Math.floor(Math.random() * correctPile.length)];
 
-    // 5. Select two incorrect recipes, maximizing diversity of food groups ('course')
+    // Select two incorrect recipes, maximizing diversity of food groups ('course')
     const incorrectOptions: Recipe[] = [];
     const remainingIncorrect = shuffleArray([...incorrectPile]);
 
@@ -89,18 +83,65 @@ export function generateDynamicNutrientQuestion(allRecipes: Recipe[]): (GameQues
     }
 
     if (incorrectOptions.length < 2) {
-        console.warn(`Could not find two suitable incorrect options for '${metric}'.`);
         return null;
     }
 
-    // 6. Combine and shuffle the final options
+    // Combine and shuffle the final options
     const options = shuffleArray([correctRecipe, ...incorrectOptions]);
+
+    console.log(`[NutrientGame] ✓ Generated question for ${metric}:`, {
+        challenge: metricChallenges[metric],
+        correctRecipe: correctRecipe.name,
+        options: options.map(r => r.name)
+    });
 
     return {
         options,
         correctAnswerId: correctRecipe.id,
         challenge: metricChallenges[metric],
     };
+}
+
+// Generate a question with a random metric challenge
+export function generateDynamicNutrientQuestion(allRecipes: Recipe[]): (GameQuestion & { challenge: string }) | null {
+    console.log(`[NutrientGame] Total recipes available: ${allRecipes.length}`);
+
+    // Pick a random metric for this question
+    const metric = METRICS[Math.floor(Math.random() * METRICS.length)];
+    console.log(`[NutrientGame] Selected metric: ${metric}`);
+
+    // 1. Filter for recipes that have images available
+    const eligibleRecipes = allRecipes.filter(hasImageAvailable);
+    console.log(`[NutrientGame] Eligible recipes with images: ${eligibleRecipes.length}`);
+
+    // 2. Separate recipes into correct and incorrect piles based on the metric
+    const correctPile = eligibleRecipes.filter(r => r[metric]);
+    const incorrectPile = eligibleRecipes.filter(r => !r[metric]);
+    console.log(`[NutrientGame] ${metric} - Correct: ${correctPile.length}, Incorrect: ${incorrectPile.length}`);
+
+    // 3. Check if a valid question can be formed
+    if (correctPile.length < 1 || incorrectPile.length < 2) {
+        console.error(`[NutrientGame] ❌ Cannot generate a '${metric}' question. Not enough recipes.
+            Correct (${metric}=true): ${correctPile.length}, Incorrect (${metric}=false): ${incorrectPile.length}
+            Need: At least 1 correct and 2 incorrect recipes.`);
+
+        // Try again with a different metric
+        const remainingMetrics = METRICS.filter(m => m !== metric);
+        for (const fallbackMetric of remainingMetrics) {
+            const fallbackCorrect = eligibleRecipes.filter(r => r[fallbackMetric]);
+            const fallbackIncorrect = eligibleRecipes.filter(r => !r[fallbackMetric]);
+            console.log(`[NutrientGame] Trying fallback metric: ${fallbackMetric} - Correct: ${fallbackCorrect.length}, Incorrect: ${fallbackIncorrect.length}`);
+
+            if (fallbackCorrect.length >= 1 && fallbackIncorrect.length >= 2) {
+                console.log(`[NutrientGame] ✓ Using fallback metric: ${fallbackMetric}`);
+                return generateDynamicNutrientQuestionWithMetric(eligibleRecipes, fallbackMetric);
+            }
+        }
+
+        return null;
+    }
+
+    return generateDynamicNutrientQuestionWithMetric(eligibleRecipes, metric);
 }
 
 export function generateQuestion(gameMode: GameMode, allRecipes: Recipe[]): GameQuestion | null {
