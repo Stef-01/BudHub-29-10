@@ -94,55 +94,61 @@ const ResultModal: React.FC<ResultModalProps> = ({ score, customer, feedback, on
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 text-center animate-jump-in max-h-[90vh] overflow-y-auto">
-        
-        <div className="w-24 h-24 mx-auto">
-            <CharacterVisual />
-        </div>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col animate-jump-in">
 
-        <h2 className="text-2xl font-bold text-slate-800 mt-2">Order Complete!</h2>
-        <p className="text-slate-600 italic mt-2 p-2 bg-slate-50 rounded-lg">"{dialogue}" - {customer.name}</p>
-        
-        {mainDish && (
-          <div className="my-4">
-            <p className="text-sm text-slate-600 font-semibold mb-2">
-              You prepared: {mainDish.foodItem.label}
-            </p>
-            <DishImageDisplay
-              foodItemId={mainDish.foodItem.id}
-              fallbackVisual={mainDish.foodItem.visual}
-              maxHeight="180px"
-            />
+        {/* Scrollable content area */}
+        <div className="p-6 text-center overflow-y-auto flex-1">
+          <div className="w-20 h-20 mx-auto">
+              <CharacterVisual />
           </div>
-        )}
 
-        <p className={`text-6xl font-extrabold my-4 ${isSuccess ? 'text-emerald-600' : 'text-rose-500'}`}>
-            +{score}
-        </p>
-        
-        <div className="space-y-1.5 text-left my-6 text-xs">
-            {Object.entries(feedback).map(([nutrient, status]) => {
-                const message = generateConditionFeedback(
-                    nutrient,
-                    status as NutrientStatus,
-                    customer.order.diabetesMode,
-                    customer.name
-                );
-                return (
-                    <div key={nutrient} className={`p-2 rounded-md font-semibold ${status === 'good' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                        {message}
-                    </div>
-                )
-            })}
+          <h2 className="text-xl font-bold text-slate-800 mt-2">Order Complete!</h2>
+          <p className="text-slate-600 italic mt-1 p-2 bg-slate-50 rounded-lg text-sm">"{dialogue}" - {customer.name}</p>
+
+          {mainDish && (
+            <div className="my-3">
+              <p className="text-xs text-slate-600 font-semibold mb-2">
+                You prepared: {mainDish.foodItem.label}
+              </p>
+              <DishImageDisplay
+                foodItemId={mainDish.foodItem.id}
+                fallbackVisual={mainDish.foodItem.visual}
+                maxHeight="140px"
+              />
+            </div>
+          )}
+
+          <p className={`text-5xl font-extrabold my-3 ${isSuccess ? 'text-emerald-600' : 'text-rose-500'}`}>
+              +{score}
+          </p>
+
+          <div className="space-y-1.5 text-left my-4 text-xs">
+              {Object.entries(feedback).map(([nutrient, status]) => {
+                  const message = generateConditionFeedback(
+                      nutrient,
+                      status as NutrientStatus,
+                      customer.order.diabetesMode,
+                      customer.name
+                  );
+                  return (
+                      <div key={nutrient} className={`p-2 rounded-md font-semibold ${status === 'good' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                          {message}
+                      </div>
+                  )
+              })}
+          </div>
         </div>
-        
-        <button
-          onClick={onNext}
-          className="w-full flex items-center justify-center px-4 py-3 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 transition-colors"
-        >
-          {isLastRound ? 'Finish Game' : 'Next Customer'}
-          <IconArrowRightCircle className="ml-2 h-5 w-5"/>
-        </button>
+
+        {/* Fixed button at bottom */}
+        <div className="p-4 border-t border-slate-200 flex-shrink-0">
+          <button
+            onClick={onNext}
+            className="w-full flex items-center justify-center px-4 py-3 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 transition-colors"
+          >
+            {isLastRound ? 'Finish Game' : 'Next Customer'}
+            <IconArrowRightCircle className="ml-2 h-5 w-5"/>
+          </button>
+        </div>
       </div>
     </div>
   );

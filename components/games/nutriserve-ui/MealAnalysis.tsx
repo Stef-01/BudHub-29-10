@@ -30,15 +30,15 @@ const MealAnalysis: React.FC<MealAnalysisProps> = ({ totals, targets }) => {
     };
   }, [showTooltip]);
   return (
-    <div className="bg-white p-2 rounded-xl shadow-lg h-full flex flex-col">
-       <div className="mb-1.5">
-          <h2 className="text-sm font-bold text-slate-800">
+    <div className="bg-white p-3 rounded-xl shadow-lg h-full flex flex-col">
+       <div className="mb-2">
+          <h2 className="text-base font-bold text-slate-800">
               Nutrition Analysis
           </h2>
        </div>
 
-       {/* Macro Meters - Compact Grid */}
-       <div className="grid grid-cols-2 gap-1 mb-2">
+       {/* Macro Meters - 30% Larger */}
+       <div className="grid grid-cols-2 gap-2 mb-3">
            <MacroMeter name="Cal" value={totals.calories_kcal} unit="kcal" target={targets.calories_kcal} mode="band" />
            <MacroMeter name="Prot" value={totals.protein_g} unit="g" target={targets.protein_g} mode="min" />
            <MacroMeter name="Carbs" value={totals.carbs_g} unit="g" target={targets.carbs_g} mode="max" />

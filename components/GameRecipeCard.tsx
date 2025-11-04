@@ -29,7 +29,8 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
     return 'border-gray-200 opacity-60';
   };
   
-  const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:'));
+  // Check if imageUrl is a renderable image (URL or data URI), not just an emoji
+  const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
 
   const feedbackText = useMemo(() => {
     switch (gameMode) {
