@@ -146,40 +146,64 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
     return <div>Loading...</div>; // Or a loading screen
   }
 
+  const CharacterVisual = gameState.customer.visuals.default;
+
   return (
-    <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold text-emerald-700">NutriServe Chef</h1>
-        <button onClick={onExit} className="p-2 rounded-full text-slate-500 hover:bg-slate-200">
-            <IconXCircle className="h-8 w-8" />
+    <div className="p-3 md:p-4 bg-slate-50 min-h-screen max-h-screen overflow-hidden flex flex-col">
+      {/* Top Header: Title + Exit */}
+      <div className="flex justify-between items-center mb-3">
+        <h1 className="text-2xl font-bold text-emerald-700">NutriServe Chef</h1>
+        <button onClick={onExit} className="p-1.5 rounded-full text-slate-500 hover:bg-slate-200">
+            <IconXCircle className="h-7 w-7" />
         </button>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      {/* Food Request Header Bar */}
+      <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl shadow-lg p-3 mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white shadow-md">
+            <CharacterVisual />
+          </div>
+          <div className="flex-grow">
+            <p className="text-white font-semibold text-sm">{gameState.customer.name}</p>
+            <p className="text-emerald-50 italic text-sm">"{gameState.customer.order.description}"</p>
+          </div>
+          <div className="flex-shrink-0">
+            <span className="bg-white/20 text-white px-3 py-1 rounded-full text-xs font-semibold">
+              Round {gameState.round}/{MAX_ROUNDS}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Game Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0">
         {/* Left Column: Food Library */}
-        <div className="lg:col-span-3 h-[80vh]">
+        <div className="lg:col-span-3 overflow-y-auto">
           <FoodLibrary />
         </div>
-        
+
         {/* Center Column: Plate */}
         <div className="lg:col-span-5 flex flex-col items-center justify-center">
-          <Plate 
-            items={gameState.plateItems} 
+          <Plate
+            items={gameState.plateItems}
             onEditItem={() => {}} // Edit functionality can be added here
             onRemoveItem={handleRemoveItem}
             onDropItem={handleDropItem}
             plateSize={gameState.customer.order.plateSize}
           />
+          <button
+            onClick={handleServe}
+            disabled={gameState.plateItems.length === 0}
+            className="mt-4 px-8 py-2.5 bg-emerald-600 text-white font-bold text-base rounded-lg shadow-md hover:bg-emerald-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+          >
+            Serve Plate
+          </button>
         </div>
-        
-        {/* Right Column: Customer & Analysis */}
-        <div className="lg:col-span-4 space-y-6">
-            <CustomerDisplay 
-                customer={gameState.customer}
-                onServe={handleServe}
-                isPlateEmpty={gameState.plateItems.length === 0}
-            />
-            <MealAnalysis 
+
+        {/* Right Column: Meal Analysis */}
+        <div className="lg:col-span-4 overflow-y-auto">
+            <MealAnalysis
                 totals={mealTotals()}
                 targets={gameState.customer.targets}
             />
