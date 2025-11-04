@@ -46,11 +46,15 @@ export const UserCookbookProvider: React.FC<{ children: ReactNode }> = ({ childr
             if (userRecipes.length === 0) {
                 const backupRecipes = restoreUserCookbook();
                 if (backupRecipes && backupRecipes.length > 0) {
-                    for (const recipe of backupRecipes) { await dbSaveRecipe(recipe); }
+                    // Save all recipes in parallel for faster loading
+                    await Promise.all(backupRecipes.map(recipe => dbSaveRecipe(recipe)));
                     finalUserRecipes = backupRecipes;
                 } else {
-                    for (const recipe of INITIAL_COOKBOOK) { await dbSaveRecipe(recipe); }
+                    console.log(`[CookbookContext] Initializing cookbook with ${INITIAL_COOKBOOK.length} recipes...`);
+                    // Save all recipes in parallel for faster loading
+                    await Promise.all(INITIAL_COOKBOOK.map(recipe => dbSaveRecipe(recipe)));
                     finalUserRecipes = INITIAL_COOKBOOK;
+                    console.log(`[CookbookContext] ✓ Cookbook initialized successfully`);
                 }
             }
             setRecipes(finalUserRecipes);
