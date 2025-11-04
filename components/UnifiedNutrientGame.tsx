@@ -1,11 +1,11 @@
 // components/UnifiedNutrientGame.tsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameMode, GameQuestion } from '../types';
+import type { GameQuestion } from '../types';
 import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { useGameScores } from '../contexts/GameScoresContext';
 import { useGamification } from '../contexts/GamificationContext';
-import { generateQuestion } from '../services/gameService';
+import { generateDynamicNutrientQuestion } from '../services/gameService';
 import GameRecipeCard from './GameRecipeCard';
 import GameOverModal from './GameOverModal';
 import { XIcon } from './icons/Icons';
@@ -16,72 +16,50 @@ interface UnifiedNutrientGameProps {
   onExit: () => void;
 }
 
-type NutrientMetric = 'high_protein' | 'high_fiber' | 'low_carb' | 'diabetic_friendly';
-
-const metricInfo: Record<NutrientMetric, { title: string; description: string; icon: string; color: string }> = {
-  high_protein: {
-    title: 'Protein Packed',
-    description: 'Identify the recipe with the highest protein content to build muscle.',
-    icon: '💪',
-    color: 'from-yellow-400 to-yellow-600'
-  },
-  high_fiber: {
-    title: 'Fiber Finder',
-    description: 'Find the meal that\'s best for gut health and feeling full.',
-    icon: '🌾',
-    color: 'from-green-400 to-green-600'
-  },
-  low_carb: {
-    title: 'Carb Counter',
-    description: 'Pick the recipe with the lowest carbohydrate count.',
-    icon: '🥗',
-    color: 'from-purple-400 to-purple-600'
-  },
-  diabetic_friendly: {
-    title: 'Sugar Smart',
-    description: 'Which of these recipes is best for managing blood sugar levels?',
-    icon: '❤️',
-    color: 'from-blue-400 to-blue-600'
-  }
-};
+type DynamicQuestion = GameQuestion & { challenge: string };
 
 const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => {
   const { recipes } = useUserCookbook();
   const { saveScore } = useGameScores();
   const { addXp } = useGamification();
 
-  const [selectedMetric, setSelectedMetric] = useState<NutrientMetric | null>(null);
-  const [question, setQuestion] = useState<GameQuestion | null>(null);
+  const [question, setQuestion] = useState<DynamicQuestion | null>(null);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [timer, setTimer] = useState(ROUND_TIME);
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [currentMetric, setCurrentMetric] = useState<'high_protein' | 'high_fiber' | 'low_carb' | 'diabetic_friendly'>('high_protein');
 
   const nextQuestion = useCallback(() => {
-    if (!selectedMetric) return;
-
-    const newQuestion = generateQuestion(selectedMetric, recipes);
+    const newQuestion = generateDynamicNutrientQuestion(recipes);
     if (newQuestion) {
       setQuestion(newQuestion);
       setSelectedAnswerId(null);
       setIsRevealed(false);
       setTimer(ROUND_TIME);
+
+      // Determine which metric this question is testing (for card display)
+      const correctRecipe = newQuestion.options.find(r => r.id === newQuestion.correctAnswerId);
+      if (correctRecipe) {
+        if (correctRecipe.high_protein) setCurrentMetric('high_protein');
+        else if (correctRecipe.high_fiber) setCurrentMetric('high_fiber');
+        else if (correctRecipe.low_carb) setCurrentMetric('low_carb');
+        else if (correctRecipe.diabetic_friendly) setCurrentMetric('diabetic_friendly');
+      }
     } else {
       // Not enough recipes to continue, end the game.
       setIsGameOver(true);
     }
-  }, [selectedMetric, recipes]);
+  }, [recipes]);
 
   useEffect(() => {
-    if (selectedMetric) {
-      nextQuestion();
-    }
-  }, [selectedMetric, nextQuestion]);
+    nextQuestion();
+  }, [nextQuestion]);
 
   useEffect(() => {
-    if (isRevealed || isGameOver || !selectedMetric) return;
+    if (isRevealed || isGameOver) return;
 
     if (timer <= 0) {
       // Time's up
@@ -102,10 +80,10 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timer, isRevealed, isGameOver, lives, nextQuestion, selectedMetric]);
+  }, [timer, isRevealed, isGameOver, lives, nextQuestion]);
 
   const handleAnswerClick = (recipeId: string) => {
-    if (isRevealed || !selectedMetric) return;
+    if (isRevealed) return;
 
     setSelectedAnswerId(recipeId);
     setIsRevealed(true);
@@ -133,71 +111,34 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
     setScore(0);
     setLives(3);
     setIsGameOver(false);
-    setSelectedMetric(null);
     setQuestion(null);
+    nextQuestion();
   };
 
   const handleExit = () => {
-    if (score > 0 && selectedMetric) {
-      saveScore(selectedMetric, score);
+    if (score > 0) {
+      // Save under unified_nutrient mode
+      saveScore('unified_nutrient', score);
     }
     onExit();
   };
 
-  // Metric Selection Screen
-  if (!selectedMetric) {
-    return (
-      <div className="p-4 md:p-6 min-h-screen bg-gradient-to-br from-emerald-50 to-green-100">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-green-900">Nutrient Challenge</h2>
-          <button onClick={handleExit} className="p-2 rounded-full text-gray-500 hover:bg-white/50">
-            <XIcon className="h-6 w-6" />
-          </button>
-        </div>
-
-        <p className="text-center text-lg text-slate-700 mb-8">
-          Choose which nutrient you want to focus on:
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          {(Object.keys(metricInfo) as NutrientMetric[]).map(metric => {
-            const info = metricInfo[metric];
-            return (
-              <button
-                key={metric}
-                onClick={() => setSelectedMetric(metric)}
-                className={`bg-gradient-to-br ${info.color} p-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-white`}
-              >
-                <div className="text-6xl mb-4">{info.icon}</div>
-                <h3 className="text-2xl font-bold mb-2">{info.title}</h3>
-                <p className="text-sm opacity-90">{info.description}</p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // Game Screen
   if (!question) {
     return (
       <div className="text-center p-8">
         <h3 className="text-xl font-semibold">Loading Game...</h3>
         <p className="text-gray-500 mt-2">
-          Not enough recipes with images to play this mode. Try adding more recipes or generating images.
+          Not enough recipes to play this mode. Try adding more recipes from your cookbook.
         </p>
         <button onClick={handleExit} className="mt-4 px-4 py-2 bg-gray-200 rounded-lg">Back to Games</button>
       </div>
     );
   }
 
-  const currentMetricInfo = metricInfo[selectedMetric];
-
   return (
     <div className="p-4 md:p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-green-900">{currentMetricInfo.title}</h2>
+        <h2 className="text-2xl font-bold text-green-900">Nutrient Challenge</h2>
         <button onClick={handleExit} className="p-2 rounded-full text-gray-500 hover:bg-gray-200">
           <XIcon className="h-6 w-6" />
         </button>
@@ -209,11 +150,18 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
         <div>Time: <span className="font-bold text-xl">{timer}</span></div>
       </div>
 
-      <div className="relative w-full bg-gray-200 rounded-full h-2.5 mb-6">
+      <div className="relative w-full bg-gray-200 rounded-full h-2.5 mb-4">
         <div
           className="bg-green-600 h-2.5 rounded-full transition-all duration-1000 linear"
           style={{ width: `${(timer / ROUND_TIME) * 100}%` }}
         ></div>
+      </div>
+
+      {/* Challenge Text */}
+      <div className="mb-6 text-center">
+        <h3 className="text-2xl font-bold text-emerald-700 bg-gradient-to-r from-emerald-50 to-green-50 p-4 rounded-xl shadow-md">
+          {question.challenge}
+        </h3>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -225,7 +173,7 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
             isSelected={selectedAnswerId === recipe.id}
             isCorrect={question.correctAnswerId === recipe.id}
             isRevealed={isRevealed}
-            gameMode={selectedMetric}
+            gameMode={currentMetric}
           />
         ))}
       </div>
