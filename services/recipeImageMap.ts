@@ -92,6 +92,34 @@ export const RECIPE_IMAGE_FILENAME_MAP: Record<string, string> = {
 };
 
 /**
+ * Static mapping of NutriServe food IDs to their actual image filenames.
+ * NutriServe uses different IDs than recipes (e.g., "mathi_sardine_curry" vs "rcp_mathi_curry").
+ */
+export const NUTRISERVE_FOOD_IMAGE_MAP: Record<string, string> = {
+    // NutriServe-specific mappings
+    'moringa_leaf_thoran': 'Moringa_Leaf_Thoran__Drumstick_Leaves_',
+    'okra_pachadi': 'Okra_Pachadi',
+    'dosa_plain': 'dosa',
+    'mathi_sardine_curry': 'mathi_kerala_sardine_curry',
+    'beans_carrot_thoran': 'Beans___Carrot_Thoran',
+    'kerala_lamb_curry': 'keralan_lamb_curry',
+
+    // Other NutriServe foods that match recipe IDs (without rcp_ prefix)
+    'chana_masala': 'chana_masala',
+    'palak_dal': 'palak_dal',
+    'lemon_rice': 'lemon_rice',
+    'masala_dosa': 'masala_dosa',
+    'idli_plain': 'idili',
+    'kerala_sambar': 'Kerala_Sambar__Vegetable_Lentil_Stew_',
+    'kadala_curry': 'Kadala_Curry__Brown_Chickpea_Curry_',
+    'banana_flower_thoran': 'Banana_Flower_Thoran',
+    'jackfruit_seeds_thoran': 'Jackfruit_Seeds_Thoran__Chakkakuru_Thoran_',
+    'malabar_spinach_curry': 'Malabar_Spinach_Curry__Basella_Stew_',
+    'bottle_gourd_kootu': 'Bottle_Gourd_Kootu',
+    'mashed_tapioca': 'Mashed_Tapioca__Kappa_Vevichathu_',
+};
+
+/**
  * Gets the actual filename for a recipe's image from the mapping.
  * Returns null if no mapping exists (will fallback to emoji).
  *
@@ -100,4 +128,15 @@ export const RECIPE_IMAGE_FILENAME_MAP: Record<string, string> = {
  */
 export function getRecipeImageFilename(recipeId: string): string | null {
     return RECIPE_IMAGE_FILENAME_MAP[recipeId] || null;
+}
+
+/**
+ * Gets the actual filename for a NutriServe food image from the mapping.
+ * Returns null if no mapping exists.
+ *
+ * @param foodId - The food ID (e.g., "mathi_sardine_curry")
+ * @returns The actual filename without extension, or null if not mapped
+ */
+export function getNutriServeFoodImageFilename(foodId: string): string | null {
+    return NUTRISERVE_FOOD_IMAGE_MAP[foodId] || null;
 }

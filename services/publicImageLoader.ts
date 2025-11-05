@@ -8,7 +8,7 @@
 
 import { RECIPE_CATALOG } from '../constants';
 import type { Recipe } from '../types';
-import { getRecipeImageFilename } from './recipeImageMap';
+import { getRecipeImageFilename, getNutriServeFoodImageFilename } from './recipeImageMap';
 
 const FOOD_IMAGES_BASE = '/dataset/food-images/';
 const RECIPE_IMAGES_BASE = '/dataset/recipe-images/';
@@ -111,6 +111,25 @@ async function imageExists(url: string): Promise<boolean> {
  * @returns Image URL (optimistic)
  */
 export async function getFoodImageUrl(foodId: string, recipeName?: string): Promise<string | null> {
+    console.log(`[getFoodImageUrl] Looking for image for food: ${foodId}`);
+
+    // PRIORITY 1: Check static mapping for NutriServe foods (most reliable)
+    const mappedFilename = getNutriServeFoodImageFilename(foodId);
+    if (mappedFilename) {
+        // Try each extension for the mapped filename
+        for (const ext of IMAGE_EXTENSIONS) {
+            const url = `${FOOD_IMAGES_BASE}${mappedFilename}.${ext}`;
+            const exists = await imageExists(url);
+            if (exists) {
+                console.log(`[getFoodImageUrl] ✓ Found mapped image: ${url}`);
+                return url;
+            }
+        }
+    }
+
+    // PRIORITY 2: Fallback to pattern matching
+    console.log(`[getFoodImageUrl] No mapping found, trying pattern matching...`);
+
     // Try variations in order of likelihood
     const variations = [];
 
