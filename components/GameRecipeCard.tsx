@@ -45,40 +45,49 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
     setImageLoadFailed(true);
   };
 
-  // Get nutrient data for display
-  const nutrientData = useMemo(() => {
+  // Get nutrient data and thresholds for detailed display
+  const nutrientInfo = useMemo(() => {
     switch (gameMode) {
         case 'high_protein':
             return {
-              value: recipe.protein_grams,
+              value: recipe.protein_grams ?? 0,
               unit: 'g',
               label: 'Protein',
-              maxScale: 25, // For visual bar scaling
-              isHigh: recipe.high_protein,
+              threshold: 15, // High protein threshold
+              maxScale: 30, // For visual bar scaling
+              isAboveThreshold: recipe.high_protein,
+              targetText: '≥15g = High Protein'
             };
         case 'high_fiber':
             return {
-              value: recipe.fiber_grams,
+              value: recipe.fiber_grams ?? 0,
               unit: 'g',
               label: 'Fiber',
+              threshold: 8,
               maxScale: 20,
-              isHigh: recipe.high_fiber,
+              isAboveThreshold: recipe.high_fiber,
+              targetText: '≥8g = High Fiber'
             };
         case 'low_carb':
             return {
-              value: recipe.carbs_grams,
+              value: recipe.carbs_grams ?? 0,
               unit: 'g',
               label: 'Carbs',
+              threshold: 20,
               maxScale: 60,
-              isHigh: !recipe.low_carb, // Inverted - high carbs is NOT low carb
+              isAboveThreshold: !recipe.low_carb, // Inverted logic
+              targetText: '≤20g = Low Carb',
+              invertedLogic: true // Low value is the goal
             };
         case 'diabetic_friendly':
             return {
-              value: null, // No numeric value for diabetic friendly
+              value: null,
               unit: '',
               label: 'Blood Sugar Impact',
+              threshold: 0,
               maxScale: 1,
-              isHigh: !recipe.diabetic_friendly, // Inverted - NOT diabetic friendly means high impact
+              isAboveThreshold: !recipe.diabetic_friendly,
+              targetText: recipe.diabetic_friendly ? 'Diabetic Friendly ✓' : 'Not Recommended ✗'
             };
         default:
             return null;
@@ -120,18 +129,33 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
           </div>
         </div>
 
-        {/* Back Face - Enhanced Nutrient Display */}
-        <div
-          className="absolute inset-0 backface-hidden"
-          style={{
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
-          }}
-        >
-          <div className={`h-full w-full flex flex-col items-center justify-between p-6 ${isCorrect ? 'bg-gradient-to-br from-green-50 to-emerald-100' : 'bg-gradient-to-br from-red-50 to-rose-100'}`}>
-            {/* Result Icon */}
-            <div className={`text-5xl font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-              {isCorrect ? '✓ CORRECT' : '✗ WRONG'}
+        {isRevealed && nutrientInfo && (
+            <div className="absolute bottom-0 left-0 right-0 bg-black/90 p-3">
+                {nutrientInfo.value !== null ? (
+                  <>
+                    <div className="text-white text-xs mb-1 font-semibold">{nutrientInfo.label}</div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 bg-gray-700 h-4 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all ${
+                            isCorrect ? 'bg-green-500' : 'bg-red-500'
+                          }`}
+                          style={{
+                            width: `${Math.min((nutrientInfo.value / nutrientInfo.maxScale) * 100, 100)}%`
+                          }}
+                        />
+                      </div>
+                      <span className="text-white font-bold text-sm min-w-[3rem] text-right">
+                        {nutrientInfo.value}{nutrientInfo.unit}
+                      </span>
+                    </div>
+                    <div className="text-gray-300 text-xs">{nutrientInfo.targetText}</div>
+                  </>
+                ) : (
+                  <div className="text-white text-sm font-semibold text-center">
+                    {nutrientInfo.targetText}
+                  </div>
+                )}
             </div>
 
             {/* Recipe Name */}
