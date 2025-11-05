@@ -10,7 +10,7 @@ import GameRecipeCard from './GameRecipeCard';
 import GameOverModal from './GameOverModal';
 import { XIcon } from './icons/Icons';
 
-const ROUND_TIME = 10; // seconds
+const ROUND_TIME = 15; // seconds
 
 interface UnifiedNutrientGameProps {
   onExit: () => void;
@@ -61,13 +61,16 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
       setIsRevealed(false);
       setTimer(ROUND_TIME);
 
-      // Determine which metric this question is testing (for card display)
-      const correctRecipe = newQuestion.options.find(r => r.id === newQuestion.correctAnswerId);
-      if (correctRecipe) {
-        if (correctRecipe.high_protein) setCurrentMetric('high_protein');
-        else if (correctRecipe.high_fiber) setCurrentMetric('high_fiber');
-        else if (correctRecipe.low_carb) setCurrentMetric('low_carb');
-        else if (correctRecipe.diabetic_friendly) setCurrentMetric('diabetic_friendly');
+      // Determine which metric this question is testing based on the challenge text
+      const challenge = newQuestion.challenge.toLowerCase();
+      if (challenge.includes('protein')) {
+        setCurrentMetric('high_protein');
+      } else if (challenge.includes('fiber')) {
+        setCurrentMetric('high_fiber');
+      } else if (challenge.includes('carb')) {
+        setCurrentMetric('low_carb');
+      } else if (challenge.includes('diabetic') || challenge.includes('blood sugar')) {
+        setCurrentMetric('diabetic_friendly');
       }
     } else {
       console.error('[UnifiedNutrientGame] ❌ Failed to generate question - not enough valid recipes');

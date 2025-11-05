@@ -87,6 +87,17 @@ export const RECIPE_IMAGE_FILENAME_MAP: Record<string, string> = {
     'rcp_dosa_plain': 'dosa',
     'rcp_idli_plain': 'idili',
 
+    // Beverages
+    'rcp_masala_chai_low_sugar': 'Masala_Chai__Low_Sugar_',
+    'rcp_turmeric_milk': 'Golden_Milk__Turmeric_Latte_',
+
+    // Snacks & Sides
+    'rcp_bruschetta': 'Tomato___Basil_Bruschetta',
+    'rcp_coconut_chutney': 'Coconut_Chutney__Thenga_Chammanthi_',
+
+    // Green Gram Curry (same as Kerala Parippu - Moong Dal)
+    'rcp_green_gram_curry': 'Kerala_Parippu_Curry__Moong_Dal_',
+
     // Special case - fallbacks for recipes without exact matches
     // These will fallback to emoji if image not found
 };
@@ -103,6 +114,10 @@ export const NUTRISERVE_FOOD_IMAGE_MAP: Record<string, string> = {
     'mathi_sardine_curry': 'mathi_kerala_sardine_curry',
     'beans_carrot_thoran': 'Beans___Carrot_Thoran',
     'kerala_lamb_curry': 'keralan_lamb_curry',
+    'kerala_beef_curry': 'keralan_beef_curry',
+    'moru_curry_pulissery': 'moru_curry__pulissery_',
+    'kerala_parippu_curry': 'Kerala_Parippu_Curry__Moong_Dal_',
+    'rice_brown': 'rice_brown',
 
     // Other NutriServe foods that match recipe IDs (without rcp_ prefix)
     'chana_masala': 'chana_masala',

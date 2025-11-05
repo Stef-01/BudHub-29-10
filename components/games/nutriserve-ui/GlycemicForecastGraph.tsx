@@ -17,10 +17,10 @@ const GlycemicForecastGraph: React.FC<GlycemicForecastGraphProps> = ({ totalNutr
   const { carbs_g, fiber_g, fat_g } = totalNutrients;
   const curveData = calculateGlycemicCurve(carbs_g, fiber_g, fat_g);
 
-  // SVG dimensions and padding (30% smaller from original for glucose curve)
-  const width = 210;
-  const height = 126;
-  const padding = { top: 14, right: 14, bottom: 21, left: 21 };
+  // SVG dimensions and padding (reduced further for better fit)
+  const width = 120;
+  const height = 75;
+  const padding = { top: 16, right: 10, bottom: 20, left: 24 };
 
   // Calculate scales
   const maxTime = 180; // 3 hours
@@ -65,17 +65,19 @@ const GlycemicForecastGraph: React.FC<GlycemicForecastGraphProps> = ({ totalNutr
         <path d={pathData} fill="none" className={curveColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
         {/* Axis Labels */}
-        <g className="text-xs fill-current text-slate-500">
-          <text x={xScale(60)} y={height - padding.bottom + 15} textAnchor="middle">60m</text>
-          <text x={xScale(120)} y={height - padding.bottom + 15} textAnchor="middle">120m</text>
-          <text x={xScale(180)} y={height - padding.bottom + 15} textAnchor="middle">180m</text>
-          <text x={padding.left - 8} y={yScale(0)} textAnchor="end" alignmentBaseline="middle">Low</text>
-          <text x={padding.left - 8} y={yScale(maxRise)} textAnchor="end" alignmentBaseline="middle">High</text>
+        <g className="text-[8px] fill-current text-slate-600 font-normal">
+          <text x={xScale(60)} y={height - padding.bottom + 10} textAnchor="middle">60m</text>
+          <text x={xScale(120)} y={height - padding.bottom + 10} textAnchor="middle">120m</text>
+          <text x={xScale(180)} y={height - padding.bottom + 10} textAnchor="middle">180m</text>
+          <text x={padding.left - 8} y={yScale(0) + 1} textAnchor="end" alignmentBaseline="middle">Low</text>
+          <text x={padding.left - 8} y={yScale(maxRise) - 1} textAnchor="end" alignmentBaseline="middle">High</text>
         </g>
       </svg>
-      <p className="text-center text-sm text-slate-500 mt-2 px-4">
-        A lower, flatter curve is generally better for stable energy levels.
-      </p>
+      <div className="bg-slate-50 rounded-lg p-3 mt-2 w-full">
+        <p className="text-center text-xs text-slate-600 leading-relaxed">
+          A lower, flatter curve helps prevent diabetes complications and is better for stable energy levels.
+        </p>
+      </div>
     </div>
   );
 };
