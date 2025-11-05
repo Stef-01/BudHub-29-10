@@ -147,10 +147,10 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
           </div>
         </div>
 
-        {/* Back Face - Remove the rotateY transform to prevent text mirroring */}
+        {/* Back Face */}
         <div
           className="absolute inset-0 backface-hidden"
-          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg) scaleX(-1)' }}
+          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
           <div className="h-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-white to-slate-50">
             {/* Nutrient Display */}

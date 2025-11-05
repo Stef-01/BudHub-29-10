@@ -87,6 +87,14 @@ export const RECIPE_IMAGE_FILENAME_MAP: Record<string, string> = {
     'rcp_dosa_plain': 'dosa',
     'rcp_idli_plain': 'idili',
 
+    // Beverages
+    'rcp_masala_chai_low_sugar': 'Masala_Chai__Low_Sugar_',
+    'rcp_turmeric_milk': 'Golden_Milk__Turmeric_Latte_',
+
+    // Snacks & Sides
+    'rcp_bruschetta': 'Tomato___Basil_Bruschetta',
+    'rcp_coconut_chutney': 'Coconut_Chutney__Thenga_Chammanthi_',
+
     // Special case - fallbacks for recipes without exact matches
     // These will fallback to emoji if image not found
 };
