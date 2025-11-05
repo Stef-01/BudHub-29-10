@@ -65,10 +65,10 @@ const GlycemicForecastGraph: React.FC<GlycemicForecastGraphProps> = ({ totalNutr
         <path d={pathData} fill="none" className={curveColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
         {/* Axis Labels */}
-        <g className="text-xs fill-current text-slate-600 font-semibold">
-          <text x={xScale(60)} y={height - padding.bottom + 14} textAnchor="middle">60m</text>
-          <text x={xScale(120)} y={height - padding.bottom + 14} textAnchor="middle">120m</text>
-          <text x={xScale(180)} y={height - padding.bottom + 14} textAnchor="middle">180m</text>
+        <g className="text-[9px] fill-current text-slate-600 font-medium">
+          <text x={xScale(60)} y={height - padding.bottom + 12} textAnchor="middle">60m</text>
+          <text x={xScale(120)} y={height - padding.bottom + 12} textAnchor="middle">120m</text>
+          <text x={xScale(180)} y={height - padding.bottom + 12} textAnchor="middle">180m</text>
           <text x={padding.left - 10} y={yScale(0) + 2} textAnchor="end" alignmentBaseline="middle">Low</text>
           <text x={padding.left - 10} y={yScale(maxRise) - 2} textAnchor="end" alignmentBaseline="middle">High</text>
         </g>

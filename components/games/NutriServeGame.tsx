@@ -180,12 +180,12 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
       {/* Main Game Area */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0">
         {/* Left Column: Food Library */}
-        <div className="lg:col-span-3 overflow-y-auto">
+        <div className="lg:col-span-4 overflow-y-auto">
           <FoodLibrary />
         </div>
 
         {/* Center Column: Plate */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center">
+        <div className="lg:col-span-4 flex flex-col items-center justify-center">
           <Plate
             items={gameState.plateItems}
             onEditItem={() => {}} // Edit functionality can be added here
