@@ -27,5 +27,39 @@ export default defineConfig(({ mode }) => {
       optimizeDeps: {
         exclude: ['@sqlite.org/sqlite-wasm'],
       },
+      build: {
+        // Increase chunk size warning limit (500kb → 1000kb)
+        // Conservative chunking to avoid circular dependency issues
+        chunkSizeWarningLimit: 1000,
+
+        rollupOptions: {
+          output: {
+            // Simplified manual chunk splitting - only split vendor code
+            // This avoids circular dependency issues while still improving caching
+            manualChunks: (id) => {
+              // Only split out vendor dependencies from node_modules
+              // Keep all application code together to avoid import issues
+              if (id.includes('node_modules')) {
+                // React core
+                if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+                  return 'react-vendor';
+                }
+                // Database libs
+                if (id.includes('@sqlite.org/sqlite-wasm') || id.includes('idb')) {
+                  return 'database-vendor';
+                }
+                // AI SDK
+                if (id.includes('@google/genai')) {
+                  return 'ai-vendor';
+                }
+                // Other node_modules go to vendor chunk
+                return 'vendor';
+              }
+              // All application code stays in the main chunk
+              // This prevents circular dependency and import order issues
+            }
+          }
+        }
+      }
     };
 });
