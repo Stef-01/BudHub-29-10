@@ -1,5 +1,5 @@
 // components/router/TabRouter.tsx
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import type { Tab, GameMode } from '../../types';
 import { COMMUNITY_EVENTS } from '../../constants';
 
@@ -8,8 +8,10 @@ import TaskBoard from '../TaskBoard';
 import RecipeBook from '../RecipeBook';
 import CommunityEvents from '../CommunityEvents';
 import GamesView from '../GamesView';
-import AdminView from '../AdminView';
 import AnimatedContent from '../ui/AnimatedContent';
+
+// Lazy load AdminView - it's rarely used and contains heavy image upload features
+const AdminView = lazy(() => import('../AdminView'));
 
 interface TabRouterProps {
     activeTab: Tab;
@@ -30,7 +32,19 @@ const TabRouter: React.FC<TabRouterProps> = ({ activeTab, onPlayGame }) => {
             case 'Games':
                  return <GamesView onPlay={onPlayGame} />;
             case 'Admin':
-                return <AdminView />;
+                // Wrap lazy-loaded AdminView in Suspense with loading fallback
+                return (
+                    <Suspense fallback={
+                        <div className="flex items-center justify-center h-screen">
+                            <div className="text-center">
+                                <div className="text-2xl mb-2">🔧</div>
+                                <p className="text-gray-600">Loading Admin Panel...</p>
+                            </div>
+                        </div>
+                    }>
+                        <AdminView />
+                    </Suspense>
+                );
             default:
                 return null;
         }
