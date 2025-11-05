@@ -31,16 +31,50 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
   
   const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:'));
 
-  const feedbackText = useMemo(() => {
+  // Get nutrient data and thresholds for detailed display
+  const nutrientInfo = useMemo(() => {
     switch (gameMode) {
         case 'high_protein':
-            return recipe.protein_grams != null ? `Protein: ${recipe.protein_grams}g` : (recipe.high_protein ? 'High Protein' : 'Not High Protein');
+            return {
+              value: recipe.protein_grams ?? 0,
+              unit: 'g',
+              label: 'Protein',
+              threshold: 15, // High protein threshold
+              maxScale: 30, // For visual bar scaling
+              isAboveThreshold: recipe.high_protein,
+              targetText: '≥15g = High Protein'
+            };
         case 'high_fiber':
-            return recipe.fiber_grams != null ? `Fiber: ${recipe.fiber_grams}g` : (recipe.high_fiber ? 'High Fiber' : 'Not High Fiber');
+            return {
+              value: recipe.fiber_grams ?? 0,
+              unit: 'g',
+              label: 'Fiber',
+              threshold: 8,
+              maxScale: 20,
+              isAboveThreshold: recipe.high_fiber,
+              targetText: '≥8g = High Fiber'
+            };
         case 'low_carb':
-            return recipe.carbs_grams != null ? `Carbs: ${recipe.carbs_grams}g` : (recipe.low_carb ? 'Low Carb' : 'Not Low Carb');
+            return {
+              value: recipe.carbs_grams ?? 0,
+              unit: 'g',
+              label: 'Carbs',
+              threshold: 20,
+              maxScale: 60,
+              isAboveThreshold: !recipe.low_carb, // Inverted logic
+              targetText: '≤20g = Low Carb',
+              invertedLogic: true // Low value is the goal
+            };
         case 'diabetic_friendly':
-            return recipe.diabetic_friendly ? 'Diabetic Friendly' : 'Not Recommended';
+            return {
+              value: null,
+              unit: '',
+              label: 'Blood Sugar Impact',
+              threshold: 0,
+              maxScale: 1,
+              isAboveThreshold: !recipe.diabetic_friendly,
+              targetText: recipe.diabetic_friendly ? 'Diabetic Friendly ✓' : 'Not Recommended ✗'
+            };
         default:
             return null;
     }
@@ -61,9 +95,33 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
           <div className="h-full w-full flex items-center justify-center text-6xl">{imageUrl}</div>
         )}
 
-        {isRevealed && feedbackText && (
-            <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-2 text-center">
-                <p className="text-white font-bold text-sm">{feedbackText}</p>
+        {isRevealed && nutrientInfo && (
+            <div className="absolute bottom-0 left-0 right-0 bg-black/90 p-3">
+                {nutrientInfo.value !== null ? (
+                  <>
+                    <div className="text-white text-xs mb-1 font-semibold">{nutrientInfo.label}</div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 bg-gray-700 h-4 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all ${
+                            isCorrect ? 'bg-green-500' : 'bg-red-500'
+                          }`}
+                          style={{
+                            width: `${Math.min((nutrientInfo.value / nutrientInfo.maxScale) * 100, 100)}%`
+                          }}
+                        />
+                      </div>
+                      <span className="text-white font-bold text-sm min-w-[3rem] text-right">
+                        {nutrientInfo.value}{nutrientInfo.unit}
+                      </span>
+                    </div>
+                    <div className="text-gray-300 text-xs">{nutrientInfo.targetText}</div>
+                  </>
+                ) : (
+                  <div className="text-white text-sm font-semibold text-center">
+                    {nutrientInfo.targetText}
+                  </div>
+                )}
             </div>
         )}
       </div>
