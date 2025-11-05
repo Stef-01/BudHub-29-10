@@ -17,10 +17,10 @@ const GlycemicForecastGraph: React.FC<GlycemicForecastGraphProps> = ({ totalNutr
   const { carbs_g, fiber_g, fat_g } = totalNutrients;
   const curveData = calculateGlycemicCurve(carbs_g, fiber_g, fat_g);
 
-  // SVG dimensions and padding (30% smaller from original for glucose curve)
-  const width = 210;
-  const height = 126;
-  const padding = { top: 14, right: 14, bottom: 21, left: 21 };
+  // SVG dimensions and padding (reduced by 30% for better fit)
+  const width = 147;
+  const height = 88;
+  const padding = { top: 18, right: 14, bottom: 24, left: 28 };
 
   // Calculate scales
   const maxTime = 180; // 3 hours
@@ -65,12 +65,12 @@ const GlycemicForecastGraph: React.FC<GlycemicForecastGraphProps> = ({ totalNutr
         <path d={pathData} fill="none" className={curveColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
         {/* Axis Labels */}
-        <g className="text-xs fill-current text-slate-500">
-          <text x={xScale(60)} y={height - padding.bottom + 15} textAnchor="middle">60m</text>
-          <text x={xScale(120)} y={height - padding.bottom + 15} textAnchor="middle">120m</text>
-          <text x={xScale(180)} y={height - padding.bottom + 15} textAnchor="middle">180m</text>
-          <text x={padding.left - 8} y={yScale(0)} textAnchor="end" alignmentBaseline="middle">Low</text>
-          <text x={padding.left - 8} y={yScale(maxRise)} textAnchor="end" alignmentBaseline="middle">High</text>
+        <g className="text-xs fill-current text-slate-600 font-semibold">
+          <text x={xScale(60)} y={height - padding.bottom + 14} textAnchor="middle">60m</text>
+          <text x={xScale(120)} y={height - padding.bottom + 14} textAnchor="middle">120m</text>
+          <text x={xScale(180)} y={height - padding.bottom + 14} textAnchor="middle">180m</text>
+          <text x={padding.left - 10} y={yScale(0) + 2} textAnchor="end" alignmentBaseline="middle">Low</text>
+          <text x={padding.left - 10} y={yScale(maxRise) - 2} textAnchor="end" alignmentBaseline="middle">High</text>
         </g>
       </svg>
       <p className="text-center text-sm text-slate-500 mt-2 px-4">

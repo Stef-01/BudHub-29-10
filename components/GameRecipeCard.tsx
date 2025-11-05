@@ -120,7 +120,7 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
         disabled={isRevealed}
         className={`w-full bg-white rounded-xl shadow-md overflow-hidden border-4 ${getBorderColor()} transition-all duration-300`}
       >
-        <div className="relative h-64 w-full bg-green-50">
+        <div className="relative h-80 w-full bg-green-50">
           {isGenerating ? (
             <div className="h-full w-full flex items-center justify-center text-gray-500">Loading...</div>
           ) : isRenderableImage ? (
@@ -150,11 +150,11 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
             </p>
             {nutrientInfo.value !== null ? (
               <>
-                <p className={`text-4xl font-bold mb-3 ${isCorrect ? 'text-green-700' : 'text-slate-800'}`}>
+                <p className={`text-2xl font-bold mb-2 ${isCorrect ? 'text-green-700' : 'text-slate-800'}`}>
                   {nutrientInfo.value}{nutrientInfo.unit}
                 </p>
                 {/* Visual bar showing relative amount */}
-                <div className="w-full bg-slate-200 rounded-full h-3 mb-2">
+                <div className="w-full bg-slate-200 rounded-full h-3">
                   <div
                     className={`h-3 rounded-full transition-all ${
                       nutrientInfo.isAboveThreshold
@@ -164,19 +164,9 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
                     style={{ width: `${Math.min(100, (nutrientInfo.value / nutrientInfo.maxScale) * 100)}%` }}
                   ></div>
                 </div>
-                <p className="text-xs text-slate-600 font-medium">
-                  {nutrientInfo.targetText}
-                </p>
-                {nutrientInfo.differenceText && (
-                  <p className={`text-xs font-semibold mt-1 ${
-                    isCorrect ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {nutrientInfo.differenceText}
-                  </p>
-                )}
               </>
             ) : (
-              <p className={`text-2xl font-bold ${isCorrect ? 'text-green-700' : 'text-rose-700'}`}>
+              <p className={`text-xl font-bold ${isCorrect ? 'text-green-700' : 'text-rose-700'}`}>
                 {nutrientInfo.targetText}
               </p>
             )}

@@ -114,6 +114,8 @@ export const NUTRISERVE_FOOD_IMAGE_MAP: Record<string, string> = {
     'mathi_sardine_curry': 'mathi_kerala_sardine_curry',
     'beans_carrot_thoran': 'Beans___Carrot_Thoran',
     'kerala_lamb_curry': 'keralan_lamb_curry',
+    'kerala_beef_curry': 'keralan_beef_curry',
+    'moru_curry_pulissery': 'moru_curry__pulissery_',
 
     // Other NutriServe foods that match recipe IDs (without rcp_ prefix)
     'chana_masala': 'chana_masala',

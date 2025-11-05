@@ -10,7 +10,7 @@ import GameRecipeCard from './GameRecipeCard';
 import GameOverModal from './GameOverModal';
 import { XIcon } from './icons/Icons';
 
-const ROUND_TIME = 10; // seconds
+const ROUND_TIME = 15; // seconds
 
 interface UnifiedNutrientGameProps {
   onExit: () => void;
