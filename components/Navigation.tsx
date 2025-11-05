@@ -14,7 +14,6 @@ const navItems: { tab: Tab, label: string, icon: React.FC<any> }[] = [
   { tab: 'Recipes', label: 'Recipes', icon: RecipeBookIcon },
   { tab: 'Events', label: 'Events', icon: CommunityIcon },
   { tab: 'Games', label: 'Games', icon: GameControllerIcon },
-  { tab: 'Admin', label: 'Admin', icon: AdminIcon },
 ];
 
 const NavItem: React.FC<{

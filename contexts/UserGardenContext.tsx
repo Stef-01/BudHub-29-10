@@ -42,12 +42,12 @@ export const UserGardenProvider: React.FC<{ children: ReactNode }> = ({ children
             plants = restoredPlants;
             console.log("Garden restored from backup.");
           } else {
-              console.log("No backup found, initializing with default garden.");
-              // If still no plants, initialize with default. This only runs on true first launch.
-              for (const plant of INITIAL_GARDEN) {
+              console.log("No backup found, initializing with all plants from catalog.");
+              // If still no plants, initialize with all plants. This only runs on true first launch.
+              for (const plant of PLANT_CATALOG) {
                   await dbAddPlant(plant.id);
               }
-              plants = INITIAL_GARDEN;
+              plants = PLANT_CATALOG;
           }
         }
         setMyPlants(plants);

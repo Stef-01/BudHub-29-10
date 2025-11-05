@@ -1,7 +1,7 @@
 // types.ts
 
 // --- Core App Navigation ---
-export type Tab = 'Garden' | 'Tasks' | 'Recipes' | 'Events' | 'Games' | 'Admin';
+export type Tab = 'Garden' | 'Tasks' | 'Recipes' | 'Events' | 'Games';
 
 // --- Garden & Plants ---
 export type PlantPhenology = 'Vegetative' | 'Flowering' | 'Fruiting' | 'Harvest';
