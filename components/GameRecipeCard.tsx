@@ -129,68 +129,48 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
           </div>
         </div>
 
-        {isRevealed && nutrientInfo && (
-            <div className="absolute bottom-0 left-0 right-0 bg-black/90 p-3">
-                {nutrientInfo.value !== null ? (
-                  <>
-                    <div className="text-white text-xs mb-1 font-semibold">{nutrientInfo.label}</div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex-1 bg-gray-700 h-4 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full transition-all ${
-                            isCorrect ? 'bg-green-500' : 'bg-red-500'
-                          }`}
-                          style={{
-                            width: `${Math.min((nutrientInfo.value / nutrientInfo.maxScale) * 100, 100)}%`
-                          }}
-                        />
-                      </div>
-                      <span className="text-white font-bold text-sm min-w-[3rem] text-right">
-                        {nutrientInfo.value}{nutrientInfo.unit}
-                      </span>
-                    </div>
-                    <div className="text-gray-300 text-xs">{nutrientInfo.targetText}</div>
-                  </>
-                ) : (
-                  <div className="text-white text-sm font-semibold text-center">
-                    {nutrientInfo.targetText}
-                  </div>
-                )}
-            </div>
-
+        {/* Back Face */}
+        <div
+          className="absolute inset-0 backface-hidden"
+          style={{
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)'
+          }}
+        >
+          <div className="h-full flex flex-col items-center justify-center p-4 bg-gradient-to-b from-white to-slate-50">
             {/* Recipe Name */}
-            <h3 className="font-bold text-lg text-slate-800 text-center px-2">{recipe.name}</h3>
+            <h3 className="font-bold text-lg text-slate-800 text-center px-2 mb-4">{recipe.name}</h3>
 
             {/* Nutrient Display */}
-            {nutrientData && (
+            {nutrientInfo && (
               <div className="w-full space-y-3">
                 <div className="text-center">
                   <p className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-1">
-                    {nutrientData.label}
+                    {nutrientInfo.label}
                   </p>
-                  {nutrientData.value !== null ? (
+                  {nutrientInfo.value !== null ? (
                     <>
                       <p className={`text-4xl font-bold ${isCorrect ? 'text-green-700' : 'text-slate-800'}`}>
-                        {nutrientData.value}{nutrientData.unit}
+                        {nutrientInfo.value}{nutrientInfo.unit}
                       </p>
                       {/* Visual bar showing relative amount */}
                       <div className="w-full bg-slate-200 rounded-full h-3 mt-3">
                         <div
                           className={`h-3 rounded-full transition-all ${
-                            nutrientData.isHigh
+                            nutrientInfo.isAboveThreshold
                               ? (isCorrect ? 'bg-green-600' : 'bg-amber-500')
                               : (isCorrect ? 'bg-blue-500' : 'bg-slate-400')
                           }`}
-                          style={{ width: `${Math.min(100, (nutrientData.value / nutrientData.maxScale) * 100)}%` }}
+                          style={{ width: `${Math.min(100, (nutrientInfo.value / nutrientInfo.maxScale) * 100)}%` }}
                         ></div>
                       </div>
                       <p className="text-xs text-slate-500 mt-1">
-                        {nutrientData.isHigh ? (gameMode === 'low_carb' ? 'Higher carbs' : 'High amount') : (gameMode === 'low_carb' ? 'Lower carbs' : 'Lower amount')}
+                        {nutrientInfo.targetText}
                       </p>
                     </>
                   ) : (
                     <p className={`text-2xl font-bold ${isCorrect ? 'text-green-700' : 'text-rose-700'}`}>
-                      {recipe.diabetic_friendly ? 'Low Impact ✓' : 'High Impact'}
+                      {nutrientInfo.targetText}
                     </p>
                   )}
                 </div>
