@@ -145,9 +145,9 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
           <div className="p-4 text-center">
             <h3 className="font-bold text-lg text-green-900 truncate">{recipe.name}</h3>
           </div>
-        </div>
 
-        {isRevealed && nutrientInfo && (
+          {/* Overlay showing nutrient info when revealed */}
+          {isRevealed && nutrientInfo && (
             <div className="absolute bottom-0 left-0 right-0 bg-black/90 p-3">
                 {nutrientInfo.value !== null ? (
                   <>
@@ -182,7 +182,15 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
                   </div>
                 )}
             </div>
+          )}
+        </div>
 
+        {/* Back Face */}
+        <div
+          className="absolute inset-0 backface-hidden"
+          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+        >
+          <div className="h-full flex flex-col items-center justify-center p-4 bg-gradient-to-b from-white to-slate-50">
             {/* Recipe Name */}
             <h3 className="font-bold text-lg text-slate-800 text-center px-2 mb-4">{recipe.name}</h3>
 
