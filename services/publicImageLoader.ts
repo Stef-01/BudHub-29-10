@@ -130,15 +130,17 @@ export async function getFoodImageUrl(foodId: string, recipeName?: string): Prom
     for (const variation of variations) {
         for (const ext of IMAGE_EXTENSIONS) {
             const url = `${FOOD_IMAGES_BASE}${variation}.${ext}`;
-            console.log(`[getFoodImageUrl] Trying: ${url}`);
-            return url; // Return first URL optimistically - browser will handle 404
+            const exists = await imageExists(url);
+            if (exists) {
+                console.log(`[getFoodImageUrl] ✓ Found image: ${url}`);
+                return url;
+            }
         }
     }
 
-    // Fallback to first variation
-    const url = `${FOOD_IMAGES_BASE}${variations[0]}.jpg`;
-    console.log(`[getFoodImageUrl] Fallback URL: ${url}`);
-    return url;
+    // No image found
+    console.log(`[getFoodImageUrl] No image found for ${foodId}`);
+    return null;
 }
 
 /**
@@ -171,8 +173,11 @@ export async function getRecipeImageUrlUnified(recipeId: string): Promise<string
         // Try each extension for the mapped filename
         for (const ext of IMAGE_EXTENSIONS) {
             const url = `${FOOD_IMAGES_BASE}${mappedFilename}.${ext}`;
-            console.log(`[getRecipeImageUrlUnified] ✓ Using mapped filename: ${url}`);
-            return url;
+            const exists = await imageExists(url);
+            if (exists) {
+                console.log(`[getRecipeImageUrlUnified] ✓ Found image: ${url}`);
+                return url;
+            }
         }
     }
 
@@ -197,8 +202,11 @@ export async function getRecipeImageUrlUnified(recipeId: string): Promise<string
         const firstVariation = nameVariations[0];
         for (const ext of IMAGE_EXTENSIONS) {
             const url = `${FOOD_IMAGES_BASE}${firstVariation}.${ext}`;
-            console.log(`[getRecipeImageUrlUnified] Trying name variation: ${url}`);
-            return url;
+            const exists = await imageExists(url);
+            if (exists) {
+                console.log(`[getRecipeImageUrlUnified] ✓ Found image: ${url}`);
+                return url;
+            }
         }
     }
 
@@ -206,8 +214,11 @@ export async function getRecipeImageUrlUnified(recipeId: string): Promise<string
     const foodIdLower = foodId.toLowerCase();
     for (const ext of IMAGE_EXTENSIONS) {
         const url = `${FOOD_IMAGES_BASE}${foodIdLower}.${ext}`;
-        console.log(`[getRecipeImageUrlUnified] Trying ID: ${url}`);
-        return url;
+        const exists = await imageExists(url);
+        if (exists) {
+            console.log(`[getRecipeImageUrlUnified] ✓ Found image: ${url}`);
+            return url;
+        }
     }
 
     // Fallback - return null to use emoji
