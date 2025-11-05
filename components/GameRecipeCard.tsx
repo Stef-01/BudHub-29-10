@@ -49,35 +49,53 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
   const nutrientInfo = useMemo(() => {
     switch (gameMode) {
         case 'high_protein':
+            const proteinValue = recipe.protein_grams ?? 0;
+            const proteinDiff = proteinValue - 15;
             return {
-              value: recipe.protein_grams ?? 0,
+              value: proteinValue,
               unit: 'g',
               label: 'Protein',
               threshold: 15, // High protein threshold
               maxScale: 30, // For visual bar scaling
               isAboveThreshold: recipe.high_protein,
-              targetText: '≥15g = High Protein'
+              targetText: '≥15g = High Protein',
+              difference: proteinDiff,
+              differenceText: proteinDiff >= 0
+                ? `${Math.abs(proteinDiff)}g above threshold`
+                : `${Math.abs(proteinDiff)}g below threshold`
             };
         case 'high_fiber':
+            const fiberValue = recipe.fiber_grams ?? 0;
+            const fiberDiff = fiberValue - 8;
             return {
-              value: recipe.fiber_grams ?? 0,
+              value: fiberValue,
               unit: 'g',
               label: 'Fiber',
               threshold: 8,
               maxScale: 20,
               isAboveThreshold: recipe.high_fiber,
-              targetText: '≥8g = High Fiber'
+              targetText: '≥8g = High Fiber',
+              difference: fiberDiff,
+              differenceText: fiberDiff >= 0
+                ? `${Math.abs(fiberDiff)}g above threshold`
+                : `${Math.abs(fiberDiff)}g below threshold`
             };
         case 'low_carb':
+            const carbsValue = recipe.carbs_grams ?? 0;
+            const carbsDiff = carbsValue - 20;
             return {
-              value: recipe.carbs_grams ?? 0,
+              value: carbsValue,
               unit: 'g',
               label: 'Carbs',
               threshold: 20,
               maxScale: 60,
               isAboveThreshold: !recipe.low_carb, // Inverted logic
               targetText: '≤20g = Low Carb',
-              invertedLogic: true // Low value is the goal
+              invertedLogic: true, // Low value is the goal
+              difference: carbsDiff,
+              differenceText: carbsDiff <= 0
+                ? `${Math.abs(carbsDiff)}g below threshold`
+                : `${Math.abs(carbsDiff)}g above threshold`
             };
         case 'diabetic_friendly':
             return {
@@ -149,7 +167,14 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
                         {nutrientInfo.value}{nutrientInfo.unit}
                       </span>
                     </div>
-                    <div className="text-gray-300 text-xs">{nutrientInfo.targetText}</div>
+                    <div className="text-gray-300 text-xs mb-0.5">{nutrientInfo.targetText}</div>
+                    {nutrientInfo.differenceText && (
+                      <div className={`text-xs font-medium ${
+                        isCorrect ? 'text-green-300' : 'text-red-300'
+                      }`}>
+                        {nutrientInfo.differenceText}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="text-white text-sm font-semibold text-center">
