@@ -12,8 +12,7 @@ const createIcon = (path: string) => (props: React.SVGProps<SVGSVGElement>) => (
         <path d={path} />
     </svg>
 );
-const FiberIcon = createIcon("M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z");
-const CarbIcon = createIcon("M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 12H9v-2h2v2zm4 0h-2v-2h2v2zm-4-4H9V9h2v4zm4-4h-2V9h2v2z");
+const NutrientIcon = createIcon("M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z");
 
 interface GamesViewProps {
     onPlay: (gameMode: GameMode) => void;
@@ -22,13 +21,20 @@ interface GamesViewProps {
 const GamesView: React.FC<GamesViewProps> = ({ onPlay }) => {
     const { getHighScoresByMode } = useGameScores();
 
-    const highScores = useMemo(() => ({
-        diabetic_friendly: getHighScoresByMode('diabetic_friendly')[0]?.score || 0,
-        high_protein: getHighScoresByMode('high_protein')[0]?.score || 0,
-        high_fiber: getHighScoresByMode('high_fiber')[0]?.score || 0,
-        low_carb: getHighScoresByMode('low_carb')[0]?.score || 0,
-        nutriserve: getHighScoresByMode('nutriserve')[0]?.score || 0,
-    }), [getHighScoresByMode]);
+    const highScores = useMemo(() => {
+        // Get the highest score from any of the unified nutrient games
+        const unifiedScores = [
+            getHighScoresByMode('diabetic_friendly')[0]?.score || 0,
+            getHighScoresByMode('high_protein')[0]?.score || 0,
+            getHighScoresByMode('high_fiber')[0]?.score || 0,
+            getHighScoresByMode('low_carb')[0]?.score || 0,
+        ];
+
+        return {
+            nutriserve: getHighScoresByMode('nutriserve')[0]?.score || 0,
+            unified_nutrient: Math.max(...unifiedScores),
+        };
+    }, [getHighScoresByMode]);
     
     return (
         <div>
@@ -48,37 +54,13 @@ const GamesView: React.FC<GamesViewProps> = ({ onPlay }) => {
             </div>
             
             <h3 className="text-xl font-bold text-green-800 mb-4">Quick Play</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="mb-8">
                 <GameCard
-                    gameMode="diabetic_friendly"
-                    title="Sugar Smart"
-                    description="Which of these recipes is best for managing blood sugar levels?"
-                    icon={<HeartIcon className="h-8 w-8 text-blue-700" />}
-                    highScore={highScores.diabetic_friendly}
-                    onPlay={onPlay}
-                />
-                <GameCard
-                    gameMode="high_protein"
-                    title="Protein Packed"
-                    description="Identify the recipe with the highest protein content to build muscle."
-                    icon={<ZapIcon className="h-8 w-8 text-yellow-700" />}
-                    highScore={highScores.high_protein}
-                    onPlay={onPlay}
-                />
-                <GameCard
-                    gameMode="high_fiber"
-                    title="Fiber Finder"
-                    description="Find the meal that's best for gut health and feeling full."
-                    icon={<FiberIcon className="h-8 w-8 text-green-700" />}
-                    highScore={highScores.high_fiber}
-                    onPlay={onPlay}
-                />
-                <GameCard
-                    gameMode="low_carb"
-                    title="Carb Counter"
-                    description="Pick the recipe with the lowest carbohydrate count."
-                    icon={<CarbIcon className="h-8 w-8 text-purple-700" />}
-                    highScore={highScores.low_carb}
+                    gameMode="unified_nutrient"
+                    title="Nutrient Challenge"
+                    description="Test your knowledge! Choose your focus (protein, fiber, carbs, or blood sugar) and identify the best recipe. Recipe images from your cookbook help you pick wisely!"
+                    icon={<NutrientIcon className="h-8 w-8 text-indigo-700" />}
+                    highScore={highScores.unified_nutrient}
                     onPlay={onPlay}
                 />
             </div>

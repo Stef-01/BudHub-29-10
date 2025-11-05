@@ -1,31 +1,25 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Recipe } from '../types';
 import { getRecipeImageState, ImageState } from '../services/imageStoreService';
-import { useImageGenerationBatch } from './useImageGenerationBatch';
-import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { DEFAULT_RECIPE_IMAGE_B64 } from '../constants';
 import { urlManager } from '../services/urlManager';
-import { getImageManifestBackup } from '../services/imageBackupService';
 
-type ImageStatus = 'pending' | 'generated' | 'failed' | 'cached';
+type ImageStatus = 'cached' | 'not_found';
 
-export const useRecipeImage = (recipe: Recipe): { 
-    imageUrl: string; 
-    isGenerating: boolean; 
+export const useRecipeImage = (recipe: Recipe): {
+    imageUrl: string;
+    isGenerating: boolean;
     error: string | null;
     status: ImageStatus;
 } => {
-    const { enqueueRecipe } = useImageGenerationBatch();
-    const { transientRecipeState, loading: cookbookLoading } = useUserCookbook();
-    
-    // This state holds the resolved image data from the database.
+
+    // This state holds the resolved image data
     const [imageState, setImageState] = useState<ImageState | null>(null);
-    
+    const [isLoading, setIsLoading] = useState(true);
+
     // This ref tracks the PREVIOUS state, allowing us to safely clean up its resources
     // AFTER the new state has been committed.
     const prevImageStateRef = useRef<ImageState | null>(null);
-
-    const liveRecipe = useMemo(() => transientRecipeState.get(recipe.id) || recipe, [recipe, transientRecipeState]);
 
     // --- EFFECT 1: Data Fetching ---
     // This effect's ONLY job is to fetch the latest image state and update the component's state.
@@ -33,12 +27,15 @@ export const useRecipeImage = (recipe: Recipe): {
         let isStillMounted = true;
 
         const resolveImage = async () => {
-            if (cookbookLoading || !isStillMounted) return;
+            setIsLoading(true);
+            console.log(`[useRecipeImage] Loading image for recipe: ${recipe.id} (${recipe.name})`);
 
-            const stateFromDb = await getRecipeImageState(liveRecipe.id);
-            
+            const stateFromDb = await getRecipeImageState(recipe.id);
+
             if (isStillMounted) {
+                console.log(`[useRecipeImage] Image state for ${recipe.id}:`, stateFromDb ? `Found (${stateFromDb.key})` : 'Not found, will use emoji');
                 setImageState(stateFromDb);
+                setIsLoading(false);
             }
         };
 
@@ -47,7 +44,7 @@ export const useRecipeImage = (recipe: Recipe): {
         return () => {
             isStillMounted = false;
         };
-    }, [liveRecipe.id, liveRecipe.imageMetadata?.status, liveRecipe.imageMetadata?.image_key, cookbookLoading]);
+    }, [recipe.id]);
 
     // --- EFFECT 2: Resource Cleanup on State Change ---
     // This effect runs AFTER Effect 1 has updated the state and the component has re-rendered.
@@ -93,40 +90,20 @@ export const useRecipeImage = (recipe: Recipe): {
             };
         }
 
-        const { imageMetadata, image: emoji } = liveRecipe;
-        const currentStatus = imageMetadata?.status || 'pending';
-        
-        // Recovery path from backup
-        if (imageMetadata?.image_key) {
-             let backup = null;
-             try {
-                backup = getImageManifestBackup(imageMetadata.image_key);
-             } catch (e) {
-                console.error('Failed to retrieve image from backup', e);
-             }
-             if (backup?.thumbB64) {
-                 return { status: 'cached' as ImageStatus, imageUrl: backup.thumbB64, error: null };
-             }
-        }
-        
-        // Enqueue if needed
-        if (currentStatus === 'pending' && imageMetadata?.source === 'ai_generated' && !cookbookLoading) {
-            enqueueRecipe(liveRecipe);
-        }
+        // Use recipe emoji or default image if no image found
+        const { image: emoji } = recipe;
 
         return {
-            status: currentStatus,
+            status: 'not_found' as ImageStatus,
             imageUrl: emoji || DEFAULT_RECIPE_IMAGE_B64,
-            error: imageMetadata?.errorMessage || null,
+            error: null,
         };
 
-    }, [imageState, liveRecipe, enqueueRecipe, cookbookLoading]);
-
-    const isGenerating = derivedStatusAndUrl.status === 'pending' && liveRecipe.imageMetadata?.source === 'ai_generated';
+    }, [imageState, recipe]);
 
     return {
         imageUrl: derivedStatusAndUrl.imageUrl,
-        isGenerating,
+        isGenerating: false, // No generation anymore
         error: derivedStatusAndUrl.error,
         status: derivedStatusAndUrl.status,
     };

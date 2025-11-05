@@ -11,6 +11,7 @@
 import { buildKey, resizeImage } from './imageProcessingService';
 import { sqliteStore } from './sqliteStore';
 import { urlManager } from './urlManager';
+import { getNutriServeFoodImageUrl } from './publicImageLoader';
 
 export interface FoodImageUrls {
   thumb: string;
@@ -65,17 +66,42 @@ export async function uploadFoodImage(foodId: string, imageFile: File): Promise<
 
 /**
  * Retrieves a food image by food ID.
- * Returns URLs for display.
+ * Checks public/dataset/food-images first (direct file access),
+ * then falls back to SQLite database.
  *
  * @param foodId - The food item ID
  * @returns Image state with URLs, or null if not found
  */
 export async function getFoodImage(foodId: string): Promise<FoodImageState | null> {
+  // 1. FIRST: Check public/dataset/food-images folder
+  try {
+    const publicImageUrl = await getNutriServeFoodImageUrl(foodId);
+    if (publicImageUrl) {
+      console.log(`[FoodDataset] Using public folder image for ${foodId}: ${publicImageUrl}`);
+
+      // Return the same URL for all sizes (browser will scale as needed)
+      return {
+        foodId,
+        key: `public:${foodId}`,
+        urls: {
+          thumb: publicImageUrl,
+          preview: publicImageUrl,
+          original: publicImageUrl,
+        }
+      };
+    }
+  } catch (e) {
+    console.log(`[FoodDataset] No public folder image for ${foodId}, checking database...`);
+  }
+
+  // 2. FALLBACK: Check SQLite database
   const record = await sqliteStore.getFoodImage(foodId);
 
   if (!record) {
     return null;
   }
+
+  console.log(`[FoodDataset] Using database image for ${foodId}`);
 
   // Convert Uint8Array back to Blob
   const originalBlob = new Blob([record.original], { type: 'image/webp' });

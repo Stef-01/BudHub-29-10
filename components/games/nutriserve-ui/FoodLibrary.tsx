@@ -15,60 +15,72 @@ const FoodItemCard: React.FC<FoodItemCardProps> = ({ item }) => {
     e.dataTransfer.setData('foodItemId', item.id);
     e.dataTransfer.effectAllowed = "copy";
   };
-  
+
   const FoodVisual = item.visual;
 
   return (
     <div
       draggable
       onDragStart={handleDragStart}
-      className="p-3 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col items-center text-center cursor-grab active:cursor-grabbing"
+      className="p-2 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col items-center text-center cursor-grab active:cursor-grabbing hover:shadow-md hover:scale-105 hover:border-emerald-300 transition-all duration-200 animate-scale-in"
     >
-      <div className="w-20 h-20 mb-2">
+      <div className="w-14 h-14 mb-1 transition-transform duration-200">
         <FoodVisual />
       </div>
-      <p className="text-sm font-semibold text-slate-700">{item.label}</p>
+      <p className="text-[10px] font-semibold text-slate-700 leading-tight">{item.label}</p>
     </div>
   );
 };
 
 const FoodLibrary: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState<string>(FOOD_LIBRARY[0].name);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set([FOOD_LIBRARY[0].name])
+  );
+
+  const toggleCategory = (categoryName: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryName)) {
+        newSet.delete(categoryName);
+      } else {
+        newSet.add(categoryName);
+      }
+      return newSet;
+    });
+  };
 
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg h-full flex flex-col">
-      <h2 className="text-xl font-bold text-slate-800 mb-4">Food Library</h2>
-      
-      {/* Category Tabs */}
-      <div className="mb-4 border-b border-slate-200 -mx-4 sm:-mx-6 px-4 sm:px-6">
-        <div className="flex space-x-4 overflow-x-auto">
-          {FOOD_LIBRARY.map((group) => (
-            <button
-              key={group.name}
-              onClick={() => setActiveCategory(group.name)}
-              className={`pb-2 px-1 border-b-2 text-sm font-semibold whitespace-nowrap ${
-                activeCategory === group.name
-                  ? 'border-emerald-500 text-emerald-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {group.name}
-            </button>
-          ))}
-        </div>
+    <div className="bg-white p-3 rounded-xl shadow-lg h-full flex flex-col">
+      <h2 className="text-base font-bold text-slate-800 mb-2">Food Library</h2>
+
+      {/* Vertical Categories with Collapsible Sections */}
+      <div className="flex-grow overflow-y-auto space-y-2">
+        {FOOD_LIBRARY.map((group) => {
+          const isExpanded = expandedCategories.has(group.name);
+          return (
+            <div key={group.name} className="border border-slate-200 rounded-lg">
+              <button
+                onClick={() => toggleCategory(group.name)}
+                className="w-full flex items-center justify-between p-2 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <span className="text-xs font-semibold text-slate-700">{group.name}</span>
+                <IconChevronDown
+                  className={`w-4 h-4 text-slate-500 transition-transform ${
+                    isExpanded ? 'transform rotate-180' : ''
+                  }`}
+                />
+              </button>
+              {isExpanded && (
+                <div className="p-2 grid grid-cols-2 gap-2">
+                  {group.items.map(item => <FoodItemCard key={item.id} item={item} />)}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Food Items Grid */}
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {FOOD_LIBRARY
-            .find(group => group.name === activeCategory)?.items
-            .map(item => <FoodItemCard key={item.id} item={item} />)
-          }
-        </div>
-      </div>
-
-      <div className="mt-4 flex-shrink-0">
+      <div className="mt-2 flex-shrink-0">
         <DidYouKnowCard />
       </div>
 

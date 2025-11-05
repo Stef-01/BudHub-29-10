@@ -55,18 +55,17 @@ const MacroMeter: React.FC<MacroMeterProps> = ({ name, value, unit, target, mode
   }
 
   return (
-    <div className={`p-4 rounded-lg bg-slate-50 border ${statusBorder[status]}`}>
-      <p className={`font-semibold ${statusText[status]}`}>{name}</p>
-      <p className="text-2xl font-bold text-slate-800">
-        {value.toFixed(0)}
-        <span className="text-base font-normal text-slate-500 ml-1">{unit}</span>
-      </p>
-      <p className="text-xs text-slate-500 mt-1">
-        {targetText}
-      </p>
-      <div className="w-full bg-slate-200 rounded-full h-2 mt-3">
+    <div className={`px-3 py-2 rounded bg-slate-50 border ${statusBorder[status]}`}>
+      <div className="flex items-center justify-between">
+        <p className={`text-[13px] font-semibold ${statusText[status]}`}>{name}</p>
+        <p className="text-base font-bold text-slate-800">
+          {value.toFixed(0)}
+          <span className="text-[13px] font-normal text-slate-500 ml-0.5">{unit}</span>
+        </p>
+      </div>
+      <div className="w-full bg-slate-200 rounded-full h-1.5 my-1">
         <div
-          className={`h-2 rounded-full ${statusColors[status]}`}
+          className={`h-1.5 rounded-full ${statusColors[status]} transition-all duration-500 ease-out`}
           style={{ width: `${progress}%` }}
         ></div>
       </div>

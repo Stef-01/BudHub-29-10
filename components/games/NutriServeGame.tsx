@@ -18,7 +18,7 @@ import GameOverModal from '../GameOverModal';
 import { IconXCircle } from './nutriserve-ui/Icons';
 
 
-const MAX_ROUNDS = 3;
+const MAX_ROUNDS = 20;
 
 type GameState = {
   round: number;
@@ -53,12 +53,13 @@ const initialState: GameState = {
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'START_GAME':
-      return { ...initialState, customer: getNewCustomer(), round: 1 };
+      return { ...initialState, customer: getNewCustomer(1), round: 1 };
     case 'NEXT_CUSTOMER':
       if (state.round >= MAX_ROUNDS) {
         return { ...state, view: 'gameover' };
       }
-      return { ...state, round: state.round + 1, customer: getNewCustomer(), plateItems: [], view: 'playing', resultData: null };
+      const nextRound = state.round + 1;
+      return { ...state, round: nextRound, customer: getNewCustomer(nextRound), plateItems: [], view: 'playing', resultData: null };
     case 'ADD_ITEM':
       return { ...state, plateItems: [...state.plateItems, action.payload] };
     case 'REMOVE_ITEM':
@@ -146,40 +147,64 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
     return <div>Loading...</div>; // Or a loading screen
   }
 
+  const CharacterVisual = gameState.customer.visuals.default;
+
   return (
-    <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold text-emerald-700">NutriServe Chef</h1>
-        <button onClick={onExit} className="p-2 rounded-full text-slate-500 hover:bg-slate-200">
-            <IconXCircle className="h-8 w-8" />
+    <div className="p-3 md:p-4 bg-slate-50 min-h-screen max-h-screen overflow-hidden flex flex-col">
+      {/* Top Header: Title + Exit */}
+      <div className="flex justify-between items-center mb-3">
+        <h1 className="text-2xl font-bold text-emerald-700">NutriServe Chef</h1>
+        <button onClick={onExit} className="p-1.5 rounded-full text-slate-500 hover:bg-slate-200">
+            <IconXCircle className="h-7 w-7" />
         </button>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      {/* Food Request Header Bar */}
+      <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-xl shadow-lg p-4 mb-3 animate-slide-down">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white shadow-md animate-bounce-in">
+            <CharacterVisual />
+          </div>
+          <div className="flex-grow animate-fade-in">
+            <p className="text-white font-bold text-lg">{gameState.customer.name}</p>
+            <p className="text-slate-200 italic text-base">"{gameState.customer.order.description}"</p>
+          </div>
+          <div className="flex-shrink-0 animate-fade-in">
+            <span className="bg-white/20 text-white px-4 py-1.5 rounded-full text-sm font-semibold">
+              Round {gameState.round}/{MAX_ROUNDS}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Game Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0">
         {/* Left Column: Food Library */}
-        <div className="lg:col-span-3 h-[80vh]">
+        <div className="lg:col-span-3 overflow-y-auto">
           <FoodLibrary />
         </div>
-        
+
         {/* Center Column: Plate */}
         <div className="lg:col-span-5 flex flex-col items-center justify-center">
-          <Plate 
-            items={gameState.plateItems} 
+          <Plate
+            items={gameState.plateItems}
             onEditItem={() => {}} // Edit functionality can be added here
             onRemoveItem={handleRemoveItem}
             onDropItem={handleDropItem}
             plateSize={gameState.customer.order.plateSize}
           />
+          <button
+            onClick={handleServe}
+            disabled={gameState.plateItems.length === 0}
+            className="mt-4 px-8 py-2.5 bg-emerald-600 text-white font-bold text-base rounded-lg shadow-md hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all duration-200 disabled:bg-slate-300 disabled:cursor-not-allowed disabled:hover:scale-100 animate-pulse-slow"
+          >
+            Serve Plate
+          </button>
         </div>
-        
-        {/* Right Column: Customer & Analysis */}
-        <div className="lg:col-span-4 space-y-6">
-            <CustomerDisplay 
-                customer={gameState.customer}
-                onServe={handleServe}
-                isPlateEmpty={gameState.plateItems.length === 0}
-            />
-            <MealAnalysis 
+
+        {/* Right Column: Meal Analysis */}
+        <div className="lg:col-span-4 overflow-y-auto">
+            <MealAnalysis
                 totals={mealTotals()}
                 targets={gameState.customer.targets}
             />

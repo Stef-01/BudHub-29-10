@@ -1898,11 +1898,34 @@ export const RECIPE_CATALOG: Recipe[] = [
     }
 ];
 
+// Curated initial cookbook with 20 recipes ensuring good nutrient distribution for games
+// Distribution: high_protein(7T/13F), high_fiber(14T/6F), low_carb(9T/11F), diabetic_friendly(17T/3F)
 export const INITIAL_COOKBOOK: Recipe[] = RECIPE_CATALOG.filter(r => [
-    'rcp_chana_masala', 
+    // High protein dishes (lentils, legumes)
+    'rcp_chana_masala',
     'rcp_palak_dal',
+    'rcp_masoor_dal',
+    'rcp_moong_dal_tadka',
+    'rcp_rajma_masala',
+    'rcp_sambar',
+    'rcp_parippu_curry',
+
+    // Low carb vegetable dishes
     'rcp_bhindi_masala',
     'rcp_baingan_bharta',
+    'rcp_beans_carrot_thoran',
+    'rcp_cabbage_thoran',
+    'rcp_beetroot_thoran',
+    'rcp_spinach_thoran',
+    'rcp_avial',
+
+    // Low fiber, low protein options (good for "wrong answer" variety)
+    'rcp_lemon_rice',
+    'rcp_turmeric_milk',
+    'rcp_masala_chai_low_sugar',
+    'rcp_bruschetta',
+    'rcp_cucumber_pachadi',
+    'rcp_mango_pachadi',
 ].includes(r.id));
 
 // --- COMMUNITY EVENTS ---

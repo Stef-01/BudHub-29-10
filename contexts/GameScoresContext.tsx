@@ -17,10 +17,18 @@ export const GameScoresProvider: React.FC<{ children: ReactNode }> = ({ children
 
   useEffect(() => {
     const loadScores = async () => {
-      setLoading(true);
-      const allScores = await getHighScores();
-      setScores(allScores);
-      setLoading(false);
+      try {
+        setLoading(true);
+        console.log('[GameScoresContext] Loading scores...');
+        const allScores = await getHighScores();
+        setScores(allScores);
+        console.log(`[GameScoresContext] ✓ Loaded ${allScores.length} scores`);
+      } catch (error) {
+        console.error('[GameScoresContext] ❌ Error loading scores:', error);
+        setScores([]);
+      } finally {
+        setLoading(false);
+      }
     };
     loadScores();
   }, []);

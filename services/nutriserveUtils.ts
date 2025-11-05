@@ -131,10 +131,62 @@ export function calculateScoreAndFeedback(totals: Nutrients, targets: MealGoals)
 
 /**
  * Returns a random customer with their generated targets.
+ * Difficulty increases with round number:
+ * - Rounds 1-3: Easy (simpler customers, larger tolerance)
+ * - Rounds 4-7: Medium (more conditions)
+ * - Rounds 8-10: Hard (strictest customers, tightest targets)
  */
-export function getNewCustomer(): NutriServeCustomerWithTargets {
-    const randomCustomer = CUSTOMER_CHARACTERS[Math.floor(Math.random() * CUSTOMER_CHARACTERS.length)];
-    return generateCustomerWithTargets(randomCustomer);
+export function getNewCustomer(round: number = 1): NutriServeCustomerWithTargets {
+    // Filter customers based on difficulty
+    let eligibleCustomers = CUSTOMER_CHARACTERS;
+
+    if (round <= 3) {
+        // Easy: Prefer Light/Regular plates and Balanced mode
+        eligibleCustomers = CUSTOMER_CHARACTERS.filter(c =>
+            c.order.plateSize !== 'Hearty' && c.order.diabetesMode !== 'Low-Carb'
+        );
+    } else if (round <= 7) {
+        // Medium: Mix of all types
+        eligibleCustomers = CUSTOMER_CHARACTERS;
+    } else {
+        // Hard: Prefer Low-Carb and stricter requirements
+        eligibleCustomers = CUSTOMER_CHARACTERS.filter(c =>
+            c.order.diabetesMode === 'Low-Carb' || c.order.plateSize === 'Light'
+        );
+    }
+
+    // Fallback to all customers if filtering resulted in empty array
+    if (eligibleCustomers.length === 0) {
+        eligibleCustomers = CUSTOMER_CHARACTERS;
+    }
+
+    const randomCustomer = eligibleCustomers[Math.floor(Math.random() * eligibleCustomers.length)];
+    const customerWithTargets = generateCustomerWithTargets(randomCustomer);
+
+    // Make targets stricter in later rounds
+    if (round >= 8) {
+        // Hard mode: Tighten all ranges by 15%
+        customerWithTargets.targets.calories_kcal.min = Math.round(customerWithTargets.targets.calories_kcal.min * 1.075);
+        customerWithTargets.targets.calories_kcal.max = Math.round(customerWithTargets.targets.calories_kcal.max * 0.925);
+
+        if ('max' in customerWithTargets.targets.carbs_g) {
+            customerWithTargets.targets.carbs_g.max = Math.round(customerWithTargets.targets.carbs_g.max * 0.85);
+        }
+        if ('max' in customerWithTargets.targets.fat_g) {
+            customerWithTargets.targets.fat_g.max = Math.round(customerWithTargets.targets.fat_g.max * 0.85);
+        }
+        if ('max' in customerWithTargets.targets.sodium_mg) {
+            customerWithTargets.targets.sodium_mg.max = Math.round(customerWithTargets.targets.sodium_mg.max * 0.85);
+        }
+        if ('min' in customerWithTargets.targets.fiber_g) {
+            customerWithTargets.targets.fiber_g.min = Math.round(customerWithTargets.targets.fiber_g.min * 1.15);
+        }
+        if ('min' in customerWithTargets.targets.protein_g) {
+            customerWithTargets.targets.protein_g.min = Math.round(customerWithTargets.targets.protein_g.min * 1.15);
+        }
+    }
+
+    return customerWithTargets;
 }
 
 /**

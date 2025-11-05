@@ -5,6 +5,7 @@ import { urlManager } from './urlManager';
 import { backupImageManifest } from './imageBackupService';
 import { sqliteStore } from './sqliteStore';
 import { blobToUint8Array, uint8ArrayToBlob } from './imageProcessingService';
+import { getRecipeImageUrlUnified } from './publicImageLoader';
 
 
 export interface ImageArtifacts {
@@ -118,60 +119,87 @@ export async function getAlias(recipeId: string): Promise<{ recipeId: string; ke
 
 /**
  * Retrieves the complete image state for a recipe, including managed object URLs.
- * IMPLEMENTED: Read-through cache pattern with SQLite fallback.
+ * UNIFIED IMAGE SYSTEM: Checks public/dataset folders first (direct file access),
+ * then falls back to SQLite if needed.
+ * This prevents the need for uploading images - they can be used directly from public folders.
  */
 export async function getRecipeImageState(recipeId: string): Promise<ImageState | null> {
-    // 1. Try IndexedDB first (fast cache)
-    const alias = await getAlias(recipeId);
-    if (alias?.key) {
-        const artifacts = await getArtifacts(alias.key);
-        if (artifacts) {
+    // 0. FIRST: Check public/dataset folders for direct file access
+    // This allows images to be used immediately without uploading to database
+    try {
+        const publicImageUrl = await getRecipeImageUrlUnified(recipeId);
+        if (publicImageUrl) {
+            console.log(`Using public folder image for recipe ${recipeId}: ${publicImageUrl}`);
+
+            // Return the same URL for all sizes (the browser will scale as needed)
             return {
-                key: alias.key,
+                key: `public:${recipeId}`,
                 urls: {
-                    thumb: urlManager.create(artifacts.thumb, `${alias.key}:thumb`),
-                    preview: urlManager.create(artifacts.preview, `${alias.key}:preview`),
-                    original: urlManager.create(artifacts.original, `${alias.key}:original`),
+                    thumb: publicImageUrl,
+                    preview: publicImageUrl,
+                    original: publicImageUrl,
                 }
             };
         }
+    } catch (e) {
+        console.log(`No public folder image found for recipe ${recipeId}, checking database...`);
     }
 
-    // 2. Fallback to SQLite if IndexedDB misses
+    // 1. FALLBACK: Check SQLite food_images table
     try {
-        const sqliteAlias = await sqliteStore.getAlias(recipeId);
-        if (sqliteAlias?.image_key) {
-            const sqliteRecord = await sqliteStore.getImage(sqliteAlias.image_key);
-            if (sqliteRecord) {
-                console.log(`IndexedDB miss for recipe ${recipeId}, serving from SQLite and repopulating cache.`);
-                
-                // Convert Uint8Array back to Blob
-                const artifacts: ImageArtifacts = {
-                    original: uint8ArrayToBlob(sqliteRecord.original),
-                    preview: uint8ArrayToBlob(sqliteRecord.preview),
-                    thumb: uint8ArrayToBlob(sqliteRecord.thumb),
-                    manifest: JSON.parse(sqliteRecord.manifest)
-                };
+        // Try exact match first
+        let foodImage = await sqliteStore.getFoodImage(recipeId);
 
-                // 3. Repopulate IndexedDB cache for next time (don't await, let it run in background)
-                saveImageArtifacts(sqliteRecord.key, recipeId, artifacts)
-                    .catch(e => console.error("Failed to repopulate IndexedDB cache from SQLite:", e));
-                
-                return {
-                    key: sqliteRecord.key,
-                    urls: {
-                        thumb: urlManager.create(artifacts.thumb, `${sqliteRecord.key}:thumb`),
-                        preview: urlManager.create(artifacts.preview, `${sqliteRecord.key}:preview`),
-                        original: urlManager.create(artifacts.original, `${sqliteRecord.key}:original`),
-                    }
-                };
-            }
+        // If no exact match and recipe ID starts with "rcp_", try stripping the prefix
+        if (!foodImage && recipeId.startsWith('rcp_')) {
+            const foodId = recipeId.substring(4); // Remove "rcp_" prefix
+            foodImage = await sqliteStore.getFoodImage(foodId);
+        }
+
+        if (foodImage) {
+            console.log(`Using database food image for recipe ${recipeId}`);
+
+            // Convert Uint8Array back to Blob
+            const thumb = new Blob([foodImage.thumb], { type: 'image/webp' });
+            const preview = new Blob([foodImage.preview], { type: 'image/webp' });
+            const original = new Blob([foodImage.original], { type: 'image/webp' });
+
+            return {
+                key: foodImage.image_key,
+                urls: {
+                    thumb: urlManager.create(thumb, `food:${recipeId}:thumb`),
+                    preview: urlManager.create(preview, `food:${recipeId}:preview`),
+                    original: urlManager.create(original, `food:${recipeId}:original`),
+                }
+            };
         }
     } catch (e) {
-        console.error(`Failed to read from SQLite for recipe ${recipeId}:`, e);
-        // Fall through to return null if SQLite fails
+        console.log(`Recipe ${recipeId} not found in database food_images`);
     }
 
+    // 2. FALLBACK: Check SQLite recipe_images table
+    try {
+        const recipeImage = await sqliteStore.getRecipeImage(recipeId);
+        if (recipeImage) {
+            console.log(`Using database recipe image for ${recipeId}`);
 
-    return null; // Still return null if not found anywhere
+            // Convert Uint8Array back to Blob
+            const thumb = new Blob([recipeImage.thumb], { type: 'image/webp' });
+            const preview = new Blob([recipeImage.preview], { type: 'image/webp' });
+            const original = new Blob([recipeImage.original], { type: 'image/webp' });
+
+            return {
+                key: recipeImage.image_key,
+                urls: {
+                    thumb: urlManager.create(thumb, `recipe:${recipeId}:thumb`),
+                    preview: urlManager.create(preview, `recipe:${recipeId}:preview`),
+                    original: urlManager.create(original, `recipe:${recipeId}:original`),
+                }
+            };
+        }
+    } catch (e) {
+        console.log(`Recipe ${recipeId} not found in database recipe_images`);
+    }
+
+    return null; // No image found anywhere
 }

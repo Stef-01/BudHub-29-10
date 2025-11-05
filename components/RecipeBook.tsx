@@ -9,7 +9,7 @@ import RecipeActions from './recipe/RecipeActions';
 import MyCookbookGrid from './recipe/MyCookbookGrid';
 import RecipeDetailModal from './RecipeDetailModal';
 import RecipeModal from './RecipeModal';
-import ImageGenerationProgress from './ImageGenerationProgress';
+// ImageGenerationProgress removed - no longer using AI image generation
 
 const RecipeBook: React.FC = () => {
     const { recipes } = useUserCookbook();
@@ -33,8 +33,6 @@ const RecipeBook: React.FC = () => {
 
             <RecipeActions onOpenAddModal={() => setAddModalOpen(true)} />
 
-            <ImageGenerationProgress />
-            
             <MyCookbookGrid onRecipeClick={setSelectedRecipeId} onOpenAddModal={() => setAddModalOpen(true)} />
 
             {selectedRecipe && (

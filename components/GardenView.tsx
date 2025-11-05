@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useUserGarden } from '../contexts/UserGardenContext';
 import PlantCard from './PlantCard';
 import WeatherCard from './WeatherCard';
-import GeminiTip from './GeminiTip';
 import { useWeather } from '../contexts/WeatherContext';
 import AlertBanner from './AlertBanner';
 import AddPlantModal from './AddPlantModal';
@@ -18,10 +17,8 @@ const GardenView: React.FC = () => {
     return (
         <div className="space-y-6">
             {alerts.map((alert, index) => <AlertBanner key={index} alert={alert} />)}
-            
+
             {weather && <WeatherCard weather={weather} />}
-            
-            {weather && myPlants.length > 0 && <GeminiTip />}
 
             <div>
                 <div className="flex justify-between items-center mb-4">

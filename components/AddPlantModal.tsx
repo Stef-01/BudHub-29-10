@@ -35,7 +35,7 @@ const AddPlantModal: React.FC<AddPlantModalProps> = ({ onClose }) => {
           </button>
         </header>
 
-        <main className="p-4 sm:p-6 overflow-y-auto">
+        <main className="p-4 sm:p-6 overflow-y-auto pb-20">
           <ul className="space-y-3">
             {PLANT_CATALOG.map(plant => {
               const isInGarden = myPlantIds.has(plant.id);

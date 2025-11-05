@@ -19,21 +19,30 @@ export const WeatherProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   useEffect(() => {
     const fetchWeather = async () => {
-      setLoading(true);
-      const weatherData = await getMockWeather({ city: 'Logan', state: 'QLD' });
-      setWeather(weatherData);
+      try {
+        setLoading(true);
+        console.log('[WeatherContext] Loading weather data...');
+        const weatherData = await getMockWeather({ city: 'Logan', state: 'QLD' });
+        setWeather(weatherData);
 
-      const newAlerts: Alert[] = [];
-      if (weatherData.current.tempC > HEATWAVE_THRESHOLD) {
-        newAlerts.push({
-          type: 'Heatwave',
-          severity: 'Critical',
-          title: 'Heatwave Alert!',
-          message: `It's ${weatherData.current.tempC}°C! Ensure your plants are deeply watered and consider providing temporary shade.`
-        });
+        const newAlerts: Alert[] = [];
+        if (weatherData.current.tempC > HEATWAVE_THRESHOLD) {
+          newAlerts.push({
+            type: 'Heatwave',
+            severity: 'Critical',
+            title: 'Heatwave Alert!',
+            message: `It's ${weatherData.current.tempC}°C! Ensure your plants are deeply watered and consider providing temporary shade.`
+          });
+        }
+        setAlerts(newAlerts);
+        console.log('[WeatherContext] ✓ Weather data loaded successfully');
+      } catch (error) {
+        console.error('[WeatherContext] ❌ Error loading weather:', error);
+        setWeather(null);
+        setAlerts([]);
+      } finally {
+        setLoading(false);
       }
-      setAlerts(newAlerts);
-      setLoading(false);
     };
     fetchWeather();
   }, []);

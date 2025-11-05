@@ -1,6 +1,6 @@
 // components/GameRecipeCard.tsx
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Recipe, GameMode } from '../types';
 import { useRecipeImage } from '../hooks/useRecipeImage';
 
@@ -14,7 +14,11 @@ interface GameRecipeCardProps {
 }
 
 const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSelected, isCorrect, isRevealed, gameMode }) => {
-  const { imageUrl, isGenerating } = useRecipeImage(recipe);
+  const { imageUrl, isGenerating, status } = useRecipeImage(recipe);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
+
+  // Debug logging
+  console.log(`[GameRecipeCard] ${recipe.name}: imageUrl="${imageUrl}", status="${status}", isGenerating=${isGenerating}`);
 
   const getBorderColor = () => {
     if (!isRevealed) {
@@ -29,7 +33,17 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
     return 'border-gray-200 opacity-60';
   };
   
-  const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:'));
+  // Check if imageUrl is a renderable image (URL or data URI), not just an emoji
+  // If image failed to load, don't try to render it
+  const isRenderableImage = !imageLoadFailed && imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
+
+  console.log(`[GameRecipeCard] ${recipe.name}: isRenderableImage=${isRenderableImage}, imageLoadFailed=${imageLoadFailed}, imageUrl starts with: ${imageUrl?.substring(0, 20)}...`);
+
+  // Handle image load error by falling back to emoji
+  const handleImageError = () => {
+    console.log(`[GameRecipeCard] Image failed to load for ${recipe.name}, falling back to emoji`);
+    setImageLoadFailed(true);
+  };
 
   // Get nutrient data and thresholds for detailed display
   const nutrientInfo = useMemo(() => {
@@ -81,19 +95,39 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
   }, [gameMode, recipe]);
 
   return (
-    <button
-      onClick={() => onClick(recipe.id)}
-      disabled={isRevealed}
-      className={`w-full bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 border-4 ${getBorderColor()}`}
-    >
-      <div className="relative h-48 w-full bg-green-50">
-        {isGenerating ? (
-          <div className="h-full w-full flex items-center justify-center text-gray-500">Loading...</div>
-        ) : (
-          isRenderableImage ?
-          <img className="h-full w-full object-cover" src={imageUrl} alt={recipe.name} /> :
-          <div className="h-full w-full flex items-center justify-center text-6xl">{imageUrl}</div>
-        )}
+    <div className="relative w-full" style={{ perspective: '1000px' }}>
+      <button
+        onClick={() => onClick(recipe.id)}
+        disabled={isRevealed}
+        className={`w-full min-h-80 bg-white rounded-xl shadow-md overflow-hidden border-4 ${getBorderColor()} transition-all duration-700 transform-gpu`}
+        style={{
+          transformStyle: 'preserve-3d',
+          transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
+        }}
+      >
+        {/* Front Face */}
+        <div
+          className="absolute inset-0 backface-hidden"
+          style={{ backfaceVisibility: 'hidden' }}
+        >
+          <div className="relative h-48 w-full bg-green-50">
+            {isGenerating ? (
+              <div className="h-full w-full flex items-center justify-center text-gray-500">Loading...</div>
+            ) : isRenderableImage ? (
+              <img
+                className="h-full w-full object-cover"
+                src={imageUrl}
+                alt={recipe.name}
+                onError={handleImageError}
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-6xl">{recipe.image || imageUrl}</div>
+            )}
+          </div>
+          <div className="p-4 text-center">
+            <h3 className="font-bold text-lg text-green-900 truncate">{recipe.name}</h3>
+          </div>
+        </div>
 
         {isRevealed && nutrientInfo && (
             <div className="absolute bottom-0 left-0 right-0 bg-black/90 p-3">
@@ -123,12 +157,49 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
                   </div>
                 )}
             </div>
-        )}
-      </div>
-      <div className="p-4 text-center">
-        <h3 className="font-bold text-lg text-green-900 truncate">{recipe.name}</h3>
-      </div>
-    </button>
+
+            {/* Recipe Name */}
+            <h3 className="font-bold text-lg text-slate-800 text-center px-2">{recipe.name}</h3>
+
+            {/* Nutrient Display */}
+            {nutrientData && (
+              <div className="w-full space-y-3">
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-1">
+                    {nutrientData.label}
+                  </p>
+                  {nutrientData.value !== null ? (
+                    <>
+                      <p className={`text-4xl font-bold ${isCorrect ? 'text-green-700' : 'text-slate-800'}`}>
+                        {nutrientData.value}{nutrientData.unit}
+                      </p>
+                      {/* Visual bar showing relative amount */}
+                      <div className="w-full bg-slate-200 rounded-full h-3 mt-3">
+                        <div
+                          className={`h-3 rounded-full transition-all ${
+                            nutrientData.isHigh
+                              ? (isCorrect ? 'bg-green-600' : 'bg-amber-500')
+                              : (isCorrect ? 'bg-blue-500' : 'bg-slate-400')
+                          }`}
+                          style={{ width: `${Math.min(100, (nutrientData.value / nutrientData.maxScale) * 100)}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {nutrientData.isHigh ? (gameMode === 'low_carb' ? 'Higher carbs' : 'High amount') : (gameMode === 'low_carb' ? 'Lower carbs' : 'Lower amount')}
+                      </p>
+                    </>
+                  ) : (
+                    <p className={`text-2xl font-bold ${isCorrect ? 'text-green-700' : 'text-rose-700'}`}>
+                      {recipe.diabetic_friendly ? 'Low Impact ✓' : 'High Impact'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </button>
+    </div>
   );
 };
 
