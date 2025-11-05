@@ -95,6 +95,9 @@ export const RECIPE_IMAGE_FILENAME_MAP: Record<string, string> = {
     'rcp_bruschetta': 'Tomato___Basil_Bruschetta',
     'rcp_coconut_chutney': 'Coconut_Chutney__Thenga_Chammanthi_',
 
+    // Green Gram Curry (same as Kerala Parippu - Moong Dal)
+    'rcp_green_gram_curry': 'Kerala_Parippu_Curry__Moong_Dal_',
+
     // Special case - fallbacks for recipes without exact matches
     // These will fallback to emoji if image not found
 };

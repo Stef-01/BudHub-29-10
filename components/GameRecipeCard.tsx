@@ -113,96 +113,76 @@ const GameRecipeCard: React.FC<GameRecipeCardProps> = ({ recipe, onClick, isSele
   }, [gameMode, recipe]);
 
   return (
-    <div className="relative w-full" style={{ perspective: '1000px' }}>
+    <div className="w-full">
+      {/* Recipe Card */}
       <button
         onClick={() => onClick(recipe.id)}
         disabled={isRevealed}
-        className={`w-full min-h-[28rem] bg-white rounded-xl shadow-md overflow-hidden border-4 ${getBorderColor()} transition-all duration-700 transform-gpu`}
-        style={{
-          transformStyle: 'preserve-3d',
-          transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
-        }}
+        className={`w-full bg-white rounded-xl shadow-md overflow-hidden border-4 ${getBorderColor()} transition-all duration-300`}
       >
-        {/* Front Face */}
-        <div
-          className="absolute inset-0 backface-hidden"
-          style={{ backfaceVisibility: 'hidden' }}
-        >
-          <div className="relative h-80 w-full bg-green-50">
-            {isGenerating ? (
-              <div className="h-full w-full flex items-center justify-center text-gray-500">Loading...</div>
-            ) : isRenderableImage ? (
-              <img
-                className="h-full w-full object-cover"
-                src={imageUrl}
-                alt={recipe.name}
-                onError={handleImageError}
-              />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center text-8xl">{recipe.image || imageUrl}</div>
-            )}
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 bg-white bg-opacity-95 py-3 px-4 text-center border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-green-900 truncate">{recipe.name}</h3>
-          </div>
+        <div className="relative h-64 w-full bg-green-50">
+          {isGenerating ? (
+            <div className="h-full w-full flex items-center justify-center text-gray-500">Loading...</div>
+          ) : isRenderableImage ? (
+            <img
+              className="h-full w-full object-cover"
+              src={imageUrl}
+              alt={recipe.name}
+              onError={handleImageError}
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-8xl">{recipe.image || imageUrl}</div>
+          )}
         </div>
-
-        {/* Back Face */}
-        <div
-          className="absolute inset-0 backface-hidden"
-          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-        >
-          <div className="h-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-white to-slate-50">
-            {/* Nutrient Display */}
-            {nutrientInfo && (
-              <div className="w-full space-y-4">
-                <div className="text-center">
-                  <p className="text-base font-bold text-slate-700 uppercase tracking-wide mb-3">
-                    {nutrientInfo.label}
-                  </p>
-                  {nutrientInfo.value !== null ? (
-                    <>
-                      <p className={`text-6xl font-bold mb-4 ${isCorrect ? 'text-green-700' : 'text-slate-800'}`}>
-                        {nutrientInfo.value}{nutrientInfo.unit}
-                      </p>
-                      {/* Visual bar showing relative amount */}
-                      <div className="w-full bg-slate-200 rounded-full h-4 mt-4 mb-2">
-                        <div
-                          className={`h-4 rounded-full transition-all ${
-                            nutrientInfo.isAboveThreshold
-                              ? (isCorrect ? 'bg-green-600' : 'bg-amber-500')
-                              : (isCorrect ? 'bg-blue-500' : 'bg-slate-400')
-                          }`}
-                          style={{ width: `${Math.min(100, (nutrientInfo.value / nutrientInfo.maxScale) * 100)}%` }}
-                        ></div>
-                      </div>
-                      <p className="text-sm text-slate-600 mt-2 font-medium">
-                        {nutrientInfo.targetText}
-                      </p>
-                      {nutrientInfo.differenceText && (
-                        <p className={`text-sm font-semibold mt-2 ${
-                          isCorrect ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {nutrientInfo.differenceText}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <p className={`text-3xl font-bold ${isCorrect ? 'text-green-700' : 'text-rose-700'}`}>
-                      {nutrientInfo.targetText}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Recipe Name at bottom */}
-            <div className="absolute bottom-0 left-0 right-0 bg-white bg-opacity-95 py-3 px-4 text-center border-t border-gray-200">
-              <h3 className="text-sm font-semibold text-slate-700">{recipe.name}</h3>
-            </div>
-          </div>
+        <div className="bg-white py-3 px-4 text-center border-t border-gray-200">
+          <h3 className="text-sm font-semibold text-green-900 truncate">{recipe.name}</h3>
         </div>
       </button>
+
+      {/* Nutrient Info Below Card - Only visible when revealed */}
+      {isRevealed && nutrientInfo && (
+        <div className={`mt-4 p-4 rounded-lg border-2 ${
+          isCorrect ? 'bg-green-50 border-green-300' : (isSelected ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-300')
+        }`}>
+          <div className="text-center">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
+              {nutrientInfo.label}
+            </p>
+            {nutrientInfo.value !== null ? (
+              <>
+                <p className={`text-4xl font-bold mb-3 ${isCorrect ? 'text-green-700' : 'text-slate-800'}`}>
+                  {nutrientInfo.value}{nutrientInfo.unit}
+                </p>
+                {/* Visual bar showing relative amount */}
+                <div className="w-full bg-slate-200 rounded-full h-3 mb-2">
+                  <div
+                    className={`h-3 rounded-full transition-all ${
+                      nutrientInfo.isAboveThreshold
+                        ? (isCorrect ? 'bg-green-600' : 'bg-amber-500')
+                        : (isCorrect ? 'bg-blue-500' : 'bg-slate-400')
+                    }`}
+                    style={{ width: `${Math.min(100, (nutrientInfo.value / nutrientInfo.maxScale) * 100)}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  {nutrientInfo.targetText}
+                </p>
+                {nutrientInfo.differenceText && (
+                  <p className={`text-xs font-semibold mt-1 ${
+                    isCorrect ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {nutrientInfo.differenceText}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className={`text-2xl font-bold ${isCorrect ? 'text-green-700' : 'text-rose-700'}`}>
+                {nutrientInfo.targetText}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
