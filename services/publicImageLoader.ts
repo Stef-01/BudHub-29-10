@@ -8,6 +8,7 @@
 
 import { RECIPE_CATALOG } from '../constants';
 import type { Recipe } from '../types';
+import { getRecipeImageFilename } from './recipeImageMap';
 
 const FOOD_IMAGES_BASE = '/dataset/food-images/';
 const RECIPE_IMAGES_BASE = '/dataset/recipe-images/';
@@ -16,28 +17,60 @@ const RECIPE_IMAGES_BASE = '/dataset/recipe-images/';
 const IMAGE_EXTENSIONS = ['jpg', 'png', 'jpeg', 'webp'];
 
 /**
- * Converts a recipe name to a filename format used in the dataset.
- * Handles various naming patterns found in the food-images folder.
+ * Converts a recipe name to multiple filename variations used in the dataset.
+ * The dataset uses inconsistent naming conventions, so we generate multiple candidates.
  *
  * Examples:
- * - "Ada Pradhaman" → "Ada_Pradhaman"
- * - "Avial (Mixed Vegetable Curry)" → "Avial__Mixed_Vegetable_Curry_"
- * - "Chana Masala" → "chana_masala" (some files use lowercase)
+ * - "Ada Pradhaman" → ["Ada_Pradhaman", "ada_pradhaman"]
+ * - "Avial (Mixed Vegetable Curry)" → ["Avial__Mixed_Vegetable_Curry_", "avial__mixed_vegetable_curry_"]
+ * - "Beans & Carrot" → ["Beans_&_Carrot", "Beans___Carrot", "Beans-_-Carrot"]
  *
  * @param name - The recipe display name
- * @returns Filename without extension
+ * @returns Array of possible filename variations (without extension)
  */
-function nameToFilename(name: string): string {
-    // Replace spaces with underscores
-    let filename = name.replace(/\s+/g, '_');
+function nameToFilenameVariations(name: string): string[] {
+    const variations: string[] = [];
 
-    // Handle parentheses: convert "Name (Description)" to "Name__Description_"
-    filename = filename.replace(/\(/g, '__').replace(/\)/g, '_');
+    // Variation 1: Title Case with underscores, parens as __ and _
+    // "Avial (Mixed Vegetable Curry)" → "Avial__Mixed_Vegetable_Curry_"
+    let v1 = name.replace(/\s+/g, '_');
+    v1 = v1.replace(/\(/g, '__').replace(/\)/g, '_');
+    variations.push(v1);
 
-    // Clean up any double underscores that might have been created
-    // but preserve intentional double underscores from parentheses
+    // Variation 2: Same as v1 but lowercase
+    variations.push(v1.toLowerCase());
 
-    return filename;
+    // Variation 3: Replace ampersand with triple underscore
+    // "Beans & Carrot" → "Beans___Carrot"
+    if (name.includes('&')) {
+        const v3 = name.replace(/\s*&\s*/g, '___');
+        const v3_formatted = v3.replace(/\s+/g, '_').replace(/\(/g, '__').replace(/\)/g, '_');
+        variations.push(v3_formatted);
+        variations.push(v3_formatted.toLowerCase());
+    }
+
+    // Variation 4: Replace spaces with hyphens (some files use this)
+    // "Carrot Payasam" → "Carrot-Payasam"
+    const v4 = name.replace(/\s+/g, '-');
+    const v4_formatted = v4.replace(/\(/g, '-_').replace(/\)/g, '_');
+    variations.push(v4_formatted);
+    variations.push(v4_formatted.toLowerCase());
+
+    // Variation 5: Keep spaces (some images have spaces)
+    variations.push(name);
+    variations.push(name.toLowerCase());
+
+    // Variation 6: Replace special characters
+    // "Rice–Lentil" → "Rice_Lentil" (em dash)
+    const v6 = name.replace(/[–—]/g, '_').replace(/\s+/g, '_');
+    const v6_formatted = v6.replace(/\(/g, '__').replace(/\)/g, '_');
+    if (v6_formatted !== v1) {
+        variations.push(v6_formatted);
+        variations.push(v6_formatted.toLowerCase());
+    }
+
+    // Remove duplicates while preserving order
+    return Array.from(new Set(variations));
 }
 
 /**
@@ -113,18 +146,29 @@ export async function getRecipeImageUrl(recipeId: string): Promise<string | null
 }
 
 /**
- * Unified image retrieval for recipes - ENHANCED VERSION.
- * Returns the most likely image URL immediately, trying multiple filename variations.
- * This handles both ID-based filenames and display-name-based filenames.
- *
- * For recipes starting with "rcp_", strips the prefix and looks in food-images folder.
- * Also tries the recipe's display name as a filename.
+ * Unified image retrieval for recipes - ENHANCED VERSION WITH STATIC MAPPING.
+ * Uses a static map for known recipes, then falls back to pattern matching.
+ * This ensures consistent and reliable image loading across the application.
  *
  * @param recipeId - The recipe ID (e.g., "rcp_chana_masala", "rcp_ada_pradhaman")
- * @returns Image URL (optimistic, browser will validate)
+ * @returns Image URL that points to the correct file in public/dataset/food-images/
  */
 export async function getRecipeImageUrlUnified(recipeId: string): Promise<string | null> {
     console.log(`[getRecipeImageUrlUnified] Looking for image for recipe: ${recipeId}`);
+
+    // PRIORITY 1: Check static mapping (most reliable)
+    const mappedFilename = getRecipeImageFilename(recipeId);
+    if (mappedFilename) {
+        // Try each extension for the mapped filename
+        for (const ext of IMAGE_EXTENSIONS) {
+            const url = `${FOOD_IMAGES_BASE}${mappedFilename}.${ext}`;
+            console.log(`[getRecipeImageUrlUnified] ✓ Using mapped filename: ${url}`);
+            return url;
+        }
+    }
+
+    // PRIORITY 2: Fallback to pattern matching for unmapped recipes
+    console.log(`[getRecipeImageUrlUnified] No mapping found, trying pattern matching...`);
 
     // Get the full recipe object to access the display name
     const recipe = getRecipeById(recipeId);
@@ -136,27 +180,30 @@ export async function getRecipeImageUrlUnified(recipeId: string): Promise<string
         foodId = recipeId.substring(4); // Remove "rcp_" prefix
     }
 
-    // Priority 1: Try using the recipe display name (most Kerala recipes use this)
+    // Try using the recipe display name with variations
     if (recipeName) {
-        const nameBasedFilename = nameToFilename(recipeName);
+        const nameVariations = nameToFilenameVariations(recipeName);
+
+        // Try first variation only (to avoid too many failed requests)
+        const firstVariation = nameVariations[0];
         for (const ext of IMAGE_EXTENSIONS) {
-            const url = `${FOOD_IMAGES_BASE}${nameBasedFilename}.${ext}`;
-            console.log(`[getRecipeImageUrlUnified] Priority 1 - Name-based: ${url}`);
-            return url; // Return optimistically
+            const url = `${FOOD_IMAGES_BASE}${firstVariation}.${ext}`;
+            console.log(`[getRecipeImageUrlUnified] Trying name variation: ${url}`);
+            return url;
         }
     }
 
-    // Priority 2: Try using the ID (works for some recipes like chana_masala)
+    // Try using the ID (lowercase)
+    const foodIdLower = foodId.toLowerCase();
     for (const ext of IMAGE_EXTENSIONS) {
-        const url = `${FOOD_IMAGES_BASE}${foodId}.${ext}`;
-        console.log(`[getRecipeImageUrlUnified] Priority 2 - ID-based: ${url}`);
-        return url; // Return optimistically
+        const url = `${FOOD_IMAGES_BASE}${foodIdLower}.${ext}`;
+        console.log(`[getRecipeImageUrlUnified] Trying ID: ${url}`);
+        return url;
     }
 
-    // Fallback
-    const optimisticUrl = `${FOOD_IMAGES_BASE}${foodId}.jpg`;
-    console.log(`[getRecipeImageUrlUnified] Fallback URL: ${optimisticUrl}`);
-    return optimisticUrl;
+    // Fallback - return null to use emoji
+    console.log(`[getRecipeImageUrlUnified] No image found, will use emoji fallback`);
+    return null;
 }
 
 /**
