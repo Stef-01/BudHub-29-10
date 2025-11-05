@@ -74,6 +74,15 @@ function nameToFilenameVariations(name: string): string[] {
 }
 
 /**
+ * Helper function that returns the primary filename variation for a recipe name.
+ * Used for simple single-file lookups.
+ */
+function nameToFilename(name: string): string {
+    const variations = nameToFilenameVariations(name);
+    return variations[0]; // Return the first (most likely) variation
+}
+
+/**
  * Gets the recipe object from RECIPE_CATALOG by ID
  */
 function getRecipeById(recipeId: string): Recipe | undefined {

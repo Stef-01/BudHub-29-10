@@ -29,62 +29,34 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         // Increase chunk size warning limit (500kb → 1000kb)
-        // We're using manual chunks to properly split the bundle
+        // Conservative chunking to avoid circular dependency issues
         chunkSizeWarningLimit: 1000,
 
         rollupOptions: {
           output: {
-            // Manual chunk splitting for optimal loading and caching
+            // Simplified manual chunk splitting - only split vendor code
+            // This avoids circular dependency issues while still improving caching
             manualChunks: (id) => {
-              // React vendor chunk - updates rarely, cache aggressively
-              if (id.includes('node_modules/react') ||
-                  id.includes('node_modules/react-dom') ||
-                  id.includes('node_modules/scheduler')) {
-                return 'react-vendor';
+              // Only split out vendor dependencies from node_modules
+              // Keep all application code together to avoid import issues
+              if (id.includes('node_modules')) {
+                // React core
+                if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+                  return 'react-vendor';
+                }
+                // Database libs
+                if (id.includes('@sqlite.org/sqlite-wasm') || id.includes('idb')) {
+                  return 'database-vendor';
+                }
+                // AI SDK
+                if (id.includes('@google/genai')) {
+                  return 'ai-vendor';
+                }
+                // Other node_modules go to vendor chunk
+                return 'vendor';
               }
-
-              // Database vendor chunk - SQLite WASM + IndexedDB
-              // These are large but only loaded once
-              if (id.includes('node_modules/@sqlite.org/sqlite-wasm') ||
-                  id.includes('node_modules/idb')) {
-                return 'database-vendor';
-              }
-
-              // AI vendor chunk - Gemini SDK
-              // Separated because it's large and not always needed
-              if (id.includes('node_modules/@google/genai')) {
-                return 'ai-vendor';
-              }
-
-              // Game components chunk - all game-related code
-              // Can be loaded on-demand when user accesses games
-              if (id.includes('/components/') &&
-                  (id.includes('Game') ||
-                   id.includes('games/') ||
-                   id.includes('UnifiedNutrient'))) {
-                return 'games';
-              }
-
-              // Recipe and catalog data - large constants
-              // Separate to allow efficient caching
-              if (id.includes('constants.ts')) {
-                return 'catalog-data';
-              }
-
-              // Shared utilities and services
-              if (id.includes('/services/') ||
-                  id.includes('/hooks/') ||
-                  id.includes('/utils/')) {
-                return 'shared-utils';
-              }
-
-              // Context providers - needed early
-              if (id.includes('/contexts/')) {
-                return 'contexts';
-              }
-
-              // Everything else goes to the default chunk
-              // This includes main App.tsx, router, etc.
+              // All application code stays in the main chunk
+              // This prevents circular dependency and import order issues
             }
           }
         }

@@ -27,7 +27,8 @@ export const RECIPE_IMAGE_FILENAME_MAP: Record<string, string> = {
     'rcp_potato_stew': 'kerala_potato_stew',
     'rcp_rasam': 'kerala_rasam__spiced_soup_',
     'rcp_parippu_curry': 'Kerala_Parippu_Curry__Moong_Dal_',
-    'rcp_sambar': 'Kerala_Sambar__Vegetable_Lentil_Stew_',
+    'rcp_sambar': 'sambar',
+    'rcp_kerala_sambar': 'Kerala_Sambar__Vegetable_Lentil_Stew_',
     'rcp_vegetable_kurma': 'Kerala_Vegetable_Kurma',
     'rcp_kadala_curry': 'Kadala_Curry__Brown_Chickpea_Curry_',
     'rcp_mathi_curry': 'mathi_kerala_sardine_curry',
@@ -83,7 +84,6 @@ export const RECIPE_IMAGE_FILENAME_MAP: Record<string, string> = {
     'rcp_baingan_bharta': 'baingan_bharta',
     'rcp_rajma_masala': 'rajma_masala',
     'rcp_lemon_rice': 'lemon_rice',
-    'rcp_sambar': 'sambar',
     'rcp_dosa_plain': 'dosa',
     'rcp_idli_plain': 'idili',
 

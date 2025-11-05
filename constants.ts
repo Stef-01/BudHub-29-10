@@ -985,7 +985,7 @@ export const RECIPE_CATALOG: Recipe[] = [
         imageMetadata: { source: 'ai_generated', status: 'pending' }
     },
     {
-        id: 'rcp_sambar',
+        id: 'rcp_kerala_sambar',
         name: 'Kerala Sambar (Vegetable Lentil Stew)',
         image: '🍲',
         course: 'main',
