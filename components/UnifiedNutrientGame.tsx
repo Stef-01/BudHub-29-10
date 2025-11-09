@@ -1,6 +1,6 @@
 // components/UnifiedNutrientGame.tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { GameQuestion } from '../types';
 import { useGameScores } from '../contexts/GameScoresContext';
 import { useGamification } from '../contexts/GamificationContext';
@@ -9,6 +9,12 @@ import { RECIPE_CATALOG } from '../constants';
 import GameRecipeCard from './GameRecipeCard';
 import GameOverModal from './GameOverModal';
 import { XIcon } from './icons/Icons';
+import { getUserId } from '../hooks/useUserId';
+import {
+  logNutrientChallengeAttempt,
+  logNutrientChallengeSession,
+  type NutrientChallengeAttempt,
+} from '../services/supabaseLogger';
 
 const ROUND_TIME = 15; // seconds
 
@@ -33,6 +39,25 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
   const [isRevealed, setIsRevealed] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
   const [currentMetric, setCurrentMetric] = useState<'high_protein' | 'high_fiber' | 'low_carb' | 'diabetic_friendly'>('high_protein');
+
+  // Supabase tracking
+  const sessionId = useRef(crypto.randomUUID());
+  const userId = getUserId();
+  const sessionAttemptsRef = useRef<{
+    high_protein: { correct: number; total: number };
+    high_fiber: { correct: number; total: number };
+    low_carb: { correct: number; total: number };
+    diabetic_friendly: { correct: number; total: number };
+    totalCorrect: number;
+    totalQuestions: number;
+  }>({
+    high_protein: { correct: 0, total: 0 },
+    high_fiber: { correct: 0, total: 0 },
+    low_carb: { correct: 0, total: 0 },
+    diabetic_friendly: { correct: 0, total: 0 },
+    totalCorrect: 0,
+    totalQuestions: 0,
+  });
 
   const nextQuestion = useCallback(() => {
     console.log('[UnifiedNutrientGame] Attempting to generate question...');
@@ -108,16 +133,52 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
   }, [timer, isRevealed, isGameOver, lives, nextQuestion]);
 
   const handleAnswerClick = (recipeId: string) => {
-    if (isRevealed) return;
+    if (isRevealed || !question) return;
 
     setSelectedAnswerId(recipeId);
     setIsRevealed(true);
 
     const isCorrect = recipeId === question?.correctAnswerId;
+    const points = isCorrect ? 10 + timer : 0;
+
+    // Find recipe details
+    const selectedRecipe = question.options.find(r => r.id === recipeId);
+    const correctRecipe = question.options.find(r => r.id === question.correctAnswerId);
+
+    // Log attempt to Supabase
+    const attempt: NutrientChallengeAttempt = {
+      user_id: userId,
+      session_id: sessionId.current,
+      metric: currentMetric,
+      challenge_text: question.challenge,
+      correct_recipe_id: question.correctAnswerId,
+      correct_recipe_name: correctRecipe?.name || 'Unknown',
+      selected_recipe_id: recipeId,
+      selected_recipe_name: selectedRecipe?.name || 'Unknown',
+      was_correct: isCorrect,
+      options: question.options.map(r => ({
+        id: r.id,
+        name: r.name,
+        image: r.image,
+        course: r.course,
+      })),
+      time_taken_seconds: timer,
+      points_earned: points,
+      lives_remaining: lives,
+    };
+
+    logNutrientChallengeAttempt(attempt);
+
+    // Update session stats
+    sessionAttemptsRef.current[currentMetric].total += 1;
+    sessionAttemptsRef.current.totalQuestions += 1;
+    if (isCorrect) {
+      sessionAttemptsRef.current[currentMetric].correct += 1;
+      sessionAttemptsRef.current.totalCorrect += 1;
+    }
 
     setTimeout(() => {
       if (isCorrect) {
-        const points = 10 + timer;
         setScore(s => s + points);
         addXp('Low', 'add');
         nextQuestion();
@@ -142,8 +203,26 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
 
   const handleExit = () => {
     if (score > 0) {
-      // Save under unified_nutrient mode
+      // Save under unified_nutrient mode (local IndexedDB)
       saveScore('unified_nutrient', score);
+
+      // Log session to Supabase
+      const stats = sessionAttemptsRef.current;
+      logNutrientChallengeSession({
+        user_id: userId,
+        session_id: sessionId.current,
+        final_score: score,
+        questions_correct: stats.totalCorrect,
+        questions_total: stats.totalQuestions,
+        high_protein_correct: stats.high_protein.correct,
+        high_protein_total: stats.high_protein.total,
+        high_fiber_correct: stats.high_fiber.correct,
+        high_fiber_total: stats.high_fiber.total,
+        low_carb_correct: stats.low_carb.correct,
+        low_carb_total: stats.low_carb.total,
+        diabetic_friendly_correct: stats.diabetic_friendly.correct,
+        diabetic_friendly_total: stats.diabetic_friendly.total,
+      });
     }
     onExit();
   };
