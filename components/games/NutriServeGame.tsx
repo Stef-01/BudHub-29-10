@@ -1,11 +1,17 @@
 // components/games/NutriServeGame.tsx
-import React, { useState, useEffect, useReducer, useCallback } from 'react';
+import React, { useState, useEffect, useReducer, useCallback, useRef } from 'react';
 import type { NutriServeCustomerWithTargets, PlateItem, FoodItem } from './NutriServeTypes';
 import { getNewCustomer, calculateMealTotals, calculateScoreAndFeedback } from '../../services/nutriserveUtils';
 // FIX: Corrected import casing for 'nutriserveFoodData' for consistency across the module.
 import { FOOD_LIBRARY } from '../../services/nutriServeFoodData';
 import { useGameScores } from '../../contexts/GameScoresContext';
 import { useGamification } from '../../contexts/GamificationContext';
+import { getUserId } from '../../hooks/useUserId';
+import {
+  logNutriServeRoundAttempt,
+  logNutriServeSession,
+  type NutriServeRoundAttempt,
+} from '../../services/supabaseLogger';
 
 import Plate from './nutriserve-ui/Plate';
 import FoodLibrary from './nutriserve-ui/FoodLibrary';
@@ -91,6 +97,26 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
   const { saveScore } = useGameScores();
   const { addXp } = useGamification();
 
+  // Supabase tracking
+  const sessionId = useRef(crypto.randomUUID());
+  const userId = getUserId();
+  const roundScoresRef = useRef<number[]>([]);
+  const nutrientAccuracyRef = useRef<{
+    protein: number[];
+    carbs: number[];
+    fat: number[];
+    fiber: number[];
+    sugar: number[];
+    sodium: number[];
+  }>({
+    protein: [],
+    carbs: [],
+    fat: [],
+    fiber: [],
+    sugar: [],
+    sodium: [],
+  });
+
   useEffect(() => {
     dispatch({ type: 'START_GAME' });
   }, []);
@@ -111,6 +137,74 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
   };
 
   const handleServe = () => {
+    if (!gameState.customer) return;
+
+    const totals = calculateMealTotals(gameState.plateItems);
+    const { score, feedback } = calculateScoreAndFeedback(totals, gameState.customer.targets);
+
+    // Determine which nutrients were off-target
+    const nutrientsOffTarget: string[] = [];
+    const nutrientKeys = ['protein_g', 'carbs_g', 'fat_g', 'fiber_g', 'sugar_g', 'sodium_mg'];
+
+    for (const key of nutrientKeys) {
+      if (feedback[key] !== 'good') {
+        nutrientsOffTarget.push(key.replace('_g', '').replace('_mg', ''));
+      }
+    }
+
+    // Calculate nutrient accuracy (100 if good, 50 if close but off, 0 if way off)
+    const calculateAccuracy = (status: string): number => {
+      if (status === 'good') return 100;
+      if (status === 'low' || status === 'high') return 50; // Partially correct
+      return 0;
+    };
+
+    nutrientAccuracyRef.current.protein.push(calculateAccuracy(feedback.protein_g));
+    nutrientAccuracyRef.current.carbs.push(calculateAccuracy(feedback.carbs_g));
+    nutrientAccuracyRef.current.fat.push(calculateAccuracy(feedback.fat_g));
+    nutrientAccuracyRef.current.fiber.push(calculateAccuracy(feedback.fiber_g));
+    nutrientAccuracyRef.current.sugar.push(calculateAccuracy(feedback.sugar_g));
+    nutrientAccuracyRef.current.sodium.push(calculateAccuracy(feedback.sodium_mg));
+
+    roundScoresRef.current.push(score);
+
+    // Determine XP level
+    let xpAwarded = 'Low';
+    if (score > 100) xpAwarded = 'High';
+    else if (score > 50) xpAwarded = 'Medium';
+
+    // Log round attempt to Supabase
+    const roundAttempt: NutriServeRoundAttempt = {
+      user_id: userId,
+      session_id: sessionId.current,
+      round_number: gameState.round,
+      customer_name: gameState.customer.name,
+      customer_targets: gameState.customer.targets,
+      is_diabetic: gameState.customer.isDiabetic || false,
+      foods_selected: gameState.plateItems.map(item => ({
+        foodName: item.foodItem.name,
+        category: item.foodItem.category,
+        grams: item.grams,
+        nutrients: {
+          calories: item.foodItem.calories_kcal,
+          protein: item.foodItem.protein_g,
+          carbs: item.foodItem.carbs_g,
+          fat: item.foodItem.fat_g,
+          fiber: item.foodItem.fiber_g,
+          sugar: item.foodItem.sugar_g,
+          sodium: item.foodItem.sodium_mg,
+        },
+      })),
+      meal_totals: totals,
+      round_score: score,
+      max_possible_score: 150,
+      nutrient_feedback: feedback,
+      nutrients_off_target: nutrientsOffTarget,
+      xp_awarded: xpAwarded,
+    };
+
+    logNutriServeRoundAttempt(roundAttempt);
+
     dispatch({ type: 'SERVE_PLATE' });
   };
 
@@ -127,13 +221,50 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
   const handlePlayAgain = () => {
     if (gameState.totalScore > 0) {
         saveScore('nutriserve', gameState.totalScore);
+
+        // Log session to Supabase
+        logSessionToSupabase();
     }
+
+    // Reset tracking for new session
+    sessionId.current = crypto.randomUUID();
+    roundScoresRef.current = [];
+    nutrientAccuracyRef.current = {
+      protein: [],
+      carbs: [],
+      fat: [],
+      fiber: [],
+      sugar: [],
+      sodium: [],
+    };
+
     dispatch({ type: 'START_GAME' });
   };
   
+  const logSessionToSupabase = () => {
+    const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+    logNutriServeSession({
+      user_id: userId,
+      session_id: sessionId.current,
+      final_score: gameState.totalScore,
+      rounds_completed: roundScoresRef.current.length,
+      max_rounds: MAX_ROUNDS,
+      average_round_score: avg(roundScoresRef.current),
+      perfect_rounds: roundScoresRef.current.filter(s => s === 150).length,
+      protein_accuracy_avg: avg(nutrientAccuracyRef.current.protein),
+      carbs_accuracy_avg: avg(nutrientAccuracyRef.current.carbs),
+      fat_accuracy_avg: avg(nutrientAccuracyRef.current.fat),
+      fiber_accuracy_avg: avg(nutrientAccuracyRef.current.fiber),
+      sugar_accuracy_avg: avg(nutrientAccuracyRef.current.sugar),
+      sodium_accuracy_avg: avg(nutrientAccuracyRef.current.sodium),
+    });
+  };
+
   const handleExitGame = () => {
     if (gameState.totalScore > 0) {
       saveScore('nutriserve', gameState.totalScore);
+      logSessionToSupabase();
     }
     onExit();
   };

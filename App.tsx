@@ -14,10 +14,12 @@ import GameScreen from './components/GameScreen';
 // FIX: Correctly import NutriServeGame as a module.
 import NutriServeGame from './components/games/NutriServeGame';
 import UnifiedNutrientGame from './components/UnifiedNutrientGame';
+import AdminDashboard from './components/AdminDashboard';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('Garden');
   const [activeGame, setActiveGame] = useState<GameMode | null>(null);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   const gardenCtx = useUserGarden();
   const weatherCtx = useWeather();
@@ -28,7 +30,15 @@ const AppContent: React.FC = () => {
   const isLoading = useMemo(() => {
     return gardenCtx.loading || weatherCtx.loading || tasksCtx.loading || cookbookCtx.loading || scoresCtx.loading;
   }, [gardenCtx.loading, weatherCtx.loading, tasksCtx.loading, cookbookCtx.loading, scoresCtx.loading]);
-  
+
+  // Check for admin mode in URL
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin') === 'true') {
+      setShowAdmin(true);
+    }
+  }, []);
+
   const handlePlayGame = (gameMode: GameMode) => {
     setActiveGame(gameMode);
   };
@@ -37,8 +47,24 @@ const AppContent: React.FC = () => {
     setActiveGame(null);
   };
 
+  const handleExitAdmin = () => {
+    setShowAdmin(false);
+    // Remove admin param from URL
+    const params = new URLSearchParams(window.location.search);
+    params.delete('admin');
+    const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    window.history.replaceState({}, '', newUrl);
+  };
+
   if (isLoading) {
     return <LoadingScreen />;
+  }
+
+  // Show admin dashboard if admin mode is active
+  if (showAdmin) {
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get('user') || 'dad';
+    return <AdminDashboard onExit={handleExitAdmin} userId={userId} />;
   }
 
   if (activeGame) {
@@ -50,7 +76,7 @@ const AppContent: React.FC = () => {
     }
     return <GameScreen gameMode={activeGame} onExit={handleExitGame} />;
   }
-  
+
   return (
     <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
       <TabRouter activeTab={activeTab} onPlayGame={handlePlayGame} />
