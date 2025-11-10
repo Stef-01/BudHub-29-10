@@ -9,6 +9,7 @@ import {
   getNutrientChallengeMastery,
   getNutriServeProblemNutrients,
 } from '../services/supabaseLogger';
+import { trackAdminAccess, trackAdminTabChange } from '../lib/analytics';
 
 interface AdminDashboardProps {
   onExit: () => void;
@@ -31,6 +32,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit, userId = 'dad' 
 
   useEffect(() => {
     loadData();
+    // Track admin access
+    trackAdminAccess(userId);
   }, [userId]);
 
   const loadData = async () => {
@@ -133,7 +136,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit, userId = 'dad' 
         <div className="bg-white rounded-xl shadow-lg mb-6">
           <div className="flex border-b border-gray-200">
             <button
-              onClick={() => setActiveTab('overview')}
+              onClick={() => {
+                setActiveTab('overview');
+                trackAdminTabChange('overview', userId);
+              }}
               className={`px-6 py-3 font-semibold transition-colors ${
                 activeTab === 'overview'
                   ? 'text-emerald-700 border-b-2 border-emerald-700'
@@ -143,7 +149,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit, userId = 'dad' 
               Overview
             </button>
             <button
-              onClick={() => setActiveTab('nutrient-challenge')}
+              onClick={() => {
+                setActiveTab('nutrient-challenge');
+                trackAdminTabChange('nutrient-challenge', userId);
+              }}
               className={`px-6 py-3 font-semibold transition-colors ${
                 activeTab === 'nutrient-challenge'
                   ? 'text-emerald-700 border-b-2 border-emerald-700'
@@ -153,7 +162,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit, userId = 'dad' 
               Nutrient Challenge Analysis
             </button>
             <button
-              onClick={() => setActiveTab('nutriserve')}
+              onClick={() => {
+                setActiveTab('nutriserve');
+                trackAdminTabChange('nutriserve', userId);
+              }}
               className={`px-6 py-3 font-semibold transition-colors ${
                 activeTab === 'nutriserve'
                   ? 'text-emerald-700 border-b-2 border-emerald-700'

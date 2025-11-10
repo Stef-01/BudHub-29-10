@@ -15,6 +15,7 @@ import {
   logNutrientChallengeSession,
   type NutrientChallengeAttempt,
 } from '../services/supabaseLogger';
+import { trackGameStart, trackNutrientChallengeAttempt, trackGameComplete } from '../lib/analytics';
 
 const ROUND_TIME = 15; // seconds
 
@@ -43,6 +44,7 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
   // Supabase tracking
   const sessionId = useRef(crypto.randomUUID());
   const userId = getUserId();
+  const gameStartTime = useRef(Date.now());
   const sessionAttemptsRef = useRef<{
     high_protein: { correct: number; total: number };
     high_fiber: { correct: number; total: number };
@@ -58,6 +60,11 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
     totalCorrect: 0,
     totalQuestions: 0,
   });
+
+  // Track game start
+  useEffect(() => {
+    trackGameStart('nutrient_challenge', userId);
+  }, [userId]);
 
   const nextQuestion = useCallback(() => {
     console.log('[UnifiedNutrientGame] Attempting to generate question...');
@@ -169,6 +176,9 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
 
     logNutrientChallengeAttempt(attempt);
 
+    // Track analytics
+    trackNutrientChallengeAttempt(currentMetric, isCorrect, userId);
+
     // Update session stats
     sessionAttemptsRef.current[currentMetric].total += 1;
     sessionAttemptsRef.current.totalQuestions += 1;
@@ -223,6 +233,10 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
         diabetic_friendly_correct: stats.diabetic_friendly.correct,
         diabetic_friendly_total: stats.diabetic_friendly.total,
       });
+
+      // Track game completion
+      const duration = Math.round((Date.now() - gameStartTime.current) / 1000);
+      trackGameComplete('nutrient_challenge', score, userId);
     }
     onExit();
   };
