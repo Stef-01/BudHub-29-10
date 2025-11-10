@@ -12,6 +12,7 @@ import {
   logNutriServeSession,
   type NutriServeRoundAttempt,
 } from '../../services/supabaseLogger';
+import { trackGameStart, trackNutriServeRound, trackGameComplete } from '../../lib/analytics';
 
 import Plate from './nutriserve-ui/Plate';
 import FoodLibrary from './nutriserve-ui/FoodLibrary';
@@ -100,6 +101,7 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
   // Supabase tracking
   const sessionId = useRef(crypto.randomUUID());
   const userId = getUserId();
+  const gameStartTime = useRef(Date.now());
   const roundScoresRef = useRef<number[]>([]);
   const nutrientAccuracyRef = useRef<{
     protein: number[];
@@ -119,7 +121,9 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
 
   useEffect(() => {
     dispatch({ type: 'START_GAME' });
-  }, []);
+    // Track game start
+    trackGameStart('nutriserve', userId);
+  }, [userId]);
 
   const handleAddItem = (item: PlateItem) => {
     dispatch({ type: 'ADD_ITEM', payload: item });
@@ -205,6 +209,9 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
 
     logNutriServeRoundAttempt(roundAttempt);
 
+    // Track analytics
+    trackNutriServeRound(gameState.round, score, userId);
+
     dispatch({ type: 'SERVE_PLATE' });
   };
 
@@ -259,6 +266,9 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
       sugar_accuracy_avg: avg(nutrientAccuracyRef.current.sugar),
       sodium_accuracy_avg: avg(nutrientAccuracyRef.current.sodium),
     });
+
+    // Track game completion
+    trackGameComplete('nutriserve', gameState.totalScore, userId);
   };
 
   const handleExitGame = () => {

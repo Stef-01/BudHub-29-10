@@ -57,43 +57,75 @@ This implementation provides comprehensive score logging and analytics for the h
      - `nutrient_challenge_concept_mastery`
      - `nutriserve_problem_nutrients`
 
-### Step 2: User Identification
+### Step 2: Deploy Your App (if not already deployed)
 
-Users are identified via URL parameter. Share links with specific user IDs:
+If you haven't deployed to Vercel yet:
+
+1. **Install Vercel CLI** (optional, or use Vercel Dashboard):
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Deploy**:
+   ```bash
+   vercel
+   ```
+
+3. **Note your deployment URL** (e.g., `https://budhub-xyz.vercel.app`)
+
+**OR** if already deployed, find your URL:
+- Go to https://vercel.com/dashboard
+- Find your project
+- Copy the deployment URL
+
+### Step 3: User Identification
+
+Users are identified via URL parameter. Share links with specific user IDs.
+
+**Replace `YOUR_DEPLOYMENT_URL` below with your actual Vercel URL**
 
 **For your dad:**
 ```
-https://your-app-url.vercel.app/?user=dad
+https://YOUR_DEPLOYMENT_URL/?user=dad
 ```
+Example: `https://budhub-abc123.vercel.app/?user=dad`
 
 **For other users:**
 ```
-https://your-app-url.vercel.app/?user=user123
+https://YOUR_DEPLOYMENT_URL/?user=user123
 ```
 
 **Guest (no tracking):**
 ```
-https://your-app-url.vercel.app/
-# (defaults to 'guest' user)
+https://YOUR_DEPLOYMENT_URL/
+```
+(defaults to 'guest' user - data still logged but under 'guest' ID)
+
+**Testing locally:**
+```
+http://localhost:5173/?user=dad
 ```
 
-### Step 3: Access the Admin Dashboard
+### Step 4: Access the Admin Dashboard
 
 To view analytics and score data:
 
+**Replace `YOUR_DEPLOYMENT_URL` below with your actual URL**
+
 **View dad's data:**
 ```
-https://your-app-url.vercel.app/?admin=true&user=dad
+https://YOUR_DEPLOYMENT_URL/?admin=true&user=dad
 ```
+Example: `https://budhub-abc123.vercel.app/?admin=true&user=dad`
 
 **View another user's data:**
 ```
-https://your-app-url.vercel.app/?admin=true&user=user123
+https://YOUR_DEPLOYMENT_URL/?admin=true&user=user123
 ```
 
-**View all users' aggregate data:**
+**Testing locally:**
 ```
-https://your-app-url.vercel.app/?admin=true
+http://localhost:5173/?admin=true&user=dad
 ```
 
 ## How It Works

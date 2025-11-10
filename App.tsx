@@ -1,5 +1,6 @@
 // App.tsx
 import React, { useState, useMemo } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { AppProviders } from './contexts/AppProviders';
 import { useUserGarden } from './contexts/UserGardenContext';
 import { useWeather } from './contexts/WeatherContext';
@@ -15,6 +16,8 @@ import GameScreen from './components/GameScreen';
 import NutriServeGame from './components/games/NutriServeGame';
 import UnifiedNutrientGame from './components/UnifiedNutrientGame';
 import AdminDashboard from './components/AdminDashboard';
+import { getUserId } from './hooks/useUserId';
+import { trackUserSession } from './lib/analytics';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('Garden');
@@ -31,12 +34,16 @@ const AppContent: React.FC = () => {
     return gardenCtx.loading || weatherCtx.loading || tasksCtx.loading || cookbookCtx.loading || scoresCtx.loading;
   }, [gardenCtx.loading, weatherCtx.loading, tasksCtx.loading, cookbookCtx.loading, scoresCtx.loading]);
 
-  // Check for admin mode in URL
+  // Check for admin mode in URL and track user session
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('admin') === 'true') {
       setShowAdmin(true);
     }
+
+    // Track user session
+    const userId = getUserId();
+    trackUserSession(userId);
   }, []);
 
   const handlePlayGame = (gameMode: GameMode) => {
@@ -88,6 +95,7 @@ const App: React.FC = () => {
   return (
     <AppProviders>
       <AppContent />
+      <Analytics />
     </AppProviders>
   );
 };
