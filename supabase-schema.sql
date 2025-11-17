@@ -27,14 +27,14 @@ CREATE TABLE IF NOT EXISTS nutrient_challenge_attempts (
   lives_remaining INT,
 
   -- Timestamp
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  -- Indexes for efficient querying
-  INDEX idx_user_id (user_id),
-  INDEX idx_metric (metric),
-  INDEX idx_was_correct (was_correct),
-  INDEX idx_created_at (created_at)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Indexes for efficient querying
+CREATE INDEX IF NOT EXISTS idx_nc_attempts_user_id ON nutrient_challenge_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_nc_attempts_metric ON nutrient_challenge_attempts(metric);
+CREATE INDEX IF NOT EXISTS idx_nc_attempts_was_correct ON nutrient_challenge_attempts(was_correct);
+CREATE INDEX IF NOT EXISTS idx_nc_attempts_created_at ON nutrient_challenge_attempts(created_at);
 
 -- Table for Nutrient Challenge game sessions (overall game results)
 CREATE TABLE IF NOT EXISTS nutrient_challenge_sessions (
@@ -56,11 +56,12 @@ CREATE TABLE IF NOT EXISTS nutrient_challenge_sessions (
   diabetic_friendly_correct INT DEFAULT 0,
   diabetic_friendly_total INT DEFAULT 0,
 
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  INDEX idx_user_id (user_id),
-  INDEX idx_created_at (created_at)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Indexes for efficient querying
+CREATE INDEX IF NOT EXISTS idx_nc_sessions_user_id ON nutrient_challenge_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_nc_sessions_created_at ON nutrient_challenge_sessions(created_at);
 
 -- Table for NutriServe Chef round attempts
 CREATE TABLE IF NOT EXISTS nutriserve_round_attempts (
@@ -93,13 +94,14 @@ CREATE TABLE IF NOT EXISTS nutriserve_round_attempts (
   -- XP awarded
   xp_awarded VARCHAR(20), -- 'High', 'Medium', 'Low'
 
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  INDEX idx_user_id (user_id),
-  INDEX idx_session_id (session_id),
-  INDEX idx_round_number (round_number),
-  INDEX idx_created_at (created_at)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Indexes for efficient querying
+CREATE INDEX IF NOT EXISTS idx_ns_rounds_user_id ON nutriserve_round_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_ns_rounds_session_id ON nutriserve_round_attempts(session_id);
+CREATE INDEX IF NOT EXISTS idx_ns_rounds_round_number ON nutriserve_round_attempts(round_number);
+CREATE INDEX IF NOT EXISTS idx_ns_rounds_created_at ON nutriserve_round_attempts(created_at);
 
 -- Table for NutriServe Chef game sessions (overall game results)
 CREATE TABLE IF NOT EXISTS nutriserve_sessions (
@@ -123,11 +125,12 @@ CREATE TABLE IF NOT EXISTS nutriserve_sessions (
   sugar_accuracy_avg DECIMAL(5,2),
   sodium_accuracy_avg DECIMAL(5,2),
 
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  INDEX idx_user_id (user_id),
-  INDEX idx_created_at (created_at)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Indexes for efficient querying
+CREATE INDEX IF NOT EXISTS idx_ns_sessions_user_id ON nutriserve_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_ns_sessions_created_at ON nutriserve_sessions(created_at);
 
 -- Create views for easy analysis
 
