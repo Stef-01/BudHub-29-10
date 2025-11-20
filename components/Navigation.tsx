@@ -1,7 +1,7 @@
 // components/Navigation.tsx
 import React from 'react';
 import type { Tab } from '../types';
-import { GardenIcon, TasksIcon, RecipeBookIcon, CommunityIcon, GameControllerIcon, AdminIcon } from './icons/Icons';
+import { HomeIcon, GardenIcon, TasksIcon, RecipeBookIcon, CommunityIcon, GameControllerIcon, AdminIcon } from './icons/Icons';
 
 interface NavigationProps {
   activeTab: Tab;
@@ -9,6 +9,7 @@ interface NavigationProps {
 }
 
 const navItems: { tab: Tab, label: string, icon: React.FC<any> }[] = [
+  { tab: 'Homepage', label: 'Home', icon: HomeIcon },
   { tab: 'Garden', label: 'Garden', icon: GardenIcon },
   { tab: 'Tasks', label: 'Tasks', icon: TasksIcon },
   { tab: 'Recipes', label: 'Recipes', icon: RecipeBookIcon },

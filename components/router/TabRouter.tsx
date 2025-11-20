@@ -3,6 +3,7 @@ import React, { Suspense, lazy } from 'react';
 import type { Tab, GameMode } from '../../types';
 import { COMMUNITY_EVENTS } from '../../constants';
 
+import HomepageView from '../HomepageView';
 import GardenView from '../GardenView';
 import TaskBoard from '../TaskBoard';
 import RecipeBook from '../RecipeBook';
@@ -21,6 +22,8 @@ interface TabRouterProps {
 const TabRouter: React.FC<TabRouterProps> = ({ activeTab, onPlayGame }) => {
     const renderContent = () => {
         switch (activeTab) {
+            case 'Homepage':
+                return <HomepageView onPlayGame={onPlayGame} />;
             case 'Garden':
                 return <GardenView />;
             case 'Tasks':
