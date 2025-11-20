@@ -6,6 +6,7 @@ import { useTasks } from '../contexts/TasksContext';
 import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { useGamification } from '../contexts/GamificationContext';
 import { useGameScores } from '../contexts/GameScoresContext';
+import { useHomepageData } from '../hooks/useLoganData';
 import type { GameMode } from '../types';
 
 interface HomepageViewProps {
@@ -19,6 +20,9 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
   const { userRecipes = [] } = useUserCookbook();
   const { level, xp, xpForNextLevel } = useGamification();
   const { scores = [] } = useGameScores();
+
+  // Logan-specific data
+  const { prices, markets, resources, loading: loganDataLoading } = useHomepageData();
 
   const produceCarouselRef = useRef<HTMLDivElement>(null);
   const recipeCarouselRef = useRef<HTMLDivElement>(null);
@@ -168,106 +172,108 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
             </div>
           </div>
 
-          <div
-            ref={produceCarouselRef}
-            className="flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-thin scrollbar-thumb-green-500 scrollbar-track-green-100"
-          >
-            {[
-              { emoji: '🥒', name: 'Bitter Melon', price: '$3.99/kg', tags: ['Global Markets', 'For Sabzi'] },
-              { emoji: '🌿', name: 'Fresh Coriander', price: '$2.50/bunch', tags: ['Logan Central', 'Essential'] },
-              { emoji: '🫑', name: 'Okra (Bhindi)', price: '$4.99/kg', tags: ['Sunday Fresh', 'For Curry'] },
-              { emoji: '🌶️', name: 'Green Chilies', price: '$6.99/kg', tags: ['Spice World', 'Fresh Daily'] },
-              { emoji: '🥬', name: 'Spinach', price: '$3.49/bunch', tags: ['Organic', 'Local'] },
-              { emoji: '🍅', name: 'Roma Tomatoes', price: '$2.99/kg', tags: ['Fresh', 'Low GI'] },
-            ].map((produce, index) => (
-              <div
-                key={index}
-                className="flex-shrink-0 w-60 bg-white rounded-2xl p-5 shadow-md border-2 border-transparent hover:border-green-500 hover:-translate-y-2 hover:shadow-xl transition-all cursor-pointer"
-              >
-                <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center text-4xl mb-3 animate-bounce">
-                  {produce.emoji}
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-1">{produce.name}</h4>
-                <div className="text-2xl font-extrabold text-green-600 mb-3">{produce.price}</div>
-                <div className="flex flex-wrap gap-2">
-                  {produce.tags.map((tag, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+          {loganDataLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="text-3xl mb-2">🌱</div>
+                <p className="text-gray-600">Loading fresh prices...</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div
+              ref={produceCarouselRef}
+              className="flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-thin scrollbar-thumb-green-500 scrollbar-track-green-100"
+            >
+              {prices.length > 0 ? prices.map((priceData) => (
+                <div
+                  key={priceData.id}
+                  className={`flex-shrink-0 w-60 bg-white rounded-2xl p-5 shadow-md border-2 hover:-translate-y-2 hover:shadow-xl transition-all cursor-pointer ${
+                    priceData.is_indian_staple ? 'border-green-500' : 'border-transparent hover:border-green-300'
+                  }`}
+                >
+                  <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center text-4xl mb-3 animate-bounce">
+                    {priceData.emoji || '🥬'}
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-1">{priceData.produce_name}</h4>
+                  <div className="text-2xl font-extrabold text-green-600 mb-3">
+                    ${priceData.price_per_kg?.toFixed(2)}/kg
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                      {priceData.market_name}
+                    </span>
+                    {priceData.is_indian_staple && (
+                      <span className="inline-flex px-3 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-semibold rounded-full">
+                        Indian Staple
+                      </span>
+                    )}
+                    {priceData.gi_rating === 'low' && (
+                      <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                        Low GI
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center py-8 text-gray-600">
+                  No price data available yet. Check back soon!
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Markets List */}
         <div>
           <h3 className="text-xl font-bold text-gray-900 mb-4">📍 Your Local Markets</h3>
-          {[
-            {
-              icon: '🏪',
-              name: 'Global Food Markets',
-              location: 'Logan Central',
-              time: 'Sun 6am-12pm',
-              tags: ['Indian Greens', 'Spices', { text: 'Open Now', isSuccess: true }]
-            },
-            {
-              icon: '🧺',
-              name: 'Logan Farmers Market',
-              location: 'Beenleigh',
-              time: 'Sat 6am-11am',
-              tags: ['Local Produce', 'Organic']
-            },
-            {
-              icon: '🥬',
-              name: 'Spice World Logan',
-              location: 'Springwood',
-              time: 'Daily 8am-8pm',
-              tags: ['Indian Groceries', 'Fresh Daily']
-            },
-          ].map((market, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-2xl p-5 mb-3 flex items-center gap-4 shadow-md hover:translate-x-2 hover:shadow-lg transition-all cursor-pointer border-2 border-transparent hover:border-green-500"
-            >
-              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center text-3xl text-white shadow-lg flex-shrink-0">
-                {market.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-lg font-bold text-gray-900 mb-1">{market.name}</h4>
-                <div className="flex items-center gap-3 text-sm text-gray-600 mb-2 flex-wrap">
-                  <span>📍 {market.location}</span>
-                  <span>⏰ {market.time}</span>
+          {markets.map((market) => {
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayName = market.day_of_week !== null ? dayNames[market.day_of_week] : 'Daily';
+            const timeStr = market.start_time && market.end_time
+              ? `${dayName} ${market.start_time.slice(0, 5)}-${market.end_time.slice(0, 5)}`
+              : 'Daily 9am-6pm';
+            const today = new Date().getDay();
+            const isOpenToday = market.day_of_week === null || market.day_of_week === today;
+            const icon = market.type === 'market' ? '🏪' : market.type === 'indian_grocery' ? '🥬' : '🧺';
+
+            return (
+              <div
+                key={market.id}
+                className="bg-white rounded-2xl p-5 mb-3 flex items-center gap-4 shadow-md hover:translate-x-2 hover:shadow-lg transition-all cursor-pointer border-2 border-transparent hover:border-green-500"
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center text-3xl text-white shadow-lg flex-shrink-0">
+                  {icon}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {market.tags.map((tag, i) => {
-                    const isObject = typeof tag === 'object';
-                    const tagText = isObject ? tag.text : tag;
-                    const isSuccess = isObject && tag.isSuccess;
-                    return (
-                      <span
-                        key={i}
-                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                          isSuccess
-                            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
-                            : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {tagText}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-lg font-bold text-gray-900 mb-1">{market.name}</h4>
+                  <div className="flex items-center gap-3 text-sm text-gray-600 mb-2 flex-wrap">
+                    <span>📍 {market.suburb || 'Logan'}</span>
+                    <span>⏰ {timeStr}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {market.has_indian_produce && (
+                      <span className="inline-flex px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                        Indian Produce
                       </span>
-                    );
-                  })}
+                    )}
+                    {isOpenToday && (
+                      <span className="inline-flex px-3 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-semibold rounded-full">
+                        Open Today
+                      </span>
+                    )}
+                    {market.type === 'market' && (
+                      <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                        Farmers Market
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold flex-shrink-0">
+                  →
                 </div>
               </div>
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold flex-shrink-0">
-                →
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
