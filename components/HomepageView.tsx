@@ -23,9 +23,6 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
   const produceCarouselRef = useRef<HTMLDivElement>(null);
   const recipeCarouselRef = useRef<HTMLDivElement>(null);
 
-  // Debug logging
-  console.log('[HomepageView] Rendering with:', { level, xp, xpForNextLevel, garden: garden.length, tasks: tasks.length });
-
   // Calculate stats - with safe defaults
   const completedTasksThisWeek = tasks.filter(t => t.isCompleted).length;
   const totalPlants = garden.length;
@@ -69,12 +66,6 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
   return (
     <div className="pb-20 min-h-screen">
-      {/* Debug info */}
-      <div className="bg-red-100 p-4 mb-4 rounded">
-        <h2 className="font-bold">Debug: Homepage is rendering</h2>
-        <p>Level: {level}, XP: {xp}, Garden: {garden.length}, Tasks: {tasks.length}</p>
-      </div>
-
       {/* Hero Card */}
       <div className="bg-gradient-to-br from-white via-green-50 to-white rounded-3xl p-6 sm:p-8 mb-6 shadow-lg border-2 border-green-100 relative overflow-hidden">
         {/* Decorative background element */}

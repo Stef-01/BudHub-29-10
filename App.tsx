@@ -31,16 +31,7 @@ const AppContent: React.FC = () => {
   const scoresCtx = useGameScores();
 
   const isLoading = useMemo(() => {
-    const loading = gardenCtx.loading || weatherCtx.loading || tasksCtx.loading || cookbookCtx.loading || scoresCtx.loading;
-    console.log('[App] Loading states:', {
-      garden: gardenCtx.loading,
-      weather: weatherCtx.loading,
-      tasks: tasksCtx.loading,
-      cookbook: cookbookCtx.loading,
-      scores: scoresCtx.loading,
-      overall: loading
-    });
-    return loading;
+    return gardenCtx.loading || weatherCtx.loading || tasksCtx.loading || cookbookCtx.loading || scoresCtx.loading;
   }, [gardenCtx.loading, weatherCtx.loading, tasksCtx.loading, cookbookCtx.loading, scoresCtx.loading]);
 
   // Check for admin mode in URL and track user session
@@ -73,11 +64,8 @@ const AppContent: React.FC = () => {
   };
 
   if (isLoading) {
-    console.log('[App] Showing loading screen');
     return <LoadingScreen />;
   }
-
-  console.log('[App] Rendering main app, activeTab:', activeTab);
 
   // Show admin dashboard if admin mode is active
   if (showAdmin) {
