@@ -15,7 +15,11 @@ import {
   getFeaturedResources,
   getIndianDietaryResources
 } from '../services/resourcesService';
-import type { CheapestPrice, Market, Resource } from '../types/logan';
+import {
+  getWeeklyProgress,
+  getImprovementTrend
+} from '../services/gameProgressService';
+import type { CheapestPrice, Market, Resource, GameProgressWeekly } from '../types/logan';
 
 /**
  * Hook to fetch cheapest prices today
@@ -175,6 +179,57 @@ export function useIndianResources() {
   }, []);
 
   return { resources, loading, error };
+}
+
+/**
+ * Hook to fetch weekly game progress
+ */
+export function useWeeklyGameProgress(userId: string, weeks: number = 4) {
+  const [progress, setProgress] = useState<GameProgressWeekly[]>([]);
+  const [improvement, setImprovement] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchProgress() {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const [progressData, improvementData] = await Promise.all([
+          getWeeklyProgress(userId, weeks),
+          getImprovementTrend(userId)
+        ]);
+
+        if (mounted) {
+          setProgress(progressData);
+          setImprovement(improvementData);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err as Error);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchProgress();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId, weeks]);
+
+  return { progress, improvement, loading, error };
 }
 
 /**

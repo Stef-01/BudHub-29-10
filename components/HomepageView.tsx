@@ -6,7 +6,7 @@ import { useTasks } from '../contexts/TasksContext';
 import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { useGamification } from '../contexts/GamificationContext';
 import { useGameScores } from '../contexts/GameScoresContext';
-import { useHomepageData } from '../hooks/useLoganData';
+import { useHomepageData, useWeeklyGameProgress } from '../hooks/useLoganData';
 import type { GameMode } from '../types';
 
 interface HomepageViewProps {
@@ -23,6 +23,9 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
   // Logan-specific data
   const { prices, markets, resources, loading: loganDataLoading } = useHomepageData();
+
+  // Game progress data - using 'demo_user' as placeholder until user authentication is implemented
+  const { progress: weeklyProgress, improvement: improvementTrend } = useWeeklyGameProgress('demo_user', 4);
 
   const produceCarouselRef = useRef<HTMLDivElement>(null);
   const recipeCarouselRef = useRef<HTMLDivElement>(null);
@@ -67,6 +70,37 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
   const daysSinceLastGame = scores.length > 0 ?
     Math.floor((Date.now() - new Date(scores[scores.length - 1].date).getTime()) / (1000 * 60 * 60 * 24)) : 5;
+
+  // Transform weekly progress into chart data points
+  // If we have real Supabase data, use it; otherwise fall back to mock pattern
+  const useRealData = weeklyProgress && weeklyProgress.length >= 4;
+
+  const chartPoints = useRealData
+    ? weeklyProgress.slice(-7).map((week, index) => {
+        // Normalize scores to fit chart height (0-200, with higher scores at top)
+        const normalizedScore = Math.max(20, Math.min(180, 200 - (week.average_score * 1.5)));
+        return { x: 20 + index * 60, y: normalizedScore };
+      })
+    : [
+        { x: 20, y: 150 },
+        { x: 80, y: 130 },
+        { x: 140, y: 120 },
+        { x: 200, y: 100 },
+        { x: 260, y: 90 },
+        { x: 320, y: 70 },
+        { x: 380, y: 50 }
+      ];
+
+  // Get day labels based on data availability
+  const dayLabels = useRealData
+    ? weeklyProgress.slice(-7).map(week => {
+        const date = new Date(week.week_start_date);
+        return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+      })
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // Use real improvement trend or fallback to +12%
+  const displayImprovement = useRealData ? `${improvementTrend > 0 ? '+' : ''}${improvementTrend}%` : '+12%';
 
   return (
     <div className="pb-20 min-h-screen">
@@ -482,7 +516,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
                 {/* Progress line */}
                 <polyline
-                  points="20,150 80,130 140,120 200,100 260,90 320,70 380,50"
+                  points={chartPoints.map(p => `${p.x},${p.y}`).join(' ')}
                   stroke="url(#gradient)"
                   strokeWidth="4"
                   fill="none"
@@ -491,16 +525,14 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
                 />
 
                 {/* Points */}
-                {[
-                  {x: 20, y: 150},
-                  {x: 80, y: 130},
-                  {x: 140, y: 120},
-                  {x: 200, y: 100},
-                  {x: 260, y: 90},
-                  {x: 320, y: 70},
-                  {x: 380, y: 50}
-                ].map((point, i) => (
-                  <circle key={i} cx={point.x} cy={point.y} r={i === 6 ? "8" : "6"} fill="#5CA963" />
+                {chartPoints.map((point, i) => (
+                  <circle
+                    key={i}
+                    cx={point.x}
+                    cy={point.y}
+                    r={i === chartPoints.length - 1 ? "8" : "6"}
+                    fill="#5CA963"
+                  />
                 ))}
 
                 {/* Gradient definition */}
@@ -512,7 +544,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
                 </defs>
 
                 {/* Day labels */}
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+                {dayLabels.map((day, i) => (
                   <text key={i} x={20 + i * 60} y="190" fontSize="12" fill="#8C8C8C" textAnchor="middle">
                     {day}
                   </text>
@@ -524,10 +556,10 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
             <div className="flex flex-col gap-5">
               <div>
                 <div className="text-5xl font-extrabold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
-                  +12%
+                  {displayImprovement}
                 </div>
                 <p className="text-gray-600 mt-2">
-                  Average improvement this week
+                  {useRealData ? 'Average improvement this week' : 'Average improvement this week (demo)'}
                 </p>
               </div>
 
