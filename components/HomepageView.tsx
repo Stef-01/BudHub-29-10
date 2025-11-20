@@ -17,7 +17,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
   const { weather } = useWeather();
   const { tasks } = useTasks();
   const { userRecipes } = useUserCookbook();
-  const { level, experience, maxExperience } = useGamification();
+  const { level, xp, xpForNextLevel } = useGamification();
   const { scores } = useGameScores();
 
   const produceCarouselRef = useRef<HTMLDivElement>(null);
@@ -29,7 +29,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
   const averageVegServings = 2.5; // Mock data - could be calculated from actual data
 
   // Calculate XP percentage
-  const xpPercentage = (experience / maxExperience) * 100;
+  const xpPercentage = (xp / xpForNextLevel) * 100;
 
   // Mock data for Logan community
   const loganDiabeticsCount = 23017;
@@ -529,7 +529,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
                 {[
                   { icon: '🔥', text: `${uniqueGameDays}-day streak this week` },
                   { icon: '🏆', text: `Best: Plate Builder 90%` },
-                  { icon: '⭐', text: `${experience} points earned` },
+                  { icon: '⭐', text: `${xp} points earned` },
                 ].map((stat, i) => (
                   <div
                     key={i}
