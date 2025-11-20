@@ -20,7 +20,7 @@ import { getUserId } from './hooks/useUserId';
 import { trackUserSession } from './lib/analytics';
 
 const AppContent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('Garden');
+  const [activeTab, setActiveTab] = useState<Tab>('Homepage');
   const [activeGame, setActiveGame] = useState<GameMode | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
 
