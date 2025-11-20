@@ -19,7 +19,11 @@ import {
   getWeeklyProgress,
   getImprovementTrend
 } from '../services/gameProgressService';
-import type { CheapestPrice, Market, Resource, GameProgressWeekly } from '../types/logan';
+import {
+  getFeaturedMission,
+  getUserActiveMission
+} from '../services/budgetMissionService';
+import type { CheapestPrice, Market, Resource, GameProgressWeekly, ActiveMissionWithStats, UserMissionAttempt } from '../types/logan';
 
 /**
  * Hook to fetch cheapest prices today
@@ -230,6 +234,91 @@ export function useWeeklyGameProgress(userId: string, weeks: number = 4) {
   }, [userId, weeks]);
 
   return { progress, improvement, loading, error };
+}
+
+/**
+ * Hook to fetch featured budget mission
+ */
+export function useFeaturedMission() {
+  const [mission, setMission] = useState<ActiveMissionWithStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchMission() {
+      try {
+        setLoading(true);
+        const data = await getFeaturedMission();
+        if (mounted) {
+          setMission(data);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err as Error);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchMission();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return { mission, loading, error };
+}
+
+/**
+ * Hook to fetch user's active mission
+ */
+export function useUserActiveMission(userId: string) {
+  const [activeMission, setActiveMission] = useState<UserMissionAttempt | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchActiveMission() {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const data = await getUserActiveMission(userId);
+        if (mounted) {
+          setActiveMission(data);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err as Error);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchActiveMission();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  return { activeMission, loading, error };
 }
 
 /**

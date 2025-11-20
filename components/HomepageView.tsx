@@ -6,7 +6,7 @@ import { useTasks } from '../contexts/TasksContext';
 import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { useGamification } from '../contexts/GamificationContext';
 import { useGameScores } from '../contexts/GameScoresContext';
-import { useHomepageData, useWeeklyGameProgress } from '../hooks/useLoganData';
+import { useHomepageData, useWeeklyGameProgress, useFeaturedMission, useUserActiveMission } from '../hooks/useLoganData';
 import type { GameMode } from '../types';
 
 interface HomepageViewProps {
@@ -26,6 +26,10 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
   // Game progress data - using 'demo_user' as placeholder until user authentication is implemented
   const { progress: weeklyProgress, improvement: improvementTrend } = useWeeklyGameProgress('demo_user', 4);
+
+  // Budget mission data
+  const { mission: featuredMission, loading: missionLoading } = useFeaturedMission();
+  const { activeMission } = useUserActiveMission('demo_user');
 
   const produceCarouselRef = useRef<HTMLDivElement>(null);
   const recipeCarouselRef = useRef<HTMLDivElement>(null);
@@ -417,7 +421,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
             <p className="text-gray-600">Build healthy habits through fun challenges</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Quick Play Games */}
             <div className="bg-white rounded-2xl p-6 shadow-md">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Play Games</h3>
@@ -485,6 +489,138 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-3 px-4 rounded-full hover:-translate-y-1 hover:shadow-lg transition-all"
                   >
                     Keep Going!
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Budget Challenge Card */}
+            <div className="bg-white rounded-2xl p-6 shadow-md">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">💰 Budget Challenge</h3>
+
+              {missionLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="text-3xl mb-2">🍽️</div>
+                    <p className="text-gray-600 text-sm">Loading challenge...</p>
+                  </div>
+                </div>
+              ) : activeMission ? (
+                // User has an active mission
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-400 rounded-2xl p-5">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-2xl mb-3">
+                    🎯
+                  </div>
+                  <div className="font-bold text-gray-900 mb-2">
+                    Challenge In Progress!
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Budget: ${activeMission.total_spent.toFixed(2)} / ${featuredMission?.budget_limit || 50}
+                  </p>
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                      <span>Progress</span>
+                      <span>{Math.min(100, Math.round((activeMission.total_spent / (featuredMission?.budget_limit || 50)) * 100))}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-blue-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all"
+                        style={{ width: `${Math.min(100, (activeMission.total_spent / (featuredMission?.budget_limit || 50)) * 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onPlayGame?.('nutriserve')}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 px-4 rounded-full hover:-translate-y-1 hover:shadow-lg transition-all"
+                  >
+                    Continue Challenge
+                  </button>
+                </div>
+              ) : featuredMission ? (
+                // Show featured mission
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-400 rounded-2xl p-5">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-2xl mb-3">
+                    🍛
+                  </div>
+                  <div className="font-bold text-gray-900 mb-2">
+                    {featuredMission.title}
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {featuredMission.description || `Plan balanced Indian meals for ${featuredMission.duration_days} days under $${featuredMission.budget_limit}`}
+                  </p>
+
+                  {/* Mission Stats */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-white rounded-xl p-3">
+                      <div className="text-xs text-gray-500 mb-1">Budget</div>
+                      <div className="text-lg font-bold text-orange-600">${featuredMission.budget_limit}</div>
+                    </div>
+                    <div className="bg-white rounded-xl p-3">
+                      <div className="text-xs text-gray-500 mb-1">Duration</div>
+                      <div className="text-lg font-bold text-orange-600">{featuredMission.duration_days} days</div>
+                    </div>
+                  </div>
+
+                  {/* Community Stats */}
+                  {featuredMission.total_attempts > 0 && (
+                    <div className="mb-4 p-3 bg-white rounded-xl">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-gray-500">Success Rate</span>
+                        <span className="font-bold text-green-600">
+                          {Math.round((featuredMission.successful_completions / featuredMission.total_attempts) * 100)}%
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {featuredMission.successful_completions} of {featuredMission.total_attempts} completed
+                      </div>
+                      {featuredMission.best_spending && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Best: ${featuredMission.best_spending.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                      featuredMission.difficulty === 'easy'
+                        ? 'bg-green-100 text-green-700'
+                        : featuredMission.difficulty === 'medium'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {featuredMission.difficulty.charAt(0).toUpperCase() + featuredMission.difficulty.slice(1)}
+                    </span>
+                    <span className="inline-flex px-3 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">
+                      +{featuredMission.points_reward} XP
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => onPlayGame?.('nutriserve')}
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-3 px-4 rounded-full hover:-translate-y-1 hover:shadow-lg transition-all"
+                  >
+                    Start Challenge →
+                  </button>
+                </div>
+              ) : (
+                // Fallback when no mission available
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-2xl p-5">
+                  <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-2xl mb-3">
+                    🍽️
+                  </div>
+                  <div className="font-bold text-gray-900 mb-2">
+                    Budget Challenges Coming Soon!
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Plan healthy Indian meals on a budget using Logan's best prices
+                  </p>
+                  <button
+                    onClick={() => onPlayGame?.('nutriserve')}
+                    className="w-full bg-gray-400 text-white font-bold py-3 px-4 rounded-full cursor-not-allowed"
+                    disabled
+                  >
+                    No Challenges Available
                   </button>
                 </div>
               )}
