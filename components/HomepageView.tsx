@@ -635,6 +635,109 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
         </div>
       </section>
 
+      {/* Indian Dietary Resources Section */}
+      <section className="mb-8">
+        <div className="mb-6">
+          <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide mb-2">
+            📚 Health Resources
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+            Indian dietary and cultural resources
+          </h2>
+          <p className="text-gray-600">Trusted information for healthy eating and diabetes management</p>
+        </div>
+
+        {loganDataLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="text-3xl mb-2">📖</div>
+              <p className="text-gray-600">Loading resources...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {resources.length > 0 ? resources.map((resource) => {
+              // Format icon
+              const formatIcon = resource.format === 'pdf' ? '📄' : resource.format === 'video' ? '🎥' : '🌐';
+
+              // Topic color scheme
+              const topicColors: Record<string, string> = {
+                'Indian food culture': 'from-orange-500 to-orange-600',
+                'healthy eating': 'from-green-500 to-green-600',
+                'diabetes management': 'from-red-500 to-red-600',
+                'healthy cooking': 'from-yellow-500 to-yellow-600',
+                'lifestyle program': 'from-blue-500 to-blue-600',
+                'medical services': 'from-purple-500 to-purple-600',
+              };
+
+              const topicGradient = topicColors[resource.topic] || 'from-gray-500 to-gray-600';
+
+              return (
+                <a
+                  key={resource.id}
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-white rounded-2xl p-6 shadow-md hover:-translate-y-2 hover:shadow-xl transition-all border-2 border-transparent hover:border-purple-500 relative overflow-hidden group"
+                >
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-200 rounded-full opacity-20 blur-2xl"></div>
+
+                  <div className="relative z-10">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`w-12 h-12 bg-gradient-to-br ${topicGradient} rounded-2xl flex items-center justify-center text-2xl text-white shadow-lg flex-shrink-0`}>
+                        {formatIcon}
+                      </div>
+                      {resource.is_local && (
+                        <span className="inline-flex px-3 py-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-xs font-semibold rounded-full">
+                          Logan/Brisbane
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[3.5rem]">
+                      {resource.title}
+                    </h3>
+
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.5rem]">
+                      {resource.description}
+                    </p>
+
+                    <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">
+                      <span className="font-medium">{resource.organization}</span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="inline-flex px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                        {resource.language}
+                      </span>
+                      {resource.target_audience && (
+                        <span className="inline-flex px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-full capitalize">
+                          {resource.target_audience}
+                        </span>
+                      )}
+                      {resource.format && (
+                        <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full uppercase">
+                          {resource.format}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between text-purple-600 font-bold group-hover:translate-x-1 transition-transform">
+                      <span className="text-sm">View Resource</span>
+                      <span className="text-lg">→</span>
+                    </div>
+                  </div>
+                </a>
+              );
+            }) : (
+              <div className="md:col-span-2 lg:col-span-3 text-center py-8 text-gray-600">
+                No resources available yet. Check back soon!
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
       <style>{`
         @keyframes shimmer {
           0% { transform: translateX(-100%); }
