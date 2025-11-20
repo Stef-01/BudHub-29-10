@@ -13,12 +13,12 @@ interface HomepageViewProps {
 }
 
 const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
-  const { garden } = useUserGarden();
+  const { garden = [] } = useUserGarden();
   const { weather } = useWeather();
-  const { tasks } = useTasks();
-  const { userRecipes } = useUserCookbook();
+  const { tasks = [] } = useTasks();
+  const { userRecipes = [] } = useUserCookbook();
   const { level, xp, xpForNextLevel } = useGamification();
-  const { scores } = useGameScores();
+  const { scores = [] } = useGameScores();
 
   const produceCarouselRef = useRef<HTMLDivElement>(null);
   const recipeCarouselRef = useRef<HTMLDivElement>(null);
@@ -26,7 +26,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
   // Debug logging
   console.log('[HomepageView] Rendering with:', { level, xp, xpForNextLevel, garden: garden.length, tasks: tasks.length });
 
-  // Calculate stats
+  // Calculate stats - with safe defaults
   const completedTasksThisWeek = tasks.filter(t => t.isCompleted).length;
   const totalPlants = garden.length;
   const averageVegServings = 2.5; // Mock data - could be calculated from actual data
