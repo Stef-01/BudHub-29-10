@@ -1,7 +1,6 @@
 // components/EnhancedHeroSection.tsx
 import React from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { GrapeCluster } from '../src/components/illustrations/FruitIllustrations';
 import { BlobShape } from '../src/components/illustrations/DecorativeShapes';
 
 interface EnhancedHeroSectionProps {
@@ -165,30 +164,6 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
             </motion.div>
           </motion.div>
         </div>
-
-        {/* Hero Illustration - Animated Fruit Cluster */}
-        <motion.div
-          variants={itemVariants}
-          className="relative hidden md:block"
-        >
-          <motion.div
-            animate={{
-              y: [0, -10, 0],
-              rotate: [0, 5, 0],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="w-24 h-24 sm:w-28 sm:h-28 relative"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-green-600 rounded-full opacity-20 blur-2xl"></div>
-            <div className="relative z-10">
-              <GrapeCluster size={120} />
-            </div>
-          </motion.div>
-        </motion.div>
       </motion.div>
 
       {/* XP Bar with Glass Effect */}
