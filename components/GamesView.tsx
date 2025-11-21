@@ -13,6 +13,7 @@ const createIcon = (path: string) => (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 const NutrientIcon = createIcon("M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z");
+const CompassIcon = createIcon("M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z");
 
 interface GamesViewProps {
     onPlay: (gameMode: GameMode) => void;
@@ -41,7 +42,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onPlay }) => {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-green-900">Game Center</h2>
             </div>
-            
+
             <div className="mb-8">
                  <GameCard
                     gameMode="nutriserve"
@@ -52,7 +53,18 @@ const GamesView: React.FC<GamesViewProps> = ({ onPlay }) => {
                     onPlay={onPlay}
                 />
             </div>
-            
+
+            <div className="mb-8">
+                <GameCard
+                    gameMode="cookventure"
+                    title="🍛 Cookventure India"
+                    description="Discover authentic Indian recipes matched to your region, pantry, and taste! Explore 6 regional cuisines with our 4-axis flavor system (Teekha, Masaledar, Khata, Meetha) and find your perfect recipe match."
+                    icon={<CompassIcon className="h-8 w-8 text-orange-600" />}
+                    highScore={0}
+                    onPlay={onPlay}
+                />
+            </div>
+
             <h3 className="text-xl font-bold text-green-800 mb-4">Quick Play</h3>
             <div className="mb-8">
                 <GameCard

@@ -1,0 +1,223 @@
+// components/cookventure/results/FlippableRecipeCard.tsx
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import type { ScoredRecipe } from '../../../types/cookventure';
+import { useRecipeImage } from '../../../hooks/useRecipeImage';
+
+interface FlippableRecipeCardProps {
+  scoredRecipe: ScoredRecipe;
+  index: number;
+}
+
+const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe, index }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
+  const { recipe, explanation, missing_ingredients } = scoredRecipe;
+  const { imageUrl } = useRecipeImage(recipe);
+
+  const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className="h-80 perspective-1000"
+      onClick={() => setIsFlipped(!isFlipped)}
+    >
+      <motion.div
+        className="relative w-full h-full cursor-pointer"
+        animate={{ rotateY: isFlipped ? 180 : 0 }}
+        transition={{ duration: 0.6, type: "spring", stiffness: 120 }}
+        style={{ transformStyle: 'preserve-3d' }}
+      >
+        {/* Front of Card - Recipe Image Only */}
+        <div
+          className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg border-2 border-gray-200 hover:border-green-400 transition-all group"
+          style={{ backfaceVisibility: 'hidden' }}
+        >
+          {/* Full Card Image */}
+          <div className="relative h-full w-full bg-gradient-to-br from-orange-50 to-green-50">
+            {isRenderableImage ? (
+              <img
+                src={imageUrl}
+                alt={recipe.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-8xl">
+                {imageUrl}
+              </div>
+            )}
+
+            {/* Hover Overlay with Recipe Name and Save Button */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-4">
+              <h4 className="text-white font-bold text-lg mb-2 leading-tight">
+                {recipe.name}
+              </h4>
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Save to cookbook logic will be handled by parent
+                    console.log('Save to cookbook:', recipe.name);
+                  }}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all hover:scale-105"
+                >
+                  📚 Save to Cookbook
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFlipped(!isFlipped);
+                  }}
+                  className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-3 rounded-lg backdrop-blur-sm transition-all"
+                >
+                  ℹ️ Details
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Back of Card - Recipe Details & Match Explanation */}
+        <div
+          className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg bg-white border-2 border-green-400"
+          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+        >
+          <div className="h-full flex flex-col p-5 bg-gradient-to-br from-green-50 to-emerald-50 overflow-y-auto">
+            {/* Recipe Name */}
+            <h3 className="font-bold text-xl text-gray-800 mb-2 text-center leading-tight">
+              {recipe.name}
+            </h3>
+
+            {/* Recipe Course & Basic Info */}
+            <p className="text-xs text-gray-600 text-center mb-3 capitalize">{recipe.course}</p>
+
+            {/* Region & Dietary Tags */}
+            <div className="flex flex-wrap gap-1 mb-3 justify-center">
+              {recipe.region_tags?.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
+              {recipe.diabetic_friendly && (
+                <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
+                  Diabetic-friendly
+                </span>
+              )}
+            </div>
+
+            {/* Taste Indicators */}
+            {recipe.taste_axes && (
+              <div className="flex gap-2 mb-3 text-xs justify-center flex-wrap">
+                {recipe.taste_axes.heat > 0 && (
+                  <span className="text-red-600 font-medium">🌶️×{recipe.taste_axes.heat}</span>
+                )}
+                {recipe.taste_axes.masala > 0 && (
+                  <span className="text-orange-600 font-medium">🧄×{recipe.taste_axes.masala}</span>
+                )}
+                {recipe.taste_axes.tangy > 0 && (
+                  <span className="text-yellow-600 font-medium">🍋×{recipe.taste_axes.tangy}</span>
+                )}
+                {recipe.taste_axes.sweet > 0 && (
+                  <span className="text-amber-600 font-medium">🍯×{recipe.taste_axes.sweet}</span>
+                )}
+              </div>
+            )}
+
+            {/* Cooking Time & Servings */}
+            <div className="flex items-center gap-3 text-xs text-gray-600 justify-center mb-3">
+              {recipe.prep_minutes && (
+                <span>⏱️ {recipe.prep_minutes + (recipe.cook_minutes || 0)} min</span>
+              )}
+              {recipe.servings && (
+                <span>🍽️ {recipe.servings} servings</span>
+              )}
+            </div>
+
+            <div className="border-t border-green-200 pt-3 mb-3"></div>
+
+            {/* Why It Matched Section */}
+            <h4 className="font-bold text-sm text-gray-700 mb-2 text-center">
+              Why This Matched
+            </h4>
+
+            {/* Match Explanations */}
+            <div className="flex-1 space-y-2 mb-3">
+              {explanation.length > 0 ? (
+                explanation.map((exp, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-2 text-xs text-gray-700 bg-white rounded-lg p-2 shadow-sm"
+                  >
+                    <span className="text-green-600 font-bold flex-shrink-0">✓</span>
+                    <span className="leading-tight">{exp.replace('✓ ', '')}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-gray-600 italic text-center">
+                  This recipe matches your preferences!
+                </p>
+              )}
+            </div>
+
+            {/* Missing Ingredients */}
+            {missing_ingredients.length > 0 && (
+              <div className="p-2 bg-yellow-50 rounded-lg border border-yellow-200 mb-3">
+                <p className="text-xs font-semibold text-yellow-800 mb-1">
+                  You'll need ({missing_ingredients.length}):
+                </p>
+                <p className="text-xs text-yellow-700">
+                  {missing_ingredients.slice(0, 4).join(', ')}
+                  {missing_ingredients.length > 4 && ` +${missing_ingredients.length - 4} more`}
+                </p>
+              </div>
+            )}
+
+            {/* Masala & Tadka Info */}
+            {(recipe.masala_profiles || recipe.tadka_profiles) && (
+              <div className="space-y-1 mb-3">
+                {recipe.masala_profiles && recipe.masala_profiles.length > 0 && (
+                  <div className="text-xs">
+                    <span className="font-semibold text-gray-700">Masala: </span>
+                    <span className="text-orange-700">
+                      {recipe.masala_profiles.map(m => m.replace('_', ' ')).join(', ')}
+                    </span>
+                  </div>
+                )}
+                {recipe.tadka_profiles && recipe.tadka_profiles.length > 0 && (
+                  <div className="text-xs">
+                    <span className="font-semibold text-gray-700">Tadka: </span>
+                    <span className="text-amber-700">
+                      {recipe.tadka_profiles.map(t => t.replace('_', ' ')).join(', ')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tap to Flip Back */}
+            <div className="text-center border-t border-green-200 pt-2 mt-auto">
+              <p className="text-xs text-gray-500 italic">👆 Tap to see image</p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      <style jsx>{`
+        .perspective-1000 {
+          perspective: 1000px;
+        }
+        .backface-hidden {
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+        }
+      `}</style>
+    </motion.div>
+  );
+};
+
+export default FlippableRecipeCard;

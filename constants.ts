@@ -285,7 +285,11 @@ export const RECIPE_CATALOG: Recipe[] = [
         keyIngredients: ['Tomato', 'Onion', 'Garlic', 'Chilli'],
         ingredients: "2 tbsp oil\n1 large onion, finely chopped\n2 cloves garlic, minced\n1 inch ginger, grated\n1 green chilli, slit\n2 large tomatoes, pureed\n1 tsp turmeric powder\n1 tsp red chilli powder\n1 tsp coriander powder\n1 tsp cumin powder\n1/2 tsp garam masala\n2 cans (400g each) chickpeas, rinsed\nSalt to taste\nFresh coriander for garnish",
         instructions: "1. Heat oil in a pan. Sauté onions until golden brown.\n2. Add garlic, ginger, and green chilli. Sauté for a minute.\n3. Add tomato puree and all the spice powders except garam masala. Cook until oil separates.\n4. Add the rinsed chickpeas and salt. Mix well.\n5. Add 1 cup of water, bring to a boil, then simmer for 15-20 minutes.\n6. Stir in garam masala. Garnish with fresh coriander and serve hot.",
-        imageMetadata: { source: 'ai_generated', status: 'pending' }
+        imageMetadata: { source: 'ai_generated', status: 'pending' },
+        region_tags: ['north'],
+        masala_profiles: ['garam_masala', 'chaat_masala'],
+        tadka_profiles: ['hing_jeera'],
+        taste_axes: { heat: 2, masala: 3, tangy: 1, sweet: 0 }
     },
     {
         id: 'rcp_palak_dal',
@@ -333,7 +337,11 @@ export const RECIPE_CATALOG: Recipe[] = [
         keyIngredients: ['Onion', 'Tomato', 'Garlic'],
         ingredients: "1 cup masoor dal (red lentils), rinsed\n1/2 tsp turmeric powder\nSalt to taste\nFor Tempering:\n1 tbsp oil\n1 tsp mustard seeds\n1 tsp cumin seeds\n1 small onion, sliced\n1 small tomato, chopped\nCurry leaves",
         instructions: "1. Cook the rinsed masoor dal with turmeric, salt, and 3 cups of water until soft.\n2. In a separate pan, heat oil for tempering. Add mustard seeds and cumin seeds.\n3. Once they splutter, add onion and curry leaves. Sauté until onion is translucent.\n4. Add tomato and cook until soft.\n5. Pour this tempering over the cooked dal. Mix well and simmer for 5 minutes.",
-        imageMetadata: { source: 'ai_generated', status: 'pending' }
+        imageMetadata: { source: 'ai_generated', status: 'pending' },
+        region_tags: ['south'],
+        masala_profiles: [],
+        tadka_profiles: ['mustard_curry_leaf'],
+        taste_axes: { heat: 1, masala: 1, tangy: 1, sweet: 0 }
     },
     {
         id: 'rcp_moong_dal_tadka',
@@ -357,7 +365,11 @@ export const RECIPE_CATALOG: Recipe[] = [
         keyIngredients: ['Tomato', 'Onion', 'Garlic', 'Coriander'],
         ingredients: "1 cup yellow moong dal, rinsed\n1/2 tsp turmeric powder\nSalt to taste\nFor Tadka:\n2 tbsp ghee or oil\n1 tsp cumin seeds\n1/2 tsp asafoetida (hing)\n1 medium onion, finely chopped\n1 medium tomato, finely chopped\n1 tsp ginger-garlic paste\n1/2 tsp red chilli powder\n1/2 tsp garam masala\nChopped coriander for garnish",
         instructions: "1. Pressure cook moong dal with turmeric, salt, and 3 cups of water for 2-3 whistles.\n2. Heat ghee/oil in a pan. Add cumin seeds and hing.\n3. Add onion and sauté until golden.\n4. Add ginger-garlic paste and sauté for a minute.\n5. Add tomato and cook until mushy. Add red chilli powder and garam masala.\n6. Pour the tadka over the cooked dal, mix well. Garnish with coriander.",
-        imageMetadata: { source: 'ai_generated', status: 'pending' }
+        imageMetadata: { source: 'ai_generated', status: 'pending' },
+        region_tags: ['north'],
+        masala_profiles: ['garam_masala'],
+        tadka_profiles: ['hing_jeera', 'lehsun_lal_mirch'],
+        taste_axes: { heat: 1, masala: 2, tangy: 1, sweet: 0 }
     },
     {
         id: 'rcp_bhindi_masala',
@@ -453,7 +465,11 @@ export const RECIPE_CATALOG: Recipe[] = [
         keyIngredients: ['Tomato', 'Onion', 'Carrot', 'Eggplant'],
         ingredients: "1 cup toor dal\n1 cup mixed vegetables (carrots, beans, pumpkin, eggplant)\n1 small onion, chopped\n1 large tomato, chopped\nSmall piece of tamarind, soaked in water\n2 tbsp sambar powder\n1/2 tsp turmeric powder\nSalt to taste\nFor Tempering:\n1 tsp oil\n1 tsp mustard seeds\n2 dried red chillies\nA pinch of asafoetida (hing)\nCurry leaves",
         instructions: "1. Pressure cook toor dal with turmeric and water until mushy.\n2. In a separate pot, cook the mixed vegetables with onion, tomato, and some water until tender.\n3. Add the cooked dal to the vegetables. Add tamarind extract, sambar powder, and salt. \n4. Bring to a boil and simmer for 10-15 minutes.\n5. Prepare tempering by heating oil and adding mustard seeds, red chillies, asafoetida, and curry leaves.\n6. Pour the tempering over the sambar and serve hot.",
-        imageMetadata: { source: 'ai_generated', status: 'pending' }
+        imageMetadata: { source: 'ai_generated', status: 'pending' },
+        region_tags: ['south'],
+        masala_profiles: ['sambar_powder'],
+        tadka_profiles: ['mustard_curry_leaf'],
+        taste_axes: { heat: 2, masala: 2, tangy: 2, sweet: 1 }
     },
     {
         id: 'rcp_lemon_rice',

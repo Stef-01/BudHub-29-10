@@ -15,6 +15,7 @@ import GameScreen from './components/GameScreen';
 // FIX: Correctly import NutriServeGame as a module.
 import NutriServeGame from './components/games/NutriServeGame';
 import UnifiedNutrientGame from './components/UnifiedNutrientGame';
+import CookventureIndiaTab from './components/cookventure/CookventureIndiaTab';
 import AdminDashboard from './components/AdminDashboard';
 import { getUserId } from './hooks/useUserId';
 import { trackUserSession } from './lib/analytics';
@@ -83,6 +84,21 @@ const AppContent: React.FC = () => {
     }
     if (activeGame === 'unified_nutrient') {
       return <UnifiedNutrientGame onExit={handleExitGame} />;
+    }
+    if (activeGame === 'cookventure') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-green-50">
+          <div className="max-w-7xl mx-auto">
+            <button
+              onClick={handleExitGame}
+              className="fixed top-4 right-4 z-50 px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all text-gray-700 font-semibold"
+            >
+              ← Exit
+            </button>
+            <CookventureIndiaTab recipes={cookbookCtx.recipes} />
+          </div>
+        </div>
+      );
     }
     return <GameScreen gameMode={activeGame} onExit={handleExitGame} />;
   }

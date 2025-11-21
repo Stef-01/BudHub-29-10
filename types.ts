@@ -97,6 +97,16 @@ export interface Recipe {
   ingredients: string;
   instructions: string;
   imageMetadata?: ImageMetadata;
+  // Cookventure India fields
+  region_tags?: string[];
+  masala_profiles?: string[];
+  tadka_profiles?: string[];
+  taste_axes?: {
+    heat: number;      // Teekha (0-3)
+    masala: number;    // Masaledar (0-3)
+    tangy: number;     // Khata (0-3)
+    sweet: number;     // Meetha (0-3)
+  };
 }
 
 // --- Community ---
@@ -109,7 +119,7 @@ export interface CommunityEvent {
 }
 
 // --- Games ---
-export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb' | 'nutriserve' | 'unified_nutrient';
+export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb' | 'nutriserve' | 'unified_nutrient' | 'cookventure';
 
 export interface GameScore {
   id: number;
