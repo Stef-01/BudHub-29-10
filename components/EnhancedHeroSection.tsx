@@ -1,9 +1,8 @@
 // components/EnhancedHeroSection.tsx
 import React from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { FloatingFruit, RotatingFruit, BouncingFruit, PulsatingFruit } from '../src/components/animations/FruitAnimations';
-import { Strawberry, Blueberry, Kiwi, Watermelon, PineappleSlice, GrapeCluster } from '../src/components/illustrations/FruitIllustrations';
-import { BlobShape, LeafShape } from '../src/components/illustrations/DecorativeShapes';
+import { GrapeCluster } from '../src/components/illustrations/FruitIllustrations';
+import { BlobShape } from '../src/components/illustrations/DecorativeShapes';
 
 interface EnhancedHeroSectionProps {
   loganDiabeticsCount: number;
@@ -33,9 +32,6 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
   // Parallax transforms for different layers
   const y1 = useTransform(scrollY, [0, 500], [0, 150]);
   const y2 = useTransform(scrollY, [0, 500], [0, -100]);
-  const y3 = useTransform(scrollY, [0, 500], [0, 200]);
-  const rotate1 = useTransform(scrollY, [0, 500], [0, 45]);
-  const rotate2 = useTransform(scrollY, [0, 500], [0, -30]);
   const opacity1 = useTransform(scrollY, [0, 300], [0.3, 0]);
 
   // Calculate XP percentage
@@ -80,34 +76,6 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
         className="absolute -bottom-10 -right-10 z-0 pointer-events-none"
       >
         <BlobShape size={350} color="#8B3FE8" className="opacity-15" />
-      </motion.div>
-
-      {/* Floating Fruit Decorations - Behind all content */}
-      <FloatingFruit delay={0.3} className="absolute top-[15%] left-[8%] z-[1] hidden lg:block">
-        <Strawberry size={100} className="opacity-50" />
-      </FloatingFruit>
-
-      <RotatingFruit delay={0.5} className="absolute top-[20%] right-[12%] z-[1] hidden lg:block">
-        <Blueberry size={90} className="opacity-50" />
-      </RotatingFruit>
-
-      <BouncingFruit delay={0.8} className="absolute bottom-[25%] left-[10%] z-[1] hidden lg:block">
-        <Watermelon size={110} className="opacity-40" />
-      </BouncingFruit>
-
-      <PulsatingFruit delay={1} className="absolute bottom-[30%] right-[8%] z-[1] hidden lg:block">
-        <Kiwi size={85} className="opacity-50" />
-      </PulsatingFruit>
-
-      <FloatingFruit delay={0.6} className="absolute top-[50%] right-[25%] z-[1] hidden lg:block">
-        <PineappleSlice size={75} className="opacity-40" />
-      </FloatingFruit>
-
-      <motion.div
-        style={{ y: y3, rotate: rotate2 }}
-        className="absolute bottom-[15%] left-[20%] z-[1] hidden lg:block"
-      >
-        <LeafShape size={100} className="opacity-40" />
       </motion.div>
 
       {/* Main Content */}
