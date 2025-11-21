@@ -1036,3 +1036,270 @@ export function Peas({ className = "", size = 200 }: { className?: string; size?
     </svg>
   );
 }
+
+export function CurryLeaves({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Stem */}
+      <path
+        d="M100 160 Q100 120 100 80 L100 50"
+        stroke="#065F46"
+        strokeWidth="2.5"
+        fill="none"
+      />
+
+      {/* Leaves on right side */}
+      <path
+        d="M100 70 Q110 68 118 72 Q125 78 125 85 Q123 92 118 96 Q110 98 100 95 Z"
+        fill="#15803D"
+      />
+      <path
+        d="M100 90 Q110 88 118 92 Q125 98 125 105 Q123 112 118 116 Q110 118 100 115 Z"
+        fill="#16A34A"
+      />
+      <path
+        d="M100 110 Q110 108 118 112 Q125 118 125 125 Q123 132 118 136 Q110 138 100 135 Z"
+        fill="#15803D"
+      />
+      <path
+        d="M100 130 Q110 128 118 132 Q125 138 125 145 Q123 152 118 156 Q110 158 100 155 Z"
+        fill="#16A34A"
+      />
+
+      {/* Leaves on left side */}
+      <path
+        d="M100 80 Q90 78 82 82 Q75 88 75 95 Q77 102 82 106 Q90 108 100 105 Z"
+        fill="#16A34A"
+      />
+      <path
+        d="M100 100 Q90 98 82 102 Q75 108 75 115 Q77 122 82 126 Q90 128 100 125 Z"
+        fill="#15803D"
+      />
+      <path
+        d="M100 120 Q90 118 82 122 Q75 128 75 135 Q77 142 82 146 Q90 148 100 145 Z"
+        fill="#16A34A"
+      />
+
+      {/* Leaf veins */}
+      <g stroke="#14532D" strokeWidth="0.8" opacity="0.5">
+        <path d="M100 70 Q112 72 118 80" />
+        <path d="M100 90 Q112 92 118 100" />
+        <path d="M100 110 Q112 112 118 120" />
+        <path d="M100 130 Q112 132 118 140" />
+        <path d="M100 80 Q88 82 82 90" />
+        <path d="M100 100 Q88 102 82 110" />
+        <path d="M100 120 Q88 122 82 130" />
+      </g>
+
+      {/* Highlights */}
+      <g fill="#22C55E" opacity="0.4">
+        <ellipse cx="108" cy="82" rx="4" ry="6" />
+        <ellipse cx="108" cy="102" rx="4" ry="6" />
+        <ellipse cx="92" cy="92" rx="4" ry="6" />
+        <ellipse cx="92" cy="112" rx="4" ry="6" />
+      </g>
+    </svg>
+  );
+}
+
+export function Coriander({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Stems - multiple stalks */}
+      <g stroke="#059669" strokeWidth="2" fill="none">
+        <path d="M85 140 L82 110 Q80 80 78 60" />
+        <path d="M100 145 L100 110 Q100 80 100 55" />
+        <path d="M115 140 L118 110 Q120 80 122 60" />
+      </g>
+
+      {/* Left stalk leaves */}
+      <g fill="#16A34A">
+        <path d="M78 60 Q72 58 68 62 Q66 68 70 72 Q75 73 78 70 Z" />
+        <path d="M80 75 Q74 73 70 77 Q68 83 72 87 Q77 88 80 85 Z" />
+        <path d="M82 95 Q76 93 72 97 Q70 103 74 107 Q79 108 82 105 Z" />
+      </g>
+
+      {/* Center stalk leaves - fuller, more detailed */}
+      <g fill="#10B981">
+        <path d="M95 55 Q90 52 85 55 Q82 60 85 65 Q90 68 95 65 Z" />
+        <path d="M105 55 Q110 52 115 55 Q118 60 115 65 Q110 68 105 65 Z" />
+        <path d="M92 70 Q87 68 83 72 Q81 77 84 81 Q89 83 92 80 Z" />
+        <path d="M108 70 Q113 68 117 72 Q119 77 116 81 Q111 83 108 80 Z" />
+        <path d="M95 85 Q90 83 86 87 Q84 92 87 96 Q92 98 95 95 Z" />
+        <path d="M105 85 Q110 83 114 87 Q116 92 113 96 Q108 98 105 95 Z" />
+      </g>
+
+      {/* Right stalk leaves */}
+      <g fill="#16A34A">
+        <path d="M122 60 Q128 58 132 62 Q134 68 130 72 Q125 73 122 70 Z" />
+        <path d="M120 75 Q126 73 130 77 Q132 83 128 87 Q123 88 120 85 Z" />
+        <path d="M118 95 Q124 93 128 97 Q130 103 126 107 Q121 108 118 105 Z" />
+      </g>
+
+      {/* Detailed leaf structure - serrated edges */}
+      <g stroke="#14532D" strokeWidth="0.6" opacity="0.4" fill="none">
+        <path d="M95 55 Q92 58 95 60" />
+        <path d="M105 55 Q108 58 105 60" />
+        <path d="M92 70 Q89 73 92 75" />
+        <path d="M108 70 Q111 73 108 75" />
+      </g>
+
+      {/* Highlights */}
+      <g fill="#6EE7B7" opacity="0.5">
+        <circle cx="92" cy="58" r="2.5" />
+        <circle cx="108" cy="58" r="2.5" />
+        <circle cx="100" cy="73" r="2.5" />
+      </g>
+    </svg>
+  );
+}
+
+export function RidgeGourd({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Main gourd body */}
+      <path
+        d="M100 40 Q90 45 87 60 L85 100 Q84 130 88 150 Q92 165 100 170 Q108 165 112 150 Q116 130 115 100 L113 60 Q110 45 100 40 Z"
+        fill="#15803D"
+      />
+      <path
+        d="M100 40 Q92 47 89 65 L87 105 Q86 132 90 152 Q94 163 100 167"
+        fill="#16A34A"
+        opacity="0.85"
+      />
+
+      {/* Ridges - raised texture lines */}
+      <g stroke="#14532D" strokeWidth="2" opacity="0.6" fill="none">
+        <path d="M92 55 Q90 70 89 100 Q89 125 92 145" />
+        <path d="M96 50 Q94 70 93 100 Q93 125 96 150" />
+        <path d="M100 45 Q100 70 100 100 Q100 130 100 160" />
+        <path d="M104 50 Q106 70 107 100 Q107 125 104 150" />
+        <path d="M108 55 Q110 70 111 100 Q111 125 108 145" />
+      </g>
+
+      {/* Ridge bumps */}
+      <g fill="#14532D" opacity="0.3">
+        <ellipse cx="92" cy="70" rx="2" ry="4" />
+        <ellipse cx="96" cy="80" rx="2" ry="4" />
+        <ellipse cx="104" cy="75" rx="2" ry="4" />
+        <ellipse cx="108" cy="85" rx="2" ry="4" />
+        <ellipse cx="92" cy="100" rx="2" ry="4" />
+        <ellipse cx="108" cy="105" rx="2" ry="4" />
+        <ellipse cx="96" cy="120" rx="2" ry="4" />
+        <ellipse cx="104" cy="125" rx="2" ry="4" />
+      </g>
+
+      {/* Highlight */}
+      <ellipse cx="105" cy="85" rx="8" ry="30" fill="#22C55E" opacity="0.4" />
+
+      {/* Stem */}
+      <path
+        d="M95 35 Q92 30 88 32 L86 38 M100 33 L100 40 M105 35 Q108 30 112 32 L114 38"
+        stroke="#10B981"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <ellipse cx="100" cy="37" rx="7" ry="5" fill="#059669" />
+
+      {/* Flower remnant */}
+      <g fill="#FDE68A" opacity="0.8">
+        <circle cx="98" cy="33" r="2" />
+        <circle cx="102" cy="33" r="2" />
+      </g>
+    </svg>
+  );
+}
+
+export function Coconut({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Coconut shell */}
+      <circle cx="100" cy="105" r="60" fill="#78350F" />
+      <circle cx="100" cy="105" r="55" fill="#92400E" opacity="0.9" />
+
+      {/* Fibrous texture */}
+      <g stroke="#451A03" strokeWidth="1.5" opacity="0.5">
+        {[...Array(15)].map((_, i) => {
+          const angle = (i * 24 * Math.PI) / 180;
+          const x1 = 100 + Math.cos(angle) * 30;
+          const y1 = 105 + Math.sin(angle) * 30;
+          const x2 = 100 + Math.cos(angle) * 55;
+          const y2 = 105 + Math.sin(angle) * 55;
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} />;
+        })}
+      </g>
+
+      {/* Three eyes of coconut */}
+      <g fill="#292524">
+        <ellipse cx="90" cy="90" rx="6" ry="8" />
+        <ellipse cx="110" cy="88" rx="6" ry="8" />
+        <ellipse cx="100" cy="110" rx="6" ry="7" />
+      </g>
+
+      {/* Eyes indentation */}
+      <g fill="#1C1917" opacity="0.6">
+        <ellipse cx="90" cy="90" rx="4" ry="6" />
+        <ellipse cx="110" cy="88" rx="4" ry="6" />
+        <ellipse cx="100" cy="110" rx="4" ry="5" />
+      </g>
+
+      {/* Highlights */}
+      <ellipse cx="85" cy="85" rx="15" ry="20" fill="#A16207" opacity="0.6" />
+      <circle cx="80" cy="80" r="10" fill="#D97706" opacity="0.5" />
+
+      {/* Additional fibrous details */}
+      <g opacity="0.3">
+        {[...Array(20)].map((_, i) => {
+          const angle = Math.random() * Math.PI * 2;
+          const distance = 25 + Math.random() * 25;
+          const x = 100 + Math.cos(angle) * distance;
+          const y = 105 + Math.sin(angle) * distance;
+          const length = 5 + Math.random() * 8;
+          return (
+            <line
+              key={i}
+              x1={x}
+              y1={y}
+              x2={x + Math.cos(angle + Math.PI/4) * length}
+              y2={y + Math.sin(angle + Math.PI/4) * length}
+              stroke="#57534E"
+              strokeWidth="1"
+            />
+          );
+        })}
+      </g>
+
+      {/* Base shadow */}
+      <ellipse cx="100" cy="165" rx="45" ry="8" fill="#292524" opacity="0.2" />
+    </svg>
+  );
+}

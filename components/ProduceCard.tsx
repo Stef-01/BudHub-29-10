@@ -30,7 +30,11 @@ import {
   Ginger,
   GreenBeans,
   Garlic,
-  Peas
+  Peas,
+  CurryLeaves,
+  Coriander,
+  RidgeGourd,
+  Coconut
 } from '../src/components/illustrations/VegetableIllustrations';
 
 interface ProduceCardProps {
@@ -41,7 +45,8 @@ interface ProduceCardProps {
               'tomato' | 'onion' | 'potato' | 'eggplant' | 'okra' | 'spinach' |
               'carrot' | 'cauliflower' | 'bellpepper' | 'cucumber' | 'chili' |
               'bottlegourd' | 'pumpkin' | 'cabbage' | 'radish' | 'beetroot' |
-              'ginger' | 'greenbeans' | 'garlic' | 'peas' | 'generic';
+              'ginger' | 'greenbeans' | 'garlic' | 'peas' |
+              'curryleaves' | 'coriander' | 'ridgegourd' | 'coconut' | 'generic';
   isIndianStaple?: boolean;
   isLowGI?: boolean;
   onClick?: () => void;
@@ -95,6 +100,32 @@ const ProduceCard: React.FC<ProduceCardProps> = ({
         return <Cucumber size={90} />;
       case 'chili':
         return <Chili size={90} />;
+      case 'bottlegourd':
+        return <BottleGourd size={90} />;
+      case 'pumpkin':
+        return <Pumpkin size={90} />;
+      case 'cabbage':
+        return <Cabbage size={90} />;
+      case 'radish':
+        return <Radish size={90} />;
+      case 'beetroot':
+        return <Beetroot size={90} />;
+      case 'ginger':
+        return <Ginger size={90} />;
+      case 'greenbeans':
+        return <GreenBeans size={90} />;
+      case 'garlic':
+        return <Garlic size={90} />;
+      case 'peas':
+        return <Peas size={90} />;
+      case 'curryleaves':
+        return <CurryLeaves size={90} />;
+      case 'coriander':
+        return <Coriander size={90} />;
+      case 'ridgegourd':
+        return <RidgeGourd size={90} />;
+      case 'coconut':
+        return <Coconut size={90} />;
       default:
         // Fallback to a generic vegetable emoji
         return <div className="text-6xl">🥬</div>;
@@ -182,6 +213,19 @@ export const mapProduceToFruitType = (produceName: string): ProduceCardProps['fr
   if (name.includes('pepper') || name.includes('capsicum') || name.includes('shimla mirch')) return 'bellpepper';
   if (name.includes('cucumber') || name.includes('kheera') || name.includes('kakdi')) return 'cucumber';
   if (name.includes('chili') || name.includes('chilli') || name.includes('mirch') || name.includes('green chili')) return 'chili';
+  if (name.includes('bottle gourd') || name.includes('lauki') || name.includes('ghiya')) return 'bottlegourd';
+  if (name.includes('pumpkin') || name.includes('kaddu') || name.includes('sitaphal')) return 'pumpkin';
+  if (name.includes('cabbage') || name.includes('patta gobi') || name.includes('bandh gobi')) return 'cabbage';
+  if (name.includes('radish') || name.includes('mooli')) return 'radish';
+  if (name.includes('beetroot') || name.includes('beet') || name.includes('chukandar')) return 'beetroot';
+  if (name.includes('ginger') || name.includes('adrak')) return 'ginger';
+  if (name.includes('green bean') || name.includes('beans') || name.includes('sem')) return 'greenbeans';
+  if (name.includes('garlic') || name.includes('lahsun') || name.includes('lasun')) return 'garlic';
+  if (name.includes('peas') || name.includes('matar')) return 'peas';
+  if (name.includes('curry leaves') || name.includes('curry leaf') || name.includes('kadi patta') || name.includes('kadipatta')) return 'curryleaves';
+  if (name.includes('coriander') || name.includes('cilantro') || name.includes('dhania')) return 'coriander';
+  if (name.includes('ridge gourd') || name.includes('turai') || name.includes('tori')) return 'ridgegourd';
+  if (name.includes('coconut') || name.includes('nariyal')) return 'coconut';
 
   return 'generic';
 };

@@ -82,32 +82,32 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
         <BlobShape size={350} color="#8B3FE8" className="opacity-15" />
       </motion.div>
 
-      {/* Floating Fruit Decorations */}
-      <FloatingFruit delay={0.3} className="absolute top-[15%] left-[8%] z-0 hidden lg:block">
-        <Strawberry size={100} className="opacity-70" />
+      {/* Floating Fruit Decorations - Behind all content */}
+      <FloatingFruit delay={0.3} className="absolute top-[15%] left-[8%] z-[1] hidden lg:block">
+        <Strawberry size={100} className="opacity-50" />
       </FloatingFruit>
 
-      <RotatingFruit delay={0.5} className="absolute top-[20%] right-[12%] z-0 hidden lg:block">
-        <Blueberry size={90} className="opacity-70" />
+      <RotatingFruit delay={0.5} className="absolute top-[20%] right-[12%] z-[1] hidden lg:block">
+        <Blueberry size={90} className="opacity-50" />
       </RotatingFruit>
 
-      <BouncingFruit delay={0.8} className="absolute bottom-[25%] left-[10%] z-0 hidden lg:block">
-        <Watermelon size={110} className="opacity-60" />
+      <BouncingFruit delay={0.8} className="absolute bottom-[25%] left-[10%] z-[1] hidden lg:block">
+        <Watermelon size={110} className="opacity-40" />
       </BouncingFruit>
 
-      <PulsatingFruit delay={1} className="absolute bottom-[30%] right-[8%] z-0 hidden lg:block">
-        <Kiwi size={85} className="opacity-70" />
+      <PulsatingFruit delay={1} className="absolute bottom-[30%] right-[8%] z-[1] hidden lg:block">
+        <Kiwi size={85} className="opacity-50" />
       </PulsatingFruit>
 
-      <FloatingFruit delay={0.6} className="absolute top-[50%] right-[25%] z-0 hidden lg:block">
-        <PineappleSlice size={75} className="opacity-60" />
+      <FloatingFruit delay={0.6} className="absolute top-[50%] right-[25%] z-[1] hidden lg:block">
+        <PineappleSlice size={75} className="opacity-40" />
       </FloatingFruit>
 
       <motion.div
         style={{ y: y3, rotate: rotate2 }}
-        className="absolute bottom-[15%] left-[20%] z-0 hidden lg:block"
+        className="absolute bottom-[15%] left-[20%] z-[1] hidden lg:block"
       >
-        <LeafShape size={100} className="opacity-50" />
+        <LeafShape size={100} className="opacity-40" />
       </motion.div>
 
       {/* Main Content */}
