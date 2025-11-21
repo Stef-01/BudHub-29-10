@@ -141,6 +141,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
         level={level}
         xp={xp}
         xpForNextLevel={xpForNextLevel}
+        onPlayGame={onPlayGame}
       />
 
       {/* Local Produce Section */}

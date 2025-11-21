@@ -13,6 +13,7 @@ interface EnhancedHeroSectionProps {
   level: number;
   xp: number;
   xpForNextLevel: number;
+  onPlayGame?: (gameMode: 'cookventure') => void;
 }
 
 const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
@@ -24,7 +25,8 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
   weather,
   level,
   xp,
-  xpForNextLevel
+  xpForNextLevel,
+  onPlayGame
 }) => {
   const { scrollY } = useScroll();
 
@@ -82,7 +84,7 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="relative z-10 flex flex-col md:flex-row items-center gap-6"
+        className="relative z-10 flex flex-col md:flex-row items-start gap-6"
       >
         <div className="flex-1 text-center md:text-left">
           <motion.h1
@@ -164,6 +166,31 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
             </motion.div>
           </motion.div>
         </div>
+
+        {/* Feeling Hungry? Card */}
+        <motion.div
+          variants={itemVariants}
+          className="md:w-64 w-full"
+        >
+          <div className="glass-card rounded-2xl p-5 bg-gradient-to-br from-orange-50 via-white to-green-50 border-2 border-orange-200 hover:shadow-xl transition-all">
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">🍛</div>
+              <h3 className="font-display text-xl font-bold text-gray-900 mb-1">
+                Feeling Hungry?
+              </h3>
+              <p className="text-xs text-gray-600">
+                Discover recipes that match your taste
+              </p>
+            </div>
+            <button
+              onClick={() => onPlayGame?.('cookventure')}
+              className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+            >
+              <span>Start Cookventure</span>
+              <span className="text-lg">→</span>
+            </button>
+          </div>
+        </motion.div>
       </motion.div>
 
       {/* XP Bar with Glass Effect */}
