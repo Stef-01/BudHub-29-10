@@ -64,6 +64,7 @@ export interface RecipeCookventureData {
 }
 
 export interface UserPreferences {
+  cravings: string[];
   selectedRegions: string[];
   timeLimit?: number;
   course?: string[];

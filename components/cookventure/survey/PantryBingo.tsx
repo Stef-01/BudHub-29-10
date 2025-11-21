@@ -103,19 +103,18 @@ const PantryBingo: React.FC<PantryBingoProps> = ({
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          What's in your fridge & pantry?
+          What's in your pantry?
         </h2>
-        <p className="text-sm text-gray-600">
-          Select individual ingredients or use quick packs to speed things up
+        <p className="text-xs text-gray-500">
+          Quick packs or pick individually
         </p>
       </div>
 
       {/* Quick Packs */}
       <div>
-        <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
           <span>📦</span>
           <span>Quick Packs</span>
-          <span className="text-xs font-normal text-gray-500">(Click to add all)</span>
         </h3>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -161,11 +160,11 @@ const PantryBingo: React.FC<PantryBingoProps> = ({
 
       {/* Individual Ingredients */}
       <div>
-        <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
           <span>🥬</span>
-          <span>Individual Ingredients</span>
+          <span>Pick Individually</span>
           <span className="text-xs font-normal text-gray-500">
-            ({selectedIngredients.length} selected)
+            ({selectedIngredients.length})
           </span>
         </h3>
 

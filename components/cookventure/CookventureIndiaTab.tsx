@@ -6,6 +6,7 @@ import { loadCookventureData } from '../../services/cookventure/regionalPresets'
 import { calculateCookventureScore, sortScoredRecipes } from '../../services/cookventure/cookventureScoring';
 
 // Survey components
+import CravingPicker from './survey/CravingPicker';
 import RegionPicker from './survey/RegionPicker';
 import PantryBingo from './survey/PantryBingo';
 import FlavorDials from './survey/FlavorDials';
@@ -14,15 +15,16 @@ import MasalaTadkaLocker from './survey/MasalaTadkaLocker';
 // Results components
 import RecipeResultsGrid from './results/RecipeResultsGrid';
 
-type SurveyStep = 'region' | 'pantry' | 'flavor' | 'masala_tadka' | 'results';
+type SurveyStep = 'craving' | 'region' | 'pantry' | 'flavor' | 'masala_tadka' | 'results';
 
 interface CookventureIndiaTabProps {
   recipes?: any[]; // Will be typed with full Recipe interface later
 }
 
 const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] }) => {
-  const [currentStep, setCurrentStep] = useState<SurveyStep>('region');
+  const [currentStep, setCurrentStep] = useState<SurveyStep>('craving');
   const [userPrefs, setUserPrefs] = useState<UserPreferences>({
+    cravings: [],
     selectedRegions: [],
     pantry: [],
     tastePrefs: { heat: 1, masala: 1, tangy: 1, sweet: 0 },
@@ -36,6 +38,16 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
 
   // Load taxonomy data
   const { regions, masalas, tadkas } = loadCookventureData();
+
+  // Update craving selection
+  const handleToggleCraving = (cravingId: string) => {
+    setUserPrefs((prev) => ({
+      ...prev,
+      cravings: prev.cravings.includes(cravingId)
+        ? prev.cravings.filter((c) => c !== cravingId)
+        : [...prev.cravings, cravingId],
+    }));
+  };
 
   // Update region selection
   const handleToggleRegion = (regionId: string) => {
@@ -112,7 +124,7 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
 
   // Check if can proceed to next step
   const canProceed = () => {
-    if (currentStep === 'region') return userPrefs.selectedRegions.length > 0;
+    if (currentStep === 'craving') return userPrefs.cravings.length > 0;
     return true;
   };
 
@@ -120,22 +132,25 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
   const handleNext = () => {
     if (!canProceed()) return;
 
-    if (currentStep === 'region') setCurrentStep('pantry');
+    if (currentStep === 'craving') setCurrentStep('region');
+    else if (currentStep === 'region') setCurrentStep('pantry');
     else if (currentStep === 'pantry') setCurrentStep('flavor');
     else if (currentStep === 'flavor') setCurrentStep('masala_tadka');
     else if (currentStep === 'masala_tadka') setCurrentStep('results');
   };
 
   const handleBack = () => {
-    if (currentStep === 'pantry') setCurrentStep('region');
+    if (currentStep === 'region') setCurrentStep('craving');
+    else if (currentStep === 'pantry') setCurrentStep('region');
     else if (currentStep === 'flavor') setCurrentStep('pantry');
     else if (currentStep === 'masala_tadka') setCurrentStep('flavor');
     else if (currentStep === 'results') setCurrentStep('masala_tadka');
   };
 
   const handleReset = () => {
-    setCurrentStep('region');
+    setCurrentStep('craving');
     setUserPrefs({
+      cravings: [],
       selectedRegions: [],
       pantry: [],
       tastePrefs: { heat: 1, masala: 1, tangy: 1, sweet: 0 },
@@ -173,26 +188,26 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            {['region', 'pantry', 'flavor', 'masala_tadka', 'results'].map((step, idx) => {
-              const stepIndex = ['region', 'pantry', 'flavor', 'masala_tadka', 'results'].indexOf(currentStep);
+            {['craving', 'region', 'pantry', 'flavor', 'masala_tadka', 'results'].map((step, idx) => {
+              const stepIndex = ['craving', 'region', 'pantry', 'flavor', 'masala_tadka', 'results'].indexOf(currentStep);
               const isActive = idx <= stepIndex;
               const isCurrent = step === currentStep;
 
               return (
                 <React.Fragment key={step}>
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                       isActive
-                        ? 'bg-green-500 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'bg-gray-200 text-gray-400'
-                    } ${isCurrent ? 'ring-4 ring-green-200' : ''}`}
+                    } ${isCurrent ? 'ring-4 ring-orange-200' : ''}`}
                   >
                     {idx + 1}
                   </div>
-                  {idx < 4 && (
+                  {idx < 5 && (
                     <div
-                      className={`w-12 h-1 rounded transition-all ${
-                        isActive ? 'bg-green-500' : 'bg-gray-200'
+                      className={`w-8 h-1 rounded transition-all ${
+                        isActive ? 'bg-orange-500' : 'bg-gray-200'
                       }`}
                     ></div>
                   )}
@@ -200,20 +215,23 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
               );
             })}
           </div>
-          <div className="flex justify-center text-xs text-gray-500 gap-6">
-            <span className={currentStep === 'region' ? 'font-bold text-green-600' : ''}>
+          <div className="flex justify-center text-[10px] text-gray-500 gap-3">
+            <span className={currentStep === 'craving' ? 'font-bold text-orange-600' : ''}>
+              Cravings
+            </span>
+            <span className={currentStep === 'region' ? 'font-bold text-orange-600' : ''}>
               Region
             </span>
-            <span className={currentStep === 'pantry' ? 'font-bold text-green-600' : ''}>
+            <span className={currentStep === 'pantry' ? 'font-bold text-orange-600' : ''}>
               Pantry
             </span>
-            <span className={currentStep === 'flavor' ? 'font-bold text-green-600' : ''}>
+            <span className={currentStep === 'flavor' ? 'font-bold text-orange-600' : ''}>
               Flavor
             </span>
-            <span className={currentStep === 'masala_tadka' ? 'font-bold text-green-600' : ''}>
-              Masala & Tadka
+            <span className={currentStep === 'masala_tadka' ? 'font-bold text-orange-600' : ''}>
+              Masala
             </span>
-            <span className={currentStep === 'results' ? 'font-bold text-green-600' : ''}>
+            <span className={currentStep === 'results' ? 'font-bold text-orange-600' : ''}>
               Results
             </span>
           </div>
@@ -229,6 +247,13 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
             transition={{ duration: 0.3 }}
             className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-6"
           >
+            {currentStep === 'craving' && (
+              <CravingPicker
+                selectedCravings={userPrefs.cravings}
+                onToggleCraving={handleToggleCraving}
+              />
+            )}
+
             {currentStep === 'region' && (
               <RegionPicker
                 regions={regions as any}
@@ -274,9 +299,9 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
         <div className="flex justify-between items-center">
           <button
             onClick={currentStep === 'results' ? handleReset : handleBack}
-            disabled={currentStep === 'region'}
+            disabled={currentStep === 'craving'}
             className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-              currentStep === 'region'
+              currentStep === 'craving'
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
@@ -290,7 +315,7 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
               disabled={!canProceed()}
               className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                 canProceed()
-                  ? 'bg-green-500 text-white hover:bg-green-600 shadow-md hover:shadow-lg'
+                  ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md hover:shadow-lg'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
             >
