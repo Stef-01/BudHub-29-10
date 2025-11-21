@@ -119,7 +119,7 @@ export interface CommunityEvent {
 }
 
 // --- Games ---
-export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb' | 'nutriserve' | 'unified_nutrient';
+export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb' | 'nutriserve' | 'unified_nutrient' | 'cookventure';
 
 export interface GameScore {
   id: number;
