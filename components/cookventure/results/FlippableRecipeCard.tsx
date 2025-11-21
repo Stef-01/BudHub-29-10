@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import type { ScoredRecipe } from '../../../types/cookventure';
+import { useRecipeImage } from '../../../hooks/useRecipeImage';
 
 interface FlippableRecipeCardProps {
   scoredRecipe: ScoredRecipe;
@@ -11,6 +12,9 @@ interface FlippableRecipeCardProps {
 const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe, index }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const { recipe, explanation, missing_ingredients } = scoredRecipe;
+  const { imageUrl } = useRecipeImage(recipe);
+
+  const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
 
   return (
     <motion.div
@@ -26,40 +30,50 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
         transition={{ duration: 0.6, type: "spring", stiffness: 120 }}
         style={{ transformStyle: 'preserve-3d' }}
       >
-        {/* Front of Card - Recipe Image */}
+        {/* Front of Card - Recipe Image Only */}
         <div
-          className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg border-2 border-gray-200 hover:border-green-300 transition-all"
+          className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg border-2 border-gray-200 hover:border-green-400 transition-all group"
           style={{ backfaceVisibility: 'hidden' }}
         >
-          {/* Recipe Image */}
-          <div className="h-48 bg-gradient-to-br from-orange-100 to-green-100 relative overflow-hidden">
-            {recipe.image && recipe.image.startsWith('http') ? (
+          {/* Full Card Image */}
+          <div className="relative h-full w-full bg-gradient-to-br from-orange-50 to-green-50">
+            {isRenderableImage ? (
               <img
-                src={recipe.image}
+                src={imageUrl}
                 alt={recipe.name}
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-8xl">
-                {recipe.image || '🍛'}
+                {imageUrl}
               </div>
             )}
 
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-
-            {/* Recipe Name on Image */}
-            <div className="absolute bottom-0 left-0 right-0 p-4">
-              <h3 className="font-bold text-xl text-white drop-shadow-lg leading-tight">
-                {recipe.name}
-              </h3>
+            {/* Subtle flip indicator - only shows on hover */}
+            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                👆 Tap to flip
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Quick Info */}
-          <div className="p-4 bg-white">
+        {/* Back of Card - Recipe Details & Match Explanation */}
+        <div
+          className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg bg-white border-2 border-green-400"
+          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+        >
+          <div className="h-full flex flex-col p-5 bg-gradient-to-br from-green-50 to-emerald-50 overflow-y-auto">
+            {/* Recipe Name */}
+            <h3 className="font-bold text-xl text-gray-800 mb-2 text-center leading-tight">
+              {recipe.name}
+            </h3>
+
+            {/* Recipe Course & Basic Info */}
+            <p className="text-xs text-gray-600 text-center mb-3 capitalize">{recipe.course}</p>
+
             {/* Region & Dietary Tags */}
-            <div className="flex flex-wrap gap-1 mb-3">
+            <div className="flex flex-wrap gap-1 mb-3 justify-center">
               {recipe.region_tags?.map((tag) => (
                 <span
                   key={tag}
@@ -77,7 +91,7 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
 
             {/* Taste Indicators */}
             {recipe.taste_axes && (
-              <div className="flex gap-2 mb-3 text-xs">
+              <div className="flex gap-2 mb-3 text-xs justify-center flex-wrap">
                 {recipe.taste_axes.heat > 0 && (
                   <span className="text-red-600 font-medium">🌶️×{recipe.taste_axes.heat}</span>
                 )}
@@ -93,8 +107,8 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
               </div>
             )}
 
-            {/* Cooking Time */}
-            <div className="flex items-center gap-3 text-xs text-gray-600">
+            {/* Cooking Time & Servings */}
+            <div className="flex items-center gap-3 text-xs text-gray-600 justify-center mb-3">
               {recipe.prep_minutes && (
                 <span>⏱️ {recipe.prep_minutes + (recipe.cook_minutes || 0)} min</span>
               )}
@@ -103,37 +117,27 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
               )}
             </div>
 
-            {/* Tap to Flip Hint */}
-            <div className="mt-3 pt-3 border-t border-gray-200 text-center">
-              <p className="text-xs text-gray-500 italic">👆 Tap to see why this matched</p>
-            </div>
-          </div>
-        </div>
+            <div className="border-t border-green-200 pt-3 mb-3"></div>
 
-        {/* Back of Card - Match Explanation */}
-        <div
-          className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg bg-white border-2 border-green-400"
-          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-        >
-          <div className="h-full flex flex-col p-6 bg-gradient-to-br from-green-50 to-emerald-50">
-            <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">
-              Why {recipe.name} Matched
-            </h3>
+            {/* Why It Matched Section */}
+            <h4 className="font-bold text-sm text-gray-700 mb-2 text-center">
+              Why This Matched
+            </h4>
 
             {/* Match Explanations */}
-            <div className="flex-1 space-y-2 mb-4">
+            <div className="flex-1 space-y-2 mb-3">
               {explanation.length > 0 ? (
                 explanation.map((exp, idx) => (
                   <div
                     key={idx}
-                    className="flex items-start gap-2 text-sm text-gray-700 bg-white rounded-lg p-3 shadow-sm"
+                    className="flex items-start gap-2 text-xs text-gray-700 bg-white rounded-lg p-2 shadow-sm"
                   >
                     <span className="text-green-600 font-bold flex-shrink-0">✓</span>
                     <span className="leading-tight">{exp.replace('✓ ', '')}</span>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-gray-600 italic text-center">
+                <p className="text-xs text-gray-600 italic text-center">
                   This recipe matches your preferences!
                 </p>
               )}
@@ -141,7 +145,7 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
 
             {/* Missing Ingredients */}
             {missing_ingredients.length > 0 && (
-              <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 mb-4">
+              <div className="p-2 bg-yellow-50 rounded-lg border border-yellow-200 mb-3">
                 <p className="text-xs font-semibold text-yellow-800 mb-1">
                   You'll need ({missing_ingredients.length}):
                 </p>
@@ -154,7 +158,7 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
 
             {/* Masala & Tadka Info */}
             {(recipe.masala_profiles || recipe.tadka_profiles) && (
-              <div className="space-y-2 mb-4">
+              <div className="space-y-1 mb-3">
                 {recipe.masala_profiles && recipe.masala_profiles.length > 0 && (
                   <div className="text-xs">
                     <span className="font-semibold text-gray-700">Masala: </span>
@@ -175,8 +179,8 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
             )}
 
             {/* Tap to Flip Back */}
-            <div className="text-center border-t border-green-200 pt-3">
-              <p className="text-xs text-gray-500 italic">👆 Tap to see recipe again</p>
+            <div className="text-center border-t border-green-200 pt-2 mt-auto">
+              <p className="text-xs text-gray-500 italic">👆 Tap to see image</p>
             </div>
           </div>
         </div>
