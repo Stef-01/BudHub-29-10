@@ -69,14 +69,27 @@ const PantryBingo: React.FC<PantryBingoProps> = ({
     },
   ];
 
-  // All unique ingredients from packs
-  const allIngredients = useMemo(() => {
-    const ingredients = new Set<string>();
-    ingredientPacks.forEach(pack => {
-      pack.ingredients.forEach(ing => ingredients.add(ing));
-    });
-    return Array.from(ingredients).sort();
-  }, []);
+  // Categorized ingredients
+  const spices = useMemo(() => [
+    'cumin', 'coriander powder', 'turmeric', 'red chilli powder', 'garam masala',
+    'black pepper', 'mustard seeds', 'fenugreek', 'cardamom', 'cinnamon',
+    'cloves', 'bay leaves', 'asafoetida', 'fennel seeds', 'carom seeds',
+  ], []);
+
+  const vegetables = useMemo(() => [
+    'onion', 'tomato', 'potato', 'cauliflower', 'spinach',
+    'okra', 'eggplant', 'bell pepper', 'green beans', 'peas',
+    'carrot', 'cabbage', 'bottle gourd', 'ridge gourd', 'drumstick',
+  ], []);
+
+  const herbs = useMemo(() => [
+    'coriander', 'mint', 'curry leaves', 'ginger', 'garlic', 'green chilli',
+  ], []);
+
+  const staples = useMemo(() => [
+    'rice', 'wheat', 'toor dal', 'moong dal', 'masoor dal', 'chana dal',
+    'urad dal', 'chickpea', 'coconut', 'tamarind', 'dairy',
+  ], []);
 
   // Filter packs based on selected regions
   const relevantPacks = useMemo(() => {
@@ -103,10 +116,10 @@ const PantryBingo: React.FC<PantryBingoProps> = ({
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          What's in your pantry?
+          What's in your kitchen?
         </h2>
         <p className="text-xs text-gray-500">
-          Quick packs or pick individually
+          Quick packs or pick by category
         </p>
       </div>
 
@@ -158,30 +171,112 @@ const PantryBingo: React.FC<PantryBingoProps> = ({
         </div>
       </div>
 
-      {/* Individual Ingredients */}
+      {/* Spices Section */}
       <div>
         <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-          <span>🥬</span>
-          <span>Pick Individually</span>
-          <span className="text-xs font-normal text-gray-500">
-            ({selectedIngredients.length})
-          </span>
+          <span>🌶️</span>
+          <span>Spices</span>
         </h3>
-
         <div className="flex flex-wrap gap-2">
-          {allIngredients.map((ingredient) => {
+          {spices.map((ingredient) => {
             const isSelected = selectedIngredients.includes(ingredient);
-
             return (
               <motion.button
                 key={ingredient}
                 onClick={() => onToggleIngredient(ingredient)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all ${
+                  isSelected
+                    ? 'border-orange-500 bg-orange-100 text-orange-800 shadow-sm'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-orange-300'
+                }`}
+              >
+                {isSelected && '✓ '}
+                {ingredient.replace('_', ' ')}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Vegetables Section */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <span>🥬</span>
+          <span>Vegetables</span>
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {vegetables.map((ingredient) => {
+            const isSelected = selectedIngredients.includes(ingredient);
+            return (
+              <motion.button
+                key={ingredient}
+                onClick={() => onToggleIngredient(ingredient)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all ${
                   isSelected
                     ? 'border-green-500 bg-green-100 text-green-800 shadow-sm'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-green-300'
+                }`}
+              >
+                {isSelected && '✓ '}
+                {ingredient.replace('_', ' ')}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Herbs & Aromatics Section */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <span>🌿</span>
+          <span>Herbs & Aromatics</span>
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {herbs.map((ingredient) => {
+            const isSelected = selectedIngredients.includes(ingredient);
+            return (
+              <motion.button
+                key={ingredient}
+                onClick={() => onToggleIngredient(ingredient)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all ${
+                  isSelected
+                    ? 'border-emerald-500 bg-emerald-100 text-emerald-800 shadow-sm'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-emerald-300'
+                }`}
+              >
+                {isSelected && '✓ '}
+                {ingredient.replace('_', ' ')}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Staples Section */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <span>🌾</span>
+          <span>Staples</span>
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {staples.map((ingredient) => {
+            const isSelected = selectedIngredients.includes(ingredient);
+            return (
+              <motion.button
+                key={ingredient}
+                onClick={() => onToggleIngredient(ingredient)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all ${
+                  isSelected
+                    ? 'border-amber-500 bg-amber-100 text-amber-800 shadow-sm'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-amber-300'
                 }`}
               >
                 {isSelected && '✓ '}
