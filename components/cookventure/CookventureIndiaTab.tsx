@@ -7,13 +7,14 @@ import { calculateCookventureScore, sortScoredRecipes } from '../../services/coo
 
 // Survey components
 import RegionPicker from './survey/RegionPicker';
+import PantryBingo from './survey/PantryBingo';
 import FlavorDials from './survey/FlavorDials';
 import MasalaTadkaLocker from './survey/MasalaTadkaLocker';
 
 // Results components
 import RecipeResultsGrid from './results/RecipeResultsGrid';
 
-type SurveyStep = 'region' | 'flavor' | 'masala_tadka' | 'results';
+type SurveyStep = 'region' | 'pantry' | 'flavor' | 'masala_tadka' | 'results';
 
 interface CookventureIndiaTabProps {
   recipes?: any[]; // Will be typed with full Recipe interface later
@@ -43,6 +44,24 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
       selectedRegions: prev.selectedRegions.includes(regionId)
         ? prev.selectedRegions.filter((r) => r !== regionId)
         : [...prev.selectedRegions, regionId],
+    }));
+  };
+
+  // Update pantry ingredients
+  const handleToggleIngredient = (ingredient: string) => {
+    setUserPrefs((prev) => ({
+      ...prev,
+      pantry: prev.pantry.includes(ingredient)
+        ? prev.pantry.filter((i) => i !== ingredient)
+        : [...prev.pantry, ingredient],
+    }));
+  };
+
+  // Select ingredient pack
+  const handleSelectPack = (ingredients: string[]) => {
+    setUserPrefs((prev) => ({
+      ...prev,
+      pantry: [...new Set([...prev.pantry, ...ingredients])],
     }));
   };
 
@@ -101,13 +120,15 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
   const handleNext = () => {
     if (!canProceed()) return;
 
-    if (currentStep === 'region') setCurrentStep('flavor');
+    if (currentStep === 'region') setCurrentStep('pantry');
+    else if (currentStep === 'pantry') setCurrentStep('flavor');
     else if (currentStep === 'flavor') setCurrentStep('masala_tadka');
     else if (currentStep === 'masala_tadka') setCurrentStep('results');
   };
 
   const handleBack = () => {
-    if (currentStep === 'flavor') setCurrentStep('region');
+    if (currentStep === 'pantry') setCurrentStep('region');
+    else if (currentStep === 'flavor') setCurrentStep('pantry');
     else if (currentStep === 'masala_tadka') setCurrentStep('flavor');
     else if (currentStep === 'results') setCurrentStep('masala_tadka');
   };
@@ -152,8 +173,8 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            {['region', 'flavor', 'masala_tadka', 'results'].map((step, idx) => {
-              const stepIndex = ['region', 'flavor', 'masala_tadka', 'results'].indexOf(currentStep);
+            {['region', 'pantry', 'flavor', 'masala_tadka', 'results'].map((step, idx) => {
+              const stepIndex = ['region', 'pantry', 'flavor', 'masala_tadka', 'results'].indexOf(currentStep);
               const isActive = idx <= stepIndex;
               const isCurrent = step === currentStep;
 
@@ -168,7 +189,7 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
                   >
                     {idx + 1}
                   </div>
-                  {idx < 3 && (
+                  {idx < 4 && (
                     <div
                       className={`w-12 h-1 rounded transition-all ${
                         isActive ? 'bg-green-500' : 'bg-gray-200'
@@ -179,9 +200,12 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
               );
             })}
           </div>
-          <div className="flex justify-center text-xs text-gray-500 gap-8">
+          <div className="flex justify-center text-xs text-gray-500 gap-6">
             <span className={currentStep === 'region' ? 'font-bold text-green-600' : ''}>
               Region
+            </span>
+            <span className={currentStep === 'pantry' ? 'font-bold text-green-600' : ''}>
+              Pantry
             </span>
             <span className={currentStep === 'flavor' ? 'font-bold text-green-600' : ''}>
               Flavor
@@ -210,6 +234,15 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
                 regions={regions as any}
                 selectedRegions={userPrefs.selectedRegions}
                 onToggleRegion={handleToggleRegion}
+              />
+            )}
+
+            {currentStep === 'pantry' && (
+              <PantryBingo
+                selectedRegions={userPrefs.selectedRegions}
+                selectedIngredients={userPrefs.pantry}
+                onToggleIngredient={handleToggleIngredient}
+                onSelectPack={handleSelectPack}
               />
             )}
 
