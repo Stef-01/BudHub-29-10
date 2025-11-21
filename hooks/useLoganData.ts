@@ -26,12 +26,14 @@ import {
 import type { CheapestPrice, Market, Resource, GameProgressWeekly, ActiveMissionWithStats, UserMissionAttempt } from '../types/logan';
 
 /**
- * Hook to fetch cheapest prices today
+ * Hook to fetch cheapest prices today with refresh capability
  */
 export function useCheapestPrices(limit: number = 10) {
   const [prices, setPrices] = useState<CheapestPrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -42,6 +44,7 @@ export function useCheapestPrices(limit: number = 10) {
         const data = await getCheapestIndianStaples(limit);
         if (mounted) {
           setPrices(data);
+          setLastUpdated(new Date());
           setError(null);
         }
       } catch (err) {
@@ -60,9 +63,13 @@ export function useCheapestPrices(limit: number = 10) {
     return () => {
       mounted = false;
     };
-  }, [limit]);
+  }, [limit, refreshKey]);
 
-  return { prices, loading, error };
+  const refresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  return { prices, loading, error, lastUpdated, refresh };
 }
 
 /**
@@ -325,7 +332,7 @@ export function useUserActiveMission(userId: string) {
  * Combined hook for homepage data
  */
 export function useHomepageData() {
-  const { prices, loading: pricesLoading } = useCheapestPrices(8);
+  const { prices, loading: pricesLoading, lastUpdated, refresh } = useCheapestPrices(8);
   const { markets, loading: marketsLoading } = useLoganMarkets();
   const { resources, loading: resourcesLoading } = useIndianResources();
 
@@ -335,6 +342,8 @@ export function useHomepageData() {
     prices,
     markets,
     resources,
-    loading
+    loading,
+    lastUpdated,
+    refreshPrices: refresh
   };
 }

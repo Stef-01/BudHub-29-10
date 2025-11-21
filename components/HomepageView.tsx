@@ -22,7 +22,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
   const { scores = [] } = useGameScores();
 
   // Logan-specific data
-  const { prices, markets, resources, loading: loganDataLoading } = useHomepageData();
+  const { prices, markets, resources, loading: loganDataLoading, lastUpdated, refreshPrices } = useHomepageData();
 
   // Game progress data - using 'demo_user' as placeholder until user authentication is implemented
   const { progress: weeklyProgress, improvement: improvementTrend } = useWeeklyGameProgress('demo_user', 4);
@@ -188,9 +188,18 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
         {/* Produce Deals Carousel */}
         <div className="bg-white rounded-3xl p-6 shadow-lg mb-6">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-2">
             <h3 className="text-xl font-bold text-gray-900">Today's Best Deals</h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={refreshPrices}
+                disabled={loganDataLoading}
+                className="px-3 py-1.5 text-sm font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                title="Refresh prices"
+              >
+                <span className={loganDataLoading ? 'animate-spin' : ''}>↻</span>
+                Refresh
+              </button>
               <button
                 onClick={() => scrollCarousel(produceCarouselRef, 'left')}
                 className="w-9 h-9 rounded-full border-2 border-green-600 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all hover:scale-110"
@@ -205,6 +214,11 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
               </button>
             </div>
           </div>
+          {lastUpdated && (
+            <p className="text-xs text-gray-500 mb-4">
+              Last updated: {lastUpdated.toLocaleTimeString()} {lastUpdated.toLocaleDateString()}
+            </p>
+          )}
 
           {loganDataLoading ? (
             <div className="flex items-center justify-center py-12">

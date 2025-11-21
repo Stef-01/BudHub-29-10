@@ -153,3 +153,70 @@ export async function getWeeklyMarketSchedule(): Promise<{[key: number]: Market[
     return {};
   }
 }
+
+/**
+ * Create a new market
+ */
+export async function createMarket(marketData: Omit<Market, 'id' | 'created_at' | 'updated_at'>): Promise<{ success: boolean; marketId?: string; error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('markets')
+      .insert(marketData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[marketService] Error creating market:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, marketId: data.id };
+  } catch (error) {
+    console.error('[marketService] Exception creating market:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Update an existing market
+ */
+export async function updateMarket(marketId: string, updates: Partial<Market>): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('markets')
+      .update(updates)
+      .eq('id', marketId);
+
+    if (error) {
+      console.error('[marketService] Error updating market:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[marketService] Exception updating market:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Delete a market (soft delete by setting is_active = false)
+ */
+export async function deleteMarket(marketId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('markets')
+      .update({ is_active: false })
+      .eq('id', marketId);
+
+    if (error) {
+      console.error('[marketService] Error deleting market:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[marketService] Exception deleting market:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
