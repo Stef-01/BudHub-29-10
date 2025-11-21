@@ -32,7 +32,11 @@ const FoodItemCard: React.FC<FoodItemCardProps> = ({ item }) => {
   );
 };
 
-const FoodLibrary: React.FC = () => {
+interface FoodLibraryProps {
+  roundNumber?: number;
+}
+
+const FoodLibrary: React.FC<FoodLibraryProps> = ({ roundNumber = 1 }) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set([FOOD_LIBRARY[0].name])
   );
@@ -81,7 +85,7 @@ const FoodLibrary: React.FC = () => {
       </div>
 
       <div className="mt-2 flex-shrink-0">
-        <DidYouKnowCard />
+        <DidYouKnowCard roundNumber={roundNumber} />
       </div>
 
     </div>
