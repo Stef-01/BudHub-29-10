@@ -137,26 +137,10 @@ const ProduceCard: React.FC<ProduceCardProps> = ({
           <span className="font-sans text-sm text-gray-500">/kg</span>
         </div>
 
-        {/* Market Badge */}
+        {/* Market Badge - subtle and small */}
         {market && (
-          <div className="flex items-center justify-center text-sm text-gray-600 mb-2">
-            <span className="font-sans font-medium truncate">{market}</span>
-          </div>
-        )}
-
-        {/* Tags */}
-        {(isIndianStaple || isLowGI) && (
-          <div className="flex flex-wrap gap-2 justify-center">
-            {isIndianStaple && (
-              <span className="inline-flex px-3 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-semibold rounded-full">
-                Indian Staple
-              </span>
-            )}
-            {isLowGI && (
-              <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                Low GI
-              </span>
-            )}
+          <div className="flex items-center justify-center mt-1">
+            <span className="font-sans text-xs text-gray-500 truncate">{market}</span>
           </div>
         )}
 

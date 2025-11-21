@@ -239,59 +239,6 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
             </div>
           )}
         </div>
-
-        {/* Markets List */}
-        <div>
-          <h3 className="text-xl font-bold text-gray-900 mb-4">📍 Your Local Markets</h3>
-          {markets.map((market) => {
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const dayName = market.day_of_week !== null ? dayNames[market.day_of_week] : 'Daily';
-            const timeStr = market.start_time && market.end_time
-              ? `${dayName} ${market.start_time.slice(0, 5)}-${market.end_time.slice(0, 5)}`
-              : 'Daily 9am-6pm';
-            const today = new Date().getDay();
-            const isOpenToday = market.day_of_week === null || market.day_of_week === today;
-            const icon = market.type === 'market' ? '🏪' : market.type === 'indian_grocery' ? '🥬' : '🧺';
-
-            return (
-              <div
-                key={market.id}
-                className="bg-white rounded-2xl p-5 mb-3 flex items-center gap-4 shadow-md hover:translate-x-2 hover:shadow-lg transition-all cursor-pointer border-2 border-transparent hover:border-green-500"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center text-3xl text-white shadow-lg flex-shrink-0">
-                  {icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-lg font-bold text-gray-900 mb-1">{market.name}</h4>
-                  <div className="flex items-center gap-3 text-sm text-gray-600 mb-2 flex-wrap">
-                    <span>📍 {market.suburb || 'Logan'}</span>
-                    <span>⏰ {timeStr}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {market.has_indian_produce && (
-                      <span className="inline-flex px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                        Indian Produce
-                      </span>
-                    )}
-                    {isOpenToday && (
-                      <span className="inline-flex px-3 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-semibold rounded-full">
-                        Open Today
-                      </span>
-                    )}
-                    {market.type === 'market' && (
-                      <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                        Farmers Market
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold flex-shrink-0">
-                  →
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </section>
 
       {/* Games Section */}
