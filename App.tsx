@@ -18,6 +18,9 @@ import UnifiedNutrientGame from './components/UnifiedNutrientGame';
 import AdminDashboard from './components/AdminDashboard';
 import { getUserId } from './hooks/useUserId';
 import { trackUserSession } from './lib/analytics';
+import SmoothScroll from './src/components/ui/SmoothScroll';
+import CustomCursor from './src/components/ui/CustomCursor';
+import FloatingBackgroundFruits from './components/FloatingBackgroundFruits';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('Homepage');
@@ -85,9 +88,16 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
-      <TabRouter activeTab={activeTab} onPlayGame={handlePlayGame} />
-    </MainLayout>
+    <>
+      <SmoothScroll />
+      <CustomCursor />
+      <div className="relative">
+        <FloatingBackgroundFruits />
+        <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
+          <TabRouter activeTab={activeTab} onPlayGame={handlePlayGame} />
+        </MainLayout>
+      </div>
+    </>
   );
 };
 
