@@ -5,19 +5,19 @@ import type {
   RecipeCookventureData,
   TasteAxes,
   ScoringWeights,
-  DEFAULT_SCORING_WEIGHTS,
 } from '../../types/cookventure';
+import { DEFAULT_SCORING_WEIGHTS } from '../../types/cookventure';
 import regionsData from '../../data/cookventure/regions.json';
 
 interface Recipe extends RecipeCookventureData {
   id: string;
-  title: string;
-  ingredients: string[];
+  name: string;
+  ingredients: string;
   diabetic_friendly?: boolean;
-  fiber_g?: number;
+  fiber_grams?: number;
   sodium_mg?: number;
-  prep_time?: number;
-  cook_time?: number;
+  prep_minutes?: number;
+  cook_minutes?: number;
   course?: string;
   diet_tags?: string[];
 }
@@ -48,7 +48,7 @@ export function calculateCookventureScore(
 
   // 2. PANTRY COVERAGE (45 points)
   const pantryScore = calculatePantryCoverage(
-    recipe.ingredients || [],
+    recipe.ingredients || '',
     userPrefs.pantry,
     userPrefs.selectedRegions
   );
@@ -113,7 +113,7 @@ export function calculateCookventureScore(
     explanation.push('✓ Diabetic-friendly');
   }
 
-  const missingIngredients = getMissingIngredients(recipe.ingredients || [], userPrefs.pantry);
+  const missingIngredients = getMissingIngredients(recipe.ingredients || '', userPrefs.pantry);
 
   return {
     score,
@@ -146,7 +146,7 @@ function passesHardFilters(recipe: Recipe, userPrefs: UserPreferences): boolean 
 
   // Check time limit
   if (userPrefs.timeLimit) {
-    const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
+    const totalTime = (recipe.prep_minutes || 0) + (recipe.cook_minutes || 0);
     if (totalTime > userPrefs.timeLimit) return false;
   }
 
@@ -162,14 +162,18 @@ function passesHardFilters(recipe: Recipe, userPrefs: UserPreferences): boolean 
  * Calculate pantry coverage score (0-45 points)
  */
 function calculatePantryCoverage(
-  recipeIngredients: string[],
+  recipeIngredients: string,
   userPantry: string[],
   selectedRegions: string[]
 ): number {
-  if (recipeIngredients.length === 0) return 0;
+  if (!recipeIngredients) return 0;
 
-  const totalIngredients = recipeIngredients.length;
-  const matchedIngredients = recipeIngredients.filter((ingredient) =>
+  // Split ingredients string into array
+  const ingredientsArray = recipeIngredients.split('\n').map(i => i.trim()).filter(Boolean);
+  if (ingredientsArray.length === 0) return 0;
+
+  const totalIngredients = ingredientsArray.length;
+  const matchedIngredients = ingredientsArray.filter((ingredient) =>
     userPantry.some((pantryItem) =>
       ingredient.toLowerCase().includes(pantryItem.toLowerCase()) ||
       pantryItem.toLowerCase().includes(ingredient.toLowerCase())
@@ -180,7 +184,7 @@ function calculatePantryCoverage(
 
   // Bonus for region staples
   const regionStaples = getRegionStaples(selectedRegions);
-  const stapleMatches = recipeIngredients.filter((ingredient) =>
+  const stapleMatches = ingredientsArray.filter((ingredient) =>
     regionStaples.some((staple) =>
       ingredient.toLowerCase().includes(staple.toLowerCase()) &&
       userPantry.some((pantryItem) => pantryItem.toLowerCase().includes(staple.toLowerCase()))
@@ -252,7 +256,7 @@ function calculateHealthBonus(recipe: Recipe, userPrefs: UserPreferences): numbe
     bonus += 3;
   }
 
-  if (recipe.fiber_g && recipe.fiber_g >= 5) {
+  if (recipe.fiber_grams && recipe.fiber_grams >= 5) {
     bonus += 1;
   }
 
@@ -282,8 +286,11 @@ function getRegionStaples(selectedRegions: string[]): string[] {
 /**
  * Get missing ingredients
  */
-function getMissingIngredients(recipeIngredients: string[], userPantry: string[]): string[] {
-  return recipeIngredients.filter(
+function getMissingIngredients(recipeIngredients: string, userPantry: string[]): string[] {
+  if (!recipeIngredients) return [];
+
+  const ingredientsArray = recipeIngredients.split('\n').map(i => i.trim()).filter(Boolean);
+  return ingredientsArray.filter(
     (ingredient) =>
       !userPantry.some((pantryItem) =>
         ingredient.toLowerCase().includes(pantryItem.toLowerCase()) ||
@@ -311,8 +318,8 @@ export function sortScoredRecipes(recipes: ScoredRecipe[]): ScoredRecipe[] {
     if (aSodium !== bSodium) return aSodium - bSodium;
 
     // Tie-breaker 3: Higher fiber
-    const aFiber = a.recipe.fiber_g || 0;
-    const bFiber = b.recipe.fiber_g || 0;
+    const aFiber = a.recipe.fiber_grams || 0;
+    const bFiber = b.recipe.fiber_grams || 0;
     return bFiber - aFiber;
   });
 }
