@@ -105,18 +105,15 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
   // Calculate and sort recipes when reaching results
   useEffect(() => {
     if (currentStep === 'results') {
-      // Filter recipes that have cookventure data
-      const cookventureRecipes = recipes.filter(
-        (recipe) => recipe.region_tags || recipe.masala_profiles || recipe.tadka_profiles
-      );
-
-      // Score all recipes
-      const scored = cookventureRecipes.map((recipe) =>
+      // Score ALL recipes (not just those with cookventure data)
+      // Recipes without cookventure metadata will still get base scores
+      const scored = recipes.map((recipe) =>
         calculateCookventureScore(recipe, userPrefs)
       );
 
-      // Sort and filter out zero scores
-      const sorted = sortScoredRecipes(scored).filter((sr) => sr.score > 0);
+      // Sort recipes - show ALL recipes, even with low scores
+      // This ensures every recipe from the cookbook appears
+      const sorted = sortScoredRecipes(scored);
 
       setScoredRecipes(sorted);
     }

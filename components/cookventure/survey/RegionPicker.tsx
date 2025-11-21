@@ -59,14 +59,10 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
                 {region.name}
               </h3>
 
-              {/* Hover Tooltip */}
+              {/* Hover Tooltip - Flavor Notes Only */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/90 via-black/80 to-transparent rounded-xl p-3 flex flex-col justify-end pointer-events-none">
-                <p className="text-xs text-white leading-tight mb-2">
+                <p className="text-xs text-white leading-tight font-medium">
                   {region.notes}
-                </p>
-                <p className="text-[10px] text-gray-300">
-                  {region.states.slice(0, 2).join(', ')}
-                  {region.states.length > 2 && '...'}
                 </p>
               </div>
             </motion.button>

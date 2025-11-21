@@ -36,14 +36,16 @@ export function calculateCookventureScore(
     return {
       score: 0,
       recipe,
-      explanation: ['Does not match your dietary requirements'],
+      explanation: ['Contains ingredients you avoid'],
       missing_ingredients: [],
       can_swap_tadka: false,
       can_swap_masala: false,
     };
   }
 
-  let score = 0;
+  // Start with base score of 10 for all recipes that pass filters
+  // This ensures every recipe appears in results
+  let score = 10;
   const explanation: string[] = [];
 
   // 2. PANTRY COVERAGE (45 points)
@@ -113,6 +115,31 @@ export function calculateCookventureScore(
     explanation.push('✓ Diabetic-friendly');
   }
 
+  // 8. DIET PREFERENCE BONUS (10 points)
+  if (userPrefs.diet.length > 0 && recipe.diet_tags) {
+    const dietMatches = userPrefs.diet.filter((d) => recipe.diet_tags?.includes(d));
+    if (dietMatches.length > 0) {
+      score += 10;
+      explanation.push(`✓ Matches ${dietMatches.join(', ')} diet`);
+    }
+  }
+
+  // 9. QUICK PREP BONUS (5 points) - for "quick" craving
+  if (userPrefs.cravings?.includes('quick')) {
+    const totalTime = (recipe.prep_minutes || 0) + (recipe.cook_minutes || 0);
+    if (totalTime <= 30) {
+      score += 5;
+      explanation.push('✓ Quick to make');
+    }
+  }
+
+  // 10. COURSE PREFERENCE BONUS (5 points)
+  if (userPrefs.course && userPrefs.course.length > 0 && recipe.course) {
+    if (userPrefs.course.includes(recipe.course)) {
+      score += 5;
+    }
+  }
+
   const missingIngredients = getMissingIngredients(recipe.ingredients || '', userPrefs.pantry);
 
   return {
@@ -126,33 +153,16 @@ export function calculateCookventureScore(
 }
 
 /**
- * Check if recipe passes hard filters (diet, avoids, time, course)
+ * Check if recipe passes hard filters (avoids only - keep it lenient)
  */
 function passesHardFilters(recipe: Recipe, userPrefs: UserPreferences): boolean {
-  // Check diet tags
-  if (userPrefs.diet.length > 0 && recipe.diet_tags) {
-    const hasDietMatch = userPrefs.diet.some((d) => recipe.diet_tags?.includes(d));
-    if (!hasDietMatch) return false;
-  }
-
-  // Check allergen avoids
+  // Only hard filter: Check allergen avoids
   if (userPrefs.avoids.length > 0) {
-    const ingredients = recipe.ingredients?.join(' ').toLowerCase() || '';
+    const ingredients = recipe.ingredients?.toLowerCase() || '';
     const hasAvoided = userPrefs.avoids.some((avoid) =>
       ingredients.includes(avoid.toLowerCase())
     );
     if (hasAvoided) return false;
-  }
-
-  // Check time limit
-  if (userPrefs.timeLimit) {
-    const totalTime = (recipe.prep_minutes || 0) + (recipe.cook_minutes || 0);
-    if (totalTime > userPrefs.timeLimit) return false;
-  }
-
-  // Check course
-  if (userPrefs.course && userPrefs.course.length > 0 && recipe.course) {
-    if (!userPrefs.course.includes(recipe.course)) return false;
   }
 
   return true;
