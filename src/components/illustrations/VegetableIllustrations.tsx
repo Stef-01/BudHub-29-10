@@ -466,3 +466,573 @@ export function Chili({ className = "", size = 200 }: { className?: string; size
     </svg>
   );
 }
+
+export function BottleGourd({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Bottle gourd body - two bulbs */}
+      <path
+        d="M100 45 Q85 50 82 65 L80 85 Q78 95 80 105 L82 120 Q85 150 90 165 Q95 175 100 178 Q105 175 110 165 Q115 150 118 120 L120 105 Q122 95 120 85 L118 65 Q115 50 100 45 Z"
+        fill="#D1FAE5"
+      />
+      <path
+        d="M100 45 Q88 52 85 68 L83 90 Q82 100 84 110 L86 125 Q89 152 95 168"
+        fill="#A7F3D0"
+        opacity="0.8"
+      />
+      <ellipse cx="92" cy="100" rx="10" ry="35" fill="#6EE7B7" opacity="0.4" />
+
+      {/* Texture lines */}
+      <path d="M88 70 Q100 72 112 70" stroke="#059669" strokeWidth="0.8" opacity="0.3" fill="none" />
+      <path d="M86 95 Q100 97 114 95" stroke="#059669" strokeWidth="0.8" opacity="0.3" fill="none" />
+      <path d="M87 120 Q100 122 113 120" stroke="#059669" strokeWidth="0.8" opacity="0.3" fill="none" />
+      <path d="M89 145 Q100 147 111 145" stroke="#059669" strokeWidth="0.8" opacity="0.3" fill="none" />
+
+      {/* Stem */}
+      <path
+        d="M95 40 Q93 35 90 37 L88 42 M100 38 L100 45 M105 40 Q107 35 110 37 L112 42"
+        stroke="#10B981"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <ellipse cx="100" cy="42" rx="7" ry="5" fill="#059669" />
+    </svg>
+  );
+}
+
+export function Pumpkin({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Center segment */}
+      <ellipse cx="100" cy="105" rx="25" ry="50" fill="#EA580C" />
+
+      {/* Left segments */}
+      <ellipse cx="75" cy="105" rx="22" ry="48" fill="#F97316" opacity="0.9" />
+      <ellipse cx="52" cy="108" rx="18" ry="42" fill="#FB923C" opacity="0.8" />
+
+      {/* Right segments */}
+      <ellipse cx="125" cy="105" rx="22" ry="48" fill="#F97316" opacity="0.9" />
+      <ellipse cx="148" cy="108" rx="18" ry="42" fill="#FB923C" opacity="0.8" />
+
+      {/* Highlights */}
+      <ellipse cx="90" cy="90" rx="15" ry="25" fill="#FDBA74" opacity="0.5" />
+      <circle cx="85" cy="85" r="10" fill="#FED7AA" opacity="0.6" />
+
+      {/* Ridge lines */}
+      <path d="M100 55 Q100 80 100 155" stroke="#C2410C" strokeWidth="2" opacity="0.4" />
+      <path d="M75 58 Q75 82 75 152" stroke="#C2410C" strokeWidth="2" opacity="0.4" />
+      <path d="M125 58 Q125 82 125 152" stroke="#C2410C" strokeWidth="2" opacity="0.4" />
+
+      {/* Stem - curly */}
+      <path
+        d="M100 55 Q98 48 96 45 Q94 42 92 45 Q90 48 92 52"
+        stroke="#065F46"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M92 52 Q94 49 96 46 Q98 43 100 46"
+        stroke="#10B981"
+        strokeWidth="3"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <ellipse cx="100" cy="52" rx="8" ry="6" fill="#059669" />
+    </svg>
+  );
+}
+
+export function Cabbage({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Outer leaves */}
+      <circle cx="100" cy="105" r="70" fill="#15803D" />
+      <circle cx="100" cy="105" r="65" fill="#16A34A" opacity="0.85" />
+
+      {/* Leaf layers */}
+      <path
+        d="M50 90 Q45 105 52 120 Q65 135 80 140 L70 115 Z"
+        fill="#22C55E"
+        opacity="0.7"
+      />
+      <path
+        d="M150 90 Q155 105 148 120 Q135 135 120 140 L130 115 Z"
+        fill="#22C55E"
+        opacity="0.7"
+      />
+      <path
+        d="M100 45 Q85 50 80 65 L90 90 L110 90 L120 65 Q115 50 100 45 Z"
+        fill="#22C55E"
+        opacity="0.7"
+      />
+
+      {/* Inner layers */}
+      <circle cx="100" cy="105" r="50" fill="#D1FAE5" />
+      <circle cx="100" cy="105" r="40" fill="#A7F3D0" opacity="0.8" />
+      <circle cx="100" cy="105" r="30" fill="#6EE7B7" opacity="0.6" />
+
+      {/* Veins on outer leaves */}
+      <path d="M80 90 Q85 105 80 120" stroke="#14532D" strokeWidth="1.5" opacity="0.4" fill="none" />
+      <path d="M120 90 Q115 105 120 120" stroke="#14532D" strokeWidth="1.5" opacity="0.4" fill="none" />
+      <path d="M100 75 L100 105" stroke="#14532D" strokeWidth="1.5" opacity="0.4" />
+
+      {/* Texture details */}
+      <g opacity="0.3" stroke="#14532D" strokeWidth="1" fill="none">
+        <path d="M65 95 Q100 98 135 95" />
+        <path d="M70 110 Q100 113 130 110" />
+        <path d="M75 125 Q100 128 125 125" />
+      </g>
+    </svg>
+  );
+}
+
+export function Radish({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Radish body - gradient from white to pink */}
+      <ellipse cx="100" cy="115" rx="35" ry="55" fill="#FDF2F8" />
+      <ellipse cx="100" cy="120" rx="32" ry="50" fill="#FCE7F3" />
+      <ellipse cx="100" cy="130" rx="28" ry="40" fill="#FBCFE8" opacity="0.8" />
+      <ellipse cx="100" cy="145" rx="22" ry="25" fill="#F9A8D4" opacity="0.7" />
+
+      {/* Highlight */}
+      <ellipse cx="90" cy="110" rx="12" ry="20" fill="#FFFFFF" opacity="0.7" />
+      <circle cx="88" cy="105" r="8" fill="#FFFFFF" opacity="0.9" />
+
+      {/* Root tip */}
+      <path
+        d="M100 170 Q98 175 100 178 Q102 175 100 170"
+        fill="#EC4899"
+        opacity="0.6"
+      />
+
+      {/* Root hairs */}
+      <g stroke="#E879F9" strokeWidth="1" opacity="0.4">
+        <line x1="75" y1="140" x2="70" y2="145" />
+        <line x1="80" y1="155" x2="75" y2="162" />
+        <line x1="125" y1="140" x2="130" y2="145" />
+        <line x1="120" y1="155" x2="125" y2="162" />
+        <line x1="95" y1="168" x2="92" y2="175" />
+        <line x1="105" y1="168" x2="108" y2="175" />
+      </g>
+
+      {/* Greens/leaves */}
+      <path
+        d="M95 60 Q90 50 85 52 L80 65 Q78 72 82 78 L90 85"
+        fill="#10B981"
+      />
+      <path
+        d="M105 60 Q110 50 115 52 L120 65 Q122 72 118 78 L110 85"
+        fill="#10B981"
+      />
+      <path
+        d="M100 55 Q98 45 95 47 L93 58 Q92 65 95 70 L100 78"
+        fill="#059669"
+      />
+
+      {/* Leaf veins */}
+      <path d="M85 52 L82 75" stroke="#065F46" strokeWidth="1.5" opacity="0.5" />
+      <path d="M115 52 L118 75" stroke="#065F46" strokeWidth="1.5" opacity="0.5" />
+      <path d="M95 47 L95 70" stroke="#065F46" strokeWidth="1.5" opacity="0.5" />
+    </svg>
+  );
+}
+
+export function Beetroot({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Beetroot body */}
+      <circle cx="100" cy="115" r="55" fill="#7C2D12" />
+      <circle cx="100" cy="115" r="50" fill="#991B1B" opacity="0.9" />
+      <circle cx="100" cy="115" r="45" fill="#B91C1C" opacity="0.8" />
+
+      {/* Highlight */}
+      <ellipse cx="85" cy="100" rx="18" ry="25" fill="#DC2626" opacity="0.6" />
+      <circle cx="80" cy="95" r="12" fill="#EF4444" opacity="0.5" />
+
+      {/* Root texture lines */}
+      <g stroke="#7F1D1D" strokeWidth="1.5" opacity="0.4" fill="none">
+        <path d="M100 60 Q100 90 100 170" />
+        <path d="M70 100 Q100 105 130 100" />
+        <path d="M75 130 Q100 135 125 130" />
+      </g>
+
+      {/* Root end */}
+      <path
+        d="M100 170 L98 175 Q100 178 102 175 Z"
+        fill="#991B1B"
+      />
+
+      {/* Greens - multiple stalks */}
+      <g>
+        <path
+          d="M95 60 Q92 48 88 45 L85 50 Q83 58 85 65 L90 75"
+          fill="#15803D"
+        />
+        <path
+          d="M100 58 Q100 42 96 40 L94 48 Q93 56 95 63 L98 72"
+          fill="#16A34A"
+        />
+        <path
+          d="M105 60 Q108 48 112 45 L115 50 Q117 58 115 65 L110 75"
+          fill="#15803D"
+        />
+      </g>
+
+      {/* Leaf veins */}
+      <g stroke="#7C2D12" strokeWidth="1.2" opacity="0.5">
+        <path d="M88 45 L85 65" />
+        <path d="M96 40 L95 63" />
+        <path d="M112 45 L115 65" />
+      </g>
+
+      {/* Texture spots */}
+      <g fill="#450A0A" opacity="0.3">
+        <circle cx="110" cy="110" r="3" />
+        <circle cx="90" cy="125" r="2.5" />
+        <circle cx="115" cy="130" r="2" />
+      </g>
+    </svg>
+  );
+}
+
+export function Ginger({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Main rhizome body - irregular */}
+      <path
+        d="M60 100 Q55 90 65 85 L85 80 Q100 78 115 82 L130 88 Q140 92 142 100 Q145 110 138 115 L120 122 Q105 125 90 123 L70 118 Q58 112 60 100 Z"
+        fill="#92400E"
+      />
+      <path
+        d="M60 100 Q58 93 68 88 L88 83 Q102 81 118 85 L132 91 Q140 95 140 103"
+        fill="#B45309"
+        opacity="0.8"
+      />
+
+      {/* Side knobs */}
+      <ellipse cx="75" cy="90" rx="12" ry="15" fill="#A16207" transform="rotate(-20 75 90)" />
+      <ellipse cx="125" cy="95" rx="10" ry="13" fill="#A16207" transform="rotate(25 125 95)" />
+      <ellipse cx="95" cy="115" rx="11" ry="14" fill="#A16207" transform="rotate(-10 95 115)" />
+
+      {/* Texture and wrinkles */}
+      <g stroke="#78350F" strokeWidth="1.2" opacity="0.5" fill="none">
+        <path d="M70 92 Q90 90 110 93" />
+        <path d="M68 100 Q95 98 125 102" />
+        <path d="M72 108 Q98 106 122 110" />
+      </g>
+
+      {/* Detailed texture spots */}
+      <g fill="#451A03" opacity="0.4">
+        <circle cx="80" cy="95" r="2" />
+        <circle cx="100" cy="92" r="2.5" />
+        <circle cx="120" cy="100" r="2" />
+        <circle cx="90" cy="108" r="2" />
+        <circle cx="110" cy="113" r="2.5" />
+      </g>
+
+      {/* Highlight */}
+      <ellipse cx="95" cy="90" rx="8" ry="12" fill="#D97706" opacity="0.5" />
+
+      {/* Small sprouting shoots */}
+      <g stroke="#10B981" strokeWidth="2" strokeLinecap="round" fill="none">
+        <path d="M85 80 Q83 72 80 70" />
+        <path d="M115 82 Q117 74 120 72" />
+      </g>
+      <circle cx="80" cy="70" r="3" fill="#059669" />
+      <circle cx="120" cy="72" r="3" fill="#059669" />
+    </svg>
+  );
+}
+
+export function GreenBeans({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* First bean pod */}
+      <path
+        d="M70 50 Q68 55 68 70 L70 110 Q72 125 75 135 Q78 142 82 145 Q85 142 87 135 Q90 125 92 110 L94 70 Q94 55 92 50 Q88 48 81 50 Z"
+        fill="#15803D"
+      />
+      <path
+        d="M70 50 Q69 58 69 75 L71 115 Q73 128 76 137"
+        fill="#16A34A"
+        opacity="0.8"
+      />
+      <ellipse cx="76" cy="90" rx="4" ry="20" fill="#22C55E" opacity="0.5" />
+
+      {/* Second bean pod - overlapping */}
+      <path
+        d="M100 60 Q98 65 98 80 L100 120 Q102 135 105 145 Q108 152 112 155 Q115 152 117 145 Q120 135 122 120 L124 80 Q124 65 122 60 Q118 58 111 60 Z"
+        fill="#15803D"
+      />
+      <path
+        d="M100 60 Q99 68 99 85 L101 125 Q103 138 106 147"
+        fill="#16A34A"
+        opacity="0.8"
+      />
+      <ellipse cx="106" cy="100" rx="4" ry="20" fill="#22C55E" opacity="0.5" />
+
+      {/* Third bean pod */}
+      <path
+        d="M130 55 Q128 60 128 75 L130 115 Q132 130 135 140 Q138 147 142 150 Q145 147 147 140 Q150 130 152 115 L154 75 Q154 60 152 55 Q148 53 141 55 Z"
+        fill="#15803D"
+      />
+      <path
+        d="M130 55 Q129 63 129 80 L131 120 Q133 133 136 142"
+        fill="#16A34A"
+        opacity="0.8"
+      />
+      <ellipse cx="136" cy="95" rx="4" ry="20" fill="#22C55E" opacity="0.5" />
+
+      {/* Bean bumps/seeds inside pods */}
+      <g fill="#14532D" opacity="0.3">
+        <ellipse cx="81" cy="70" rx="3" ry="5" />
+        <ellipse cx="81" cy="85" rx="3" ry="5" />
+        <ellipse cx="81" cy="100" rx="3" ry="5" />
+        <ellipse cx="81" cy="115" rx="3" ry="5" />
+        <ellipse cx="81" cy="130" rx="3" ry="5" />
+
+        <ellipse cx="111" cy="80" rx="3" ry="5" />
+        <ellipse cx="111" cy="95" rx="3" ry="5" />
+        <ellipse cx="111" cy="110" rx="3" ry="5" />
+        <ellipse cx="111" cy="125" rx="3" ry="5" />
+        <ellipse cx="111" cy="140" rx="3" ry="5" />
+
+        <ellipse cx="141" cy="75" rx="3" ry="5" />
+        <ellipse cx="141" cy="90" rx="3" ry="5" />
+        <ellipse cx="141" cy="105" rx="3" ry="5" />
+        <ellipse cx="141" cy="120" rx="3" ry="5" />
+        <ellipse cx="141" cy="135" rx="3" ry="5" />
+      </g>
+
+      {/* Stems */}
+      <path d="M81 50 Q78 45 75 42" stroke="#059669" strokeWidth="2" strokeLinecap="round" />
+      <path d="M111 60 Q108 55 105 52" stroke="#059669" strokeWidth="2" strokeLinecap="round" />
+      <path d="M141 55 Q138 50 135 47" stroke="#059669" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function Garlic({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Garlic bulb base */}
+      <circle cx="100" cy="110" r="50" fill="#F5F5F4" />
+      <circle cx="100" cy="110" r="45" fill="#FAFAF9" />
+
+      {/* Individual cloves */}
+      <g>
+        {/* Center clove */}
+        <path
+          d="M100 70 Q95 75 93 85 L92 105 Q93 115 100 118 Q107 115 108 105 L107 85 Q105 75 100 70 Z"
+          fill="#E7E5E4"
+        />
+
+        {/* Left clove */}
+        <path
+          d="M75 85 Q70 90 70 100 L72 115 Q75 123 82 125 Q88 122 90 115 L90 100 Q88 90 82 85 Z"
+          fill="#E7E5E4"
+        />
+
+        {/* Right clove */}
+        <path
+          d="M125 85 Q130 90 130 100 L128 115 Q125 123 118 125 Q112 122 110 115 L110 100 Q112 90 118 85 Z"
+          fill="#E7E5E4"
+        />
+
+        {/* Bottom left clove */}
+        <path
+          d="M80 115 Q75 120 76 130 L78 142 Q82 150 88 151 Q94 148 95 142 L94 130 Q92 120 88 115 Z"
+          fill="#E7E5E4"
+        />
+
+        {/* Bottom right clove */}
+        <path
+          d="M120 115 Q125 120 124 130 L122 142 Q118 150 112 151 Q106 148 105 142 L106 130 Q108 120 112 115 Z"
+          fill="#E7E5E4"
+        />
+      </g>
+
+      {/* Clove details/lines */}
+      <g stroke="#D6D3D1" strokeWidth="1" opacity="0.6" fill="none">
+        <path d="M100 75 L100 115" />
+        <path d="M75 90 L90 118" />
+        <path d="M125 90 L110 118" />
+        <path d="M82 120 L94 145" />
+        <path d="M118 120 L106 145" />
+      </g>
+
+      {/* Papery skin texture */}
+      <g stroke="#A8A29E" strokeWidth="0.8" opacity="0.3" fill="none">
+        <path d="M65 95 Q100 92 135 95" />
+        <path d="M70 110 Q100 108 130 110" />
+        <path d="M75 125 Q100 123 125 125" />
+      </g>
+
+      {/* Stem/sprout */}
+      <path
+        d="M100 70 Q98 62 95 58 L93 52 M100 70 L100 50 M100 70 Q102 62 105 58 L107 52"
+        stroke="#10B981"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <g fill="#059669">
+        <circle cx="93" cy="52" r="2.5" />
+        <circle cx="100" cy="50" r="2.5" />
+        <circle cx="107" cy="52" r="2.5" />
+      </g>
+
+      {/* Root area */}
+      <ellipse cx="100" cy="155" rx="25" ry="8" fill="#E7E5E4" opacity="0.6" />
+      <g stroke="#D6D3D1" strokeWidth="1" opacity="0.4">
+        <line x1="90" y1="155" x2="88" y2="162" />
+        <line x1="100" y1="156" x2="100" y2="163" />
+        <line x1="110" y1="155" x2="112" y2="162" />
+      </g>
+    </svg>
+  );
+}
+
+export function Peas({ className = "", size = 200 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Pea pod - open to show peas */}
+      <path
+        d="M70 80 Q65 85 65 100 L68 130 Q70 145 75 155 Q80 160 85 160 L115 160 Q120 160 125 155 Q130 145 132 130 L135 100 Q135 85 130 80 Z"
+        fill="#15803D"
+      />
+      <path
+        d="M70 80 Q67 87 67 105 L70 135 Q72 148 78 156"
+        fill="#16A34A"
+        opacity="0.8"
+      />
+
+      {/* Pod opening - lighter inside */}
+      <path
+        d="M80 85 Q78 90 78 105 L80 135 Q82 148 88 155 L112 155 Q118 148 120 135 L122 105 Q122 90 120 85 Z"
+        fill="#D1FAE5"
+      />
+
+      {/* Individual peas inside */}
+      <g>
+        <circle cx="90" cy="100" r="10" fill="#10B981" />
+        <circle cx="90" cy="100" r="8" fill="#22C55E" opacity="0.8" />
+        <circle cx="88" cy="97" r="4" fill="#6EE7B7" opacity="0.6" />
+
+        <circle cx="100" cy="110" r="11" fill="#10B981" />
+        <circle cx="100" cy="110" r="9" fill="#22C55E" opacity="0.8" />
+        <circle cx="98" cy="107" r="4" fill="#6EE7B7" opacity="0.6" />
+
+        <circle cx="110" cy="100" r="10" fill="#10B981" />
+        <circle cx="110" cy="100" r="8" fill="#22C55E" opacity="0.8" />
+        <circle cx="108" cy="97" r="4" fill="#6EE7B7" opacity="0.6" />
+
+        <circle cx="95" cy="125" r="10" fill="#10B981" />
+        <circle cx="95" cy="125" r="8" fill="#22C55E" opacity="0.8" />
+        <circle cx="93" cy="122" r="4" fill="#6EE7B7" opacity="0.6" />
+
+        <circle cx="105" cy="130" r="10" fill="#10B981" />
+        <circle cx="105" cy="130" r="8" fill="#22C55E" opacity="0.8" />
+        <circle cx="103" cy="127" r="4" fill="#6EE7B7" opacity="0.6" />
+      </g>
+
+      {/* Pod texture/seam */}
+      <path
+        d="M75 85 Q70 100 70 115 L72 140 Q74 152 78 158"
+        stroke="#14532D"
+        strokeWidth="1.5"
+        opacity="0.5"
+        fill="none"
+      />
+      <path
+        d="M125 85 Q130 100 130 115 L128 140 Q126 152 122 158"
+        stroke="#14532D"
+        strokeWidth="1.5"
+        opacity="0.5"
+        fill="none"
+      />
+
+      {/* Stem and tendril */}
+      <path
+        d="M100 80 L100 65 Q98 60 96 58"
+        stroke="#059669"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M96 58 Q94 55 92 54 Q90 53 88 55 Q86 57 87 60"
+        stroke="#10B981"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}

@@ -21,7 +21,16 @@ import {
   Cauliflower,
   BellPepper,
   Cucumber,
-  Chili
+  Chili,
+  BottleGourd,
+  Pumpkin,
+  Cabbage,
+  Radish,
+  Beetroot,
+  Ginger,
+  GreenBeans,
+  Garlic,
+  Peas
 } from '../src/components/illustrations/VegetableIllustrations';
 
 interface ProduceCardProps {
@@ -30,7 +39,9 @@ interface ProduceCardProps {
   market?: string;
   fruitType?: 'strawberry' | 'blueberry' | 'kiwi' | 'watermelon' | 'pineapple' | 'grape' |
               'tomato' | 'onion' | 'potato' | 'eggplant' | 'okra' | 'spinach' |
-              'carrot' | 'cauliflower' | 'bellpepper' | 'cucumber' | 'chili' | 'generic';
+              'carrot' | 'cauliflower' | 'bellpepper' | 'cucumber' | 'chili' |
+              'bottlegourd' | 'pumpkin' | 'cabbage' | 'radish' | 'beetroot' |
+              'ginger' | 'greenbeans' | 'garlic' | 'peas' | 'generic';
   isIndianStaple?: boolean;
   isLowGI?: boolean;
   onClick?: () => void;
