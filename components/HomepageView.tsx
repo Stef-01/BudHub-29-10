@@ -1,5 +1,5 @@
 // components/HomepageView.tsx
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useUserGarden } from '../contexts/UserGardenContext';
 import { useWeather } from '../contexts/WeatherContext';
 import { useTasks } from '../contexts/TasksContext';
@@ -7,7 +7,9 @@ import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { useGamification } from '../contexts/GamificationContext';
 import { useGameScores } from '../contexts/GameScoresContext';
 import { useHomepageData, useWeeklyGameProgress } from '../hooks/useLoganData';
+import ResourceModal from './ResourceModal';
 import type { GameMode } from '../types';
+import type { Resource } from '../types/logan';
 
 interface HomepageViewProps {
   onPlayGame?: (gameMode: GameMode) => void;
@@ -31,6 +33,20 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
   const produceCarouselRef = useRef<HTMLDivElement>(null);
   const recipeCarouselRef = useRef<HTMLDivElement>(null);
+
+  // Resource modal state
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleResourceClick = (resource: Resource) => {
+    setSelectedResource(resource);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => setSelectedResource(null), 300);
+  };
 
   // Calculate stats - with safe defaults
   const completedTasksThisWeek = tasks.filter(t => t.isCompleted).length;
@@ -618,81 +634,6 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
         </div>
       </section>
 
-      {/* Health Programs Section */}
-      <section>
-        <div className="mb-6">
-          <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide mb-2">
-            🏥 Community Health
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-            Logan health programs for you and your family
-          </h2>
-          <p className="text-gray-600">Free programs to support your health journey</p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            {
-              icon: '🚶',
-              title: 'My Health for Life',
-              description: 'Free program helping prevent diabetes through personalized coaching for healthy eating and active living.',
-              tags: ['Free', 'Logan Area', '6-Week Program']
-            },
-            {
-              icon: '👟',
-              title: 'Walk & Talk Groups',
-              description: 'Join community walking groups for exercise and social connection. All fitness levels welcome.',
-              tags: ['Free', 'All Ages', 'Weekly']
-            },
-            {
-              icon: '🍎',
-              title: 'Diabetes Education',
-              description: 'Learn to manage diabetes with nutrition workshops and cooking classes using local ingredients.',
-              tags: ['Free', 'Family Friendly', 'Monthly']
-            },
-          ].map((program, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-2xl p-6 shadow-md hover:-translate-y-2 hover:shadow-xl transition-all cursor-pointer border-2 border-transparent hover:border-green-500 relative overflow-hidden"
-            >
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-green-200 rounded-full opacity-20 blur-2xl"></div>
-
-              <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center text-2xl text-white shadow-lg">
-                    {program.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900">{program.title}</h3>
-                </div>
-
-                <p className="text-gray-600 mb-4 leading-relaxed">
-                  {program.description}
-                </p>
-
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {program.tags.map((tag, i) => (
-                    <span
-                      key={i}
-                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                        i === 0
-                          ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
-                          : 'bg-green-100 text-green-700'
-                      }`}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <button className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-3 px-4 rounded-full hover:-translate-y-1 hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                  {index === 0 ? 'Check Eligibility' : index === 1 ? 'Find a Group' : 'Register Now'} →
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Indian Dietary Resources Section */}
       <section className="mb-8">
         <div className="mb-6">
@@ -713,7 +654,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
             </div>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {resources.length > 0 ? resources.map((resource) => {
               // Format icon
               const formatIcon = resource.format === 'pdf' ? '📄' : resource.format === 'video' ? '🎥' : '🌐';
@@ -731,64 +672,38 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
               const topicGradient = topicColors[resource.topic] || 'from-gray-500 to-gray-600';
 
               return (
-                <a
+                <button
                   key={resource.id}
-                  href={resource.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-white rounded-2xl p-6 shadow-md hover:-translate-y-2 hover:shadow-xl transition-all border-2 border-transparent hover:border-purple-500 relative overflow-hidden group"
+                  onClick={() => handleResourceClick(resource)}
+                  className="bg-white rounded-xl p-5 shadow-sm hover:shadow-lg transition-all border border-gray-100 hover:border-purple-300 text-left group"
                 >
-                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-200 rounded-full opacity-20 blur-2xl"></div>
-
-                  <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`w-12 h-12 bg-gradient-to-br ${topicGradient} rounded-2xl flex items-center justify-center text-2xl text-white shadow-lg flex-shrink-0`}>
-                        {formatIcon}
-                      </div>
-                      {resource.is_local && (
-                        <span className="inline-flex px-3 py-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-xs font-semibold rounded-full">
-                          Logan/Brisbane
-                        </span>
-                      )}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-10 h-10 bg-gradient-to-br ${topicGradient} rounded-lg flex items-center justify-center text-xl text-white flex-shrink-0`}>
+                      {formatIcon}
                     </div>
-
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[3.5rem]">
-                      {resource.title}
-                    </h3>
-
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.5rem]">
-                      {resource.description}
-                    </p>
-
-                    <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">
-                      <span className="font-medium">{resource.organization}</span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <span className="inline-flex px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
-                        {resource.language}
+                    {resource.is_local && (
+                      <span className="inline-flex px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+                        Local
                       </span>
-                      {resource.target_audience && (
-                        <span className="inline-flex px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-full capitalize">
-                          {resource.target_audience}
-                        </span>
-                      )}
-                      {resource.format && (
-                        <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full uppercase">
-                          {resource.format}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-purple-600 font-bold group-hover:translate-x-1 transition-transform">
-                      <span className="text-sm">View Resource</span>
-                      <span className="text-lg">→</span>
-                    </div>
+                    )}
                   </div>
-                </a>
+
+                  <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 text-sm group-hover:text-purple-600 transition-colors">
+                    {resource.title}
+                  </h3>
+
+                  <p className="text-xs text-gray-500 mb-3">
+                    {resource.organization}
+                  </p>
+
+                  <div className="flex items-center text-purple-600 text-xs font-medium group-hover:translate-x-1 transition-transform">
+                    <span>Learn more</span>
+                    <span className="ml-1">→</span>
+                  </div>
+                </button>
               );
             }) : (
-              <div className="md:col-span-2 lg:col-span-3 text-center py-8 text-gray-600">
+              <div className="md:col-span-2 lg:col-span-4 text-center py-8 text-gray-600">
                 No resources available yet. Check back soon!
               </div>
             )}
@@ -834,6 +749,13 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
           background: linear-gradient(135deg, #4A9650 0%, #3A7A40 100%);
         }
       `}</style>
+
+      {/* Resource Modal */}
+      <ResourceModal
+        resource={selectedResource}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 };
