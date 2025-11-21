@@ -8,6 +8,8 @@ import { useGamification } from '../contexts/GamificationContext';
 import { useGameScores } from '../contexts/GameScoresContext';
 import { useHomepageData, useWeeklyGameProgress, useCurrentStreak } from '../hooks/useLoganData';
 import ResourceModal from './ResourceModal';
+import EnhancedHeroSection from './EnhancedHeroSection';
+import ProduceCard, { mapProduceToFruitType } from './ProduceCard';
 import type { GameMode } from '../types';
 import type { Resource } from '../types/logan';
 
@@ -127,85 +129,18 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
   return (
     <div className="pb-20 min-h-screen">
-      {/* Hero Card */}
-      <div className="bg-gradient-to-br from-white via-green-50 to-white rounded-3xl p-6 sm:p-8 mb-6 shadow-lg border-2 border-green-100 relative overflow-hidden">
-        {/* Decorative background element */}
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-green-200 rounded-full opacity-20 blur-3xl"></div>
-
-        <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2">
-              Your Logan Health Journey
-            </h1>
-            <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600 mb-4">
-              <span>📍</span>
-              <span className="font-medium">{weather?.location.name || 'Logan'}, QLD • This week</span>
-            </div>
-            <div className="flex items-baseline justify-center md:justify-start gap-3 mb-4">
-              <span className="text-5xl font-extrabold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
-                {loganDiabeticsCount.toLocaleString()}
-              </span>
-              <span className="text-lg text-gray-600">people in Logan managing diabetes</span>
-            </div>
-            <p className="text-gray-600 mb-6 text-base max-w-2xl">
-              Together, we're building healthier communities, one family at a time.
-            </p>
-
-            {/* Stats Cards */}
-            <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-              {/* Daily Streak Card - with emphasis if streak > 0 */}
-              <div className={`bg-white rounded-2xl p-4 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 flex items-center gap-3 ${currentStreak > 0 ? 'ring-2 ring-orange-400' : ''}`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${currentStreak > 0 ? 'bg-gradient-to-br from-orange-400 to-red-500' : 'bg-gray-100'}`}>
-                  {currentStreak > 0 ? '🔥' : '📅'}
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-gray-900">{currentStreak} {currentStreak === 1 ? 'day' : 'days'}</div>
-                  <div className="text-xs text-gray-500">Streak</div>
-                </div>
-              </div>
-              <div className="bg-white rounded-2xl p-4 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-xl">📊</div>
-                <div>
-                  <div className="text-xl font-bold text-gray-900">{mockHbA1c}%</div>
-                  <div className="text-xs text-gray-500">HbA1c</div>
-                </div>
-              </div>
-              <div className="bg-white rounded-2xl p-4 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-xl">🏃</div>
-                <div>
-                  <div className="text-xl font-bold text-gray-900">{uniqueGameDays} days</div>
-                  <div className="text-xs text-gray-500">Active</div>
-                </div>
-              </div>
-              <div className="bg-white rounded-2xl p-4 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-xl">🥗</div>
-                <div>
-                  <div className="text-xl font-bold text-gray-900">{averageVegServings}</div>
-                  <div className="text-xs text-gray-500">Veg serves</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Hero Illustration */}
-          <div className="w-32 h-32 sm:w-40 sm:h-40 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-6xl sm:text-7xl shadow-xl animate-pulse">
-            ❤️
-          </div>
-        </div>
-
-        {/* XP Bar */}
-        <div className="mt-6 bg-white rounded-full p-2 flex items-center gap-4 shadow-md max-w-md mx-auto md:mx-0">
-          <span className="text-sm font-bold text-green-600 ml-2">✨ Level {level}</span>
-          <div className="flex-1 h-3 bg-green-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full transition-all duration-1000 ease-out relative"
-              style={{ width: `${xpPercentage}%` }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-shimmer"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Enhanced Hero Section with Parallax */}
+      <EnhancedHeroSection
+        loganDiabeticsCount={loganDiabeticsCount}
+        mockHbA1c={mockHbA1c}
+        currentStreak={currentStreak}
+        uniqueGameDays={uniqueGameDays}
+        averageVegServings={averageVegServings}
+        weather={weather}
+        level={level}
+        xp={xp}
+        xpForNextLevel={xpForNextLevel}
+      />
 
       {/* Local Produce Section */}
       <section className="mb-8">
@@ -284,35 +219,18 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
               className="flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-thin scrollbar-thumb-green-500 scrollbar-track-green-100"
             >
               {prices.length > 0 ? prices.map((priceData) => (
-                <div
+                <ProduceCard
                   key={priceData.id}
-                  className={`flex-shrink-0 w-60 bg-white rounded-2xl p-5 shadow-md border-2 hover:-translate-y-2 hover:shadow-xl transition-all cursor-pointer ${
-                    priceData.is_indian_staple ? 'border-green-500' : 'border-transparent hover:border-green-300'
-                  }`}
-                >
-                  <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center text-4xl mb-3 animate-bounce">
-                    {priceData.emoji || '🥬'}
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-1">{priceData.produce_name}</h4>
-                  <div className="text-2xl font-extrabold text-green-600 mb-3">
-                    ${priceData.price_per_kg?.toFixed(2)}/kg
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                      {priceData.market_name}
-                    </span>
-                    {priceData.is_indian_staple && (
-                      <span className="inline-flex px-3 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-semibold rounded-full">
-                        Indian Staple
-                      </span>
-                    )}
-                    {priceData.gi_rating === 'low' && (
-                      <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                        Low GI
-                      </span>
-                    )}
-                  </div>
-                </div>
+                  name={priceData.produce_name}
+                  price={`$${priceData.price_per_kg?.toFixed(2)}/kg`}
+                  market={priceData.market_name}
+                  fruitType={mapProduceToFruitType(priceData.produce_name)}
+                  isIndianStaple={priceData.is_indian_staple}
+                  isLowGI={priceData.gi_rating === 'low'}
+                  onClick={() => {
+                    console.log('Clicked produce:', priceData.produce_name);
+                  }}
+                />
               )) : (
                 <div className="text-center py-8 text-gray-600">
                   No price data available yet. Check back soon!
