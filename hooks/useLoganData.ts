@@ -17,7 +17,8 @@ import {
 } from '../services/resourcesService';
 import {
   getDailyProgress,
-  getImprovementTrend
+  getImprovementTrend,
+  getCurrentStreak
 } from '../services/gameProgressService';
 import {
   getFeaturedMission,
@@ -34,6 +35,8 @@ export function useCheapestPrices(limit: number = 10) {
   const [error, setError] = useState<Error | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isStale, setIsStale] = useState(false);
+  const [oldestPriceDate, setOldestPriceDate] = useState<Date | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -46,6 +49,24 @@ export function useCheapestPrices(limit: number = 10) {
           setPrices(data);
           setLastUpdated(new Date());
           setError(null);
+
+          // Check for stale prices (> 7 days old)
+          if (data.length > 0) {
+            const now = new Date();
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+            // Find the oldest snapshot date
+            const oldestDate = data.reduce((oldest, price) => {
+              const snapshotDate = new Date(price.snapshot_date);
+              return !oldest || snapshotDate < oldest ? snapshotDate : oldest;
+            }, null as Date | null);
+
+            setOldestPriceDate(oldestDate);
+            setIsStale(oldestDate ? oldestDate < sevenDaysAgo : false);
+          } else {
+            setIsStale(false);
+            setOldestPriceDate(null);
+          }
         }
       } catch (err) {
         if (mounted) {
@@ -69,7 +90,7 @@ export function useCheapestPrices(limit: number = 10) {
     setRefreshKey(prev => prev + 1);
   };
 
-  return { prices, loading, error, lastUpdated, refresh };
+  return { prices, loading, error, lastUpdated, refresh, isStale, oldestPriceDate };
 }
 
 /**
@@ -334,10 +355,55 @@ export function useUserActiveMission(userId: string) {
 }
 
 /**
+ * Hook to fetch user's current game streak
+ */
+export function useCurrentStreak(userId: string) {
+  const [streak, setStreak] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchStreak() {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const data = await getCurrentStreak(userId);
+        if (mounted) {
+          setStreak(data);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err as Error);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchStreak();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  return { streak, loading, error };
+}
+
+/**
  * Combined hook for homepage data
  */
 export function useHomepageData() {
-  const { prices, loading: pricesLoading, lastUpdated, refresh } = useCheapestPrices(8);
+  const { prices, loading: pricesLoading, lastUpdated, refresh, isStale, oldestPriceDate } = useCheapestPrices(8);
   const { markets, loading: marketsLoading } = useLoganMarkets();
   const { resources, loading: resourcesLoading } = useIndianResources();
 
@@ -349,6 +415,8 @@ export function useHomepageData() {
     resources,
     loading,
     lastUpdated,
-    refreshPrices: refresh
+    refreshPrices: refresh,
+    pricesAreStale: isStale,
+    oldestPriceDate
   };
 }

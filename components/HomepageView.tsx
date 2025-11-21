@@ -6,7 +6,7 @@ import { useTasks } from '../contexts/TasksContext';
 import { useUserCookbook } from '../contexts/UserCookbookContext';
 import { useGamification } from '../contexts/GamificationContext';
 import { useGameScores } from '../contexts/GameScoresContext';
-import { useHomepageData, useWeeklyGameProgress } from '../hooks/useLoganData';
+import { useHomepageData, useWeeklyGameProgress, useCurrentStreak } from '../hooks/useLoganData';
 import ResourceModal from './ResourceModal';
 import type { GameMode } from '../types';
 import type { Resource } from '../types/logan';
@@ -24,12 +24,13 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
   const { scores = [] } = useGameScores();
 
   // Logan-specific data
-  const { prices, markets, resources, loading: loganDataLoading, lastUpdated, refreshPrices } = useHomepageData();
+  const { prices, markets, resources, loading: loganDataLoading, lastUpdated, refreshPrices, pricesAreStale, oldestPriceDate } = useHomepageData();
 
   // Game progress data - Get userId from URL parameter or default to 'demo_user'
   const urlParams = new URLSearchParams(window.location.search);
   const userId = urlParams.get('user') || 'demo_user';
   const { progress: dailyProgress, improvement: improvementTrend } = useWeeklyGameProgress(userId, 7);
+  const { streak: currentStreak } = useCurrentStreak(userId);
 
   const produceCarouselRef = useRef<HTMLDivElement>(null);
   const recipeCarouselRef = useRef<HTMLDivElement>(null);
@@ -152,6 +153,16 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
             {/* Stats Cards */}
             <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+              {/* Daily Streak Card - with emphasis if streak > 0 */}
+              <div className={`bg-white rounded-2xl p-4 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 flex items-center gap-3 ${currentStreak > 0 ? 'ring-2 ring-orange-400' : ''}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${currentStreak > 0 ? 'bg-gradient-to-br from-orange-400 to-red-500' : 'bg-gray-100'}`}>
+                  {currentStreak > 0 ? '🔥' : '📅'}
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-gray-900">{currentStreak} {currentStreak === 1 ? 'day' : 'days'}</div>
+                  <div className="text-xs text-gray-500">Streak</div>
+                </div>
+              </div>
               <div className="bg-white rounded-2xl p-4 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 flex items-center gap-3">
                 <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-xl">📊</div>
                 <div>
@@ -240,6 +251,24 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
             <p className="text-xs text-gray-500 mb-4">
               Last updated: {lastUpdated.toLocaleTimeString()} {lastUpdated.toLocaleDateString()}
             </p>
+          )}
+
+          {/* Price staleness warning */}
+          {pricesAreStale && oldestPriceDate && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="text-2xl">⚠️</div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-yellow-800 mb-1">
+                    Price data may be outdated
+                  </h4>
+                  <p className="text-xs text-yellow-700">
+                    Some prices haven't been updated since {new Date(oldestPriceDate).toLocaleDateString()}.
+                    Click the refresh button or check with the market for current pricing.
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
 
           {loganDataLoading ? (
