@@ -123,7 +123,7 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
             className="font-display text-3xl sm:text-4xl md:text-5xl font-black mb-4 leading-tight tracking-tight"
           >
             <span className="bg-gradient-to-r from-green-600 via-green-500 to-green-600 bg-clip-text text-transparent">
-              Your Logan Health Journey
+              Your Health Journey
             </span>
           </motion.h1>
 
