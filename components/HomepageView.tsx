@@ -10,6 +10,7 @@ import { useHomepageData, useWeeklyGameProgress, useCurrentStreak } from '../hoo
 import ResourceModal from './ResourceModal';
 import EnhancedHeroSection from './EnhancedHeroSection';
 import ProduceCard, { mapProduceToFruitType } from './ProduceCard';
+import ProduceSectionDecorations from './ProduceSectionDecorations';
 import type { GameMode } from '../types';
 import type { Resource } from '../types/logan';
 
@@ -143,8 +144,11 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
       />
 
       {/* Local Produce Section */}
-      <section className="mb-8">
-        <div className="mb-6">
+      <section className="mb-8 relative">
+        {/* Background Vegetable Decorations */}
+        <ProduceSectionDecorations />
+
+        <div className="mb-6 relative z-10">
           <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide mb-2">
             🌿 Fresh This Week
           </div>
@@ -155,7 +159,7 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
         </div>
 
         {/* Produce Deals Carousel */}
-        <div className="bg-white rounded-3xl p-6 shadow-lg mb-6">
+        <div className="bg-white rounded-3xl p-6 shadow-lg mb-6 relative z-10">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-xl font-bold text-gray-900">Today's Best Deals</h3>
             <div className="flex gap-2 items-center">
