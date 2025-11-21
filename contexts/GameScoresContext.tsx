@@ -1,6 +1,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import type { GameScore, GameMode } from '../types';
 import { getHighScores, saveScore as dbSaveScore } from '../services/db';
+import { recordGameCompletion } from '../services/gameScoreService';
 
 interface GameScoresContextType {
   scores: GameScore[];
@@ -46,7 +47,21 @@ export const GameScoresProvider: React.FC<{ children: ReactNode }> = ({ children
       score,
       date: new Date().toISOString(),
     };
+
+    // Save to local IndexedDB
     await dbSaveScore(newScoreOmitId);
+
+    // Save to Supabase for permanent storage
+    // Get userId from URL parameter or default to 'demo_user'
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('user') || 'demo_user';
+
+    // Non-blocking save to Supabase (don't wait for it to complete)
+    recordGameCompletion(userId, gameMode, score).catch(error => {
+      console.error('[GameScoresContext] Failed to save score to Supabase:', error);
+      // Don't throw - local save succeeded, cloud backup is best-effort
+    });
+
     // Refetch scores to get the one with the new ID
     const allScores = await getHighScores();
     setScores(allScores);

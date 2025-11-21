@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import FoodImageUploader from './admin/FoodImageUploader';
 import BulkImageUploader from './admin/BulkImageUploader';
+import PriceManagement from './admin/PriceManagement';
 
-type AdminTab = 'bulk' | 'single';
+type AdminTab = 'bulk' | 'single' | 'prices';
 
 const AdminView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('bulk');
@@ -41,12 +42,24 @@ const AdminView: React.FC = () => {
           >
             🖼️ Single Upload
           </button>
+          <button
+            onClick={() => setActiveTab('prices')}
+            className={`px-6 py-3 font-medium transition-all duration-200 ${
+              activeTab === 'prices'
+                ? 'text-green-700 border-b-2 border-green-700 bg-green-50'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            💰 Price Scraper
+          </button>
         </div>
       </div>
 
       {/* Tab Content */}
       <div>
-        {activeTab === 'bulk' ? <BulkImageUploader /> : <FoodImageUploader />}
+        {activeTab === 'bulk' && <BulkImageUploader />}
+        {activeTab === 'single' && <FoodImageUploader />}
+        {activeTab === 'prices' && <PriceManagement />}
       </div>
     </div>
   );
