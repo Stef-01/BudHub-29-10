@@ -1,0 +1,37 @@
+{
+  "jaggery": {
+    "meetha_boost": 2,
+    "diabetic_friendly": false,
+    "notes": "Unrefined cane sugar, mineral-rich"
+  },
+  "sugar": {
+    "meetha_boost": 2,
+    "diabetic_friendly": false,
+    "notes": "Refined sweetener"
+  },
+  "dates": {
+    "meetha_boost": 1,
+    "diabetic_friendly": false,
+    "notes": "Natural fruit sugar"
+  },
+  "caramelised_onion": {
+    "meetha_boost": 1,
+    "diabetic_friendly": true,
+    "notes": "Perceived sweetness"
+  },
+  "roasted_pumpkin": {
+    "meetha_boost": 1,
+    "diabetic_friendly": true,
+    "notes": "Natural vegetable sweetness"
+  },
+  "coconut": {
+    "meetha_boost": 1,
+    "diabetic_friendly": true,
+    "notes": "Mild natural sweetness (watch sat fat)"
+  },
+  "cinnamon": {
+    "meetha_boost": 1,
+    "diabetic_friendly": true,
+    "notes": "Warm spice gives perceived sweetness"
+  }
+}

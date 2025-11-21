@@ -1,0 +1,46 @@
+{
+  "hing_jeera": {
+    "name": "Hing-Jeera",
+    "name_hi": "हींग-जीरा",
+    "seeds": ["cumin"],
+    "aromatics": ["asafoetida"],
+    "oil": "any",
+    "aroma": "clean, light, aromatic",
+    "heat": 1,
+    "region_fit": ["north", "west"],
+    "emoji": "🌾"
+  },
+  "lehsun_lal_mirch": {
+    "name": "Lehsun-Lal Mirch",
+    "name_hi": "लहसुन-लाल मिर्च",
+    "seeds": [],
+    "aromatics": ["garlic", "dry_red_chili"],
+    "oil": "any",
+    "aroma": "garlicky, smoky, robust",
+    "heat": 2,
+    "region_fit": ["north", "deccan"],
+    "emoji": "🧄🌶️"
+  },
+  "mustard_curry_leaf": {
+    "name": "Mustard-Curry Leaf",
+    "name_hi": "राई-करी पत्ता",
+    "seeds": ["mustard"],
+    "aromatics": ["curry_leaves"],
+    "oil": "any",
+    "aroma": "nutty, crackly, South Indian",
+    "heat": 2,
+    "region_fit": ["south", "deccan"],
+    "emoji": "🍃"
+  },
+  "panch_phoron": {
+    "name": "Panch Phoron",
+    "name_hi": "पंच फोरन",
+    "seeds": ["cumin", "fennel", "mustard", "fenugreek", "nigella"],
+    "aromatics": [],
+    "oil": "mustard",
+    "aroma": "complex, Bengali, toasty",
+    "heat": 1,
+    "region_fit": ["east"],
+    "emoji": "⭐"
+  }
+}

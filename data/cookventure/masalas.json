@@ -1,0 +1,56 @@
+{
+  "garam_masala": {
+    "name": "Garam Masala",
+    "name_hi": "गरम मसाला",
+    "region_hint": ["north"],
+    "spices": ["coriander", "cumin", "cardamom", "cinnamon", "cloves", "black_pepper"],
+    "aroma": ["warm", "sweet-spice"],
+    "description": "Warming blend for North Indian curries",
+    "refs": ["https://en.wikipedia.org/wiki/Garam_masala"]
+  },
+  "goda_masala": {
+    "name": "Goda Masala",
+    "name_hi": "गोडा मसाला",
+    "region_hint": ["west", "maharashtra"],
+    "spices": ["coriander", "cumin", "sesame", "coconut", "cinnamon", "cloves"],
+    "aroma": ["sweet-aromatic", "toasty"],
+    "description": "Sweet, aromatic Maharashtrian blend",
+    "refs": ["https://www.vegrecipesofindia.com/goda-masala/", "https://twosleevers.com/goda-masala/"]
+  },
+  "panch_phoron": {
+    "name": "Panch Phoron",
+    "name_hi": "पंच फोरन",
+    "region_hint": ["east", "bengal", "odisha"],
+    "spices": ["cumin", "fennel", "mustard", "fenugreek", "nigella"],
+    "aroma": ["toasty", "seeded", "complex"],
+    "description": "Five-spice Bengali blend",
+    "refs": ["https://www.daringgourmet.com/panch-phoron/"]
+  },
+  "sambar_powder": {
+    "name": "Sambar Powder",
+    "name_hi": "सांबर पाउडर",
+    "region_hint": ["south"],
+    "spices": ["coriander", "cumin", "red_chili", "fenugreek", "curry_leaves"],
+    "aroma": ["curry-leaf", "lentil-toasty"],
+    "description": "South Indian lentil stew spice",
+    "refs": []
+  },
+  "rasam_powder": {
+    "name": "Rasam Powder",
+    "name_hi": "रसम पाउडर",
+    "region_hint": ["south"],
+    "spices": ["black_pepper", "coriander", "cumin", "red_chili", "curry_leaves"],
+    "aroma": ["pepper", "sour-tomato"],
+    "description": "Tangy South Indian soup spice",
+    "refs": []
+  },
+  "chaat_masala": {
+    "name": "Chaat Masala",
+    "name_hi": "चाट मसाला",
+    "region_hint": ["north"],
+    "spices": ["amchur", "black_salt", "cumin", "coriander", "ginger"],
+    "aroma": ["tangy", "salty", "fruity"],
+    "description": "Tangy street food seasoning",
+    "refs": []
+  }
+}

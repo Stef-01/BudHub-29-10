@@ -1,0 +1,9 @@
+{
+  "tamarind": { "khata_boost": 2, "notes": "South staple" },
+  "kokum": { "khata_boost": 2, "notes": "West/Konkan sour" },
+  "amchur": { "khata_boost": 2, "notes": "Mango powder, North" },
+  "lemon": { "khata_boost": 1, "notes": "Universal" },
+  "lime": { "khata_boost": 1, "notes": "Universal" },
+  "yogurt": { "khata_boost": 1, "notes": "Cooling tang" },
+  "tomato": { "khata_boost": 1, "notes": "Mild acidity" }
+}

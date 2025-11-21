@@ -1,0 +1,62 @@
+{
+  "north": {
+    "name": "North India",
+    "states": ["Punjab", "Delhi", "Haryana", "UP", "Rajasthan"],
+    "staple_packs": ["wheat", "dairy", "chickpea", "onion", "tomato", "ginger", "garlic"],
+    "default_masalas": ["garam_masala", "chaat_masala"],
+    "default_tadka": ["hing_jeera", "lehsun_lal_mirch"],
+    "default_taste": { "heat": 2, "masala": 2, "tangy": 1, "sweet": 0 },
+    "notes": "Garam masala, dairy gravies, tandoor, chaat",
+    "emoji": "🫓"
+  },
+  "south": {
+    "name": "South India",
+    "states": ["Tamil Nadu", "Kerala", "Karnataka", "Andhra", "Telangana"],
+    "staple_packs": ["rice", "coconut", "curry_leaves", "tamarind", "mustard_seeds", "urad_dal", "chana_dal"],
+    "default_masalas": ["sambar_powder", "rasam_powder"],
+    "default_tadka": ["mustard_curry_leaf"],
+    "default_taste": { "heat": 2, "masala": 2, "tangy": 2, "sweet": 1 },
+    "notes": "Curry leaves, coconut, tamarind, pepper; sambar & rasam",
+    "emoji": "🥥"
+  },
+  "west": {
+    "name": "West India",
+    "states": ["Maharashtra", "Gujarat", "Goa"],
+    "staple_packs": ["rice", "wheat", "coconut", "peanuts", "jaggery"],
+    "default_masalas": ["goda_masala"],
+    "default_tadka": ["hing_jeera"],
+    "default_taste": { "heat": 1, "masala": 2, "tangy": 1, "sweet": 1 },
+    "notes": "Goda masala; Gujarati meetha undertones",
+    "emoji": "🌾"
+  },
+  "east": {
+    "name": "East India",
+    "states": ["West Bengal", "Odisha", "Bihar", "Jharkhand"],
+    "staple_packs": ["rice", "mustard_oil", "mustard_seeds", "poppy_seeds", "fish"],
+    "default_masalas": ["panch_phoron"],
+    "default_tadka": ["panch_phoron"],
+    "default_taste": { "heat": 1, "masala": 2, "tangy": 1, "sweet": 1 },
+    "notes": "Mustard oil, panch phoron",
+    "emoji": "🐟"
+  },
+  "northeast": {
+    "name": "Northeast India",
+    "states": ["Assam", "Meghalaya", "Manipur", "Nagaland", "Mizoram", "Tripura", "Arunachal", "Sikkim"],
+    "staple_packs": ["rice", "bamboo_shoot", "fermented_fish", "herbs", "ginger", "chili"],
+    "default_masalas": [],
+    "default_tadka": ["hing_jeera"],
+    "default_taste": { "heat": 2, "masala": 1, "tangy": 1, "sweet": 0 },
+    "notes": "Bamboo shoot, herbs; light, fresh heat",
+    "emoji": "🎋"
+  },
+  "deccan": {
+    "name": "Deccan/Hyderabadi",
+    "states": ["Telangana", "parts of Karnataka & Maharashtra"],
+    "staple_packs": ["rice", "peanuts", "coconut", "tamarind", "curry_leaves"],
+    "default_masalas": ["garam_masala"],
+    "default_tadka": ["mustard_curry_leaf"],
+    "default_taste": { "heat": 2, "masala": 3, "tangy": 1, "sweet": 0 },
+    "notes": "Baghara tempering, biryani masalas",
+    "emoji": "🍛"
+  }
+}
