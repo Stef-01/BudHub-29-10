@@ -1,5 +1,5 @@
 // components/games/nutriserve-ui/DidYouKnowCard.tsx
-import React, { useMemo } from 'react';
+import React from 'react';
 import { IconInfoCircle } from './Icons';
 
 const facts = [
@@ -13,10 +13,21 @@ const facts = [
     "Sodium is an essential mineral, but too much can impact blood pressure. Aim for less than 2300mg per day.",
     "Healthy fats, like those in avocados and nuts, are vital for brain health.",
     "Roti made from whole wheat flour is a great source of complex carbohydrates and fiber.",
+    "Eating slowly can help you feel fuller and prevent overeating.",
+    "Green vegetables are packed with vitamins and minerals essential for good health.",
+    "Whole grains provide sustained energy throughout the day.",
+    "Drinking water with meals can aid digestion and help you feel satisfied.",
+    "Portion control is just as important as food quality for maintaining a healthy weight.",
 ];
 
-const DidYouKnowCard: React.FC = () => {
-    const randomFact = useMemo(() => facts[Math.floor(Math.random() * facts.length)], []);
+interface DidYouKnowCardProps {
+    roundNumber?: number;
+}
+
+const DidYouKnowCard: React.FC<DidYouKnowCardProps> = ({ roundNumber = 1 }) => {
+    // Use round number to deterministically select a tip (cycles through all tips)
+    const factIndex = (roundNumber - 1) % facts.length;
+    const selectedFact = facts[factIndex];
 
     return (
         <div className="bg-white/80 p-4 rounded-lg shadow-md border border-slate-200">
@@ -26,7 +37,7 @@ const DidYouKnowCard: React.FC = () => {
                 </div>
                 <div>
                     <h4 className="font-bold text-slate-700">Did You Know?</h4>
-                    <p className="text-sm text-slate-600 mt-1">{randomFact}</p>
+                    <p className="text-sm text-slate-600 mt-1">{selectedFact}</p>
                 </div>
             </div>
         </div>

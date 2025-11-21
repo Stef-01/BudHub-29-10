@@ -21,11 +21,17 @@ import CustomerDisplay from './nutriserve-ui/CustomerDisplay';
 import ServingSizeModal from './nutriserve-ui/ServingSizeModal';
 import ResultModal from './nutriserve-ui/ResultModal';
 import ChangelogModal from './nutriserve-ui/ChangelogModal';
-import GameOverModal from '../GameOverModal';
+import NutriServeGameOverModal from './nutriserve-ui/NutriServeGameOverModal';
 import { IconXCircle } from './nutriserve-ui/Icons';
 
 
-const MAX_ROUNDS = 20;
+const MAX_ROUNDS = 10;
+
+type MistakeData = {
+  nutrient: string;
+  count: number;
+  type: 'high' | 'low' | 'off';
+};
 
 type GameState = {
   round: number;
@@ -34,6 +40,7 @@ type GameState = {
   plateItems: PlateItem[];
   view: 'playing' | 'result' | 'gameover' | 'changelog';
   resultData: { score: number; feedback: Record<string, any> } | null;
+  mistakes: Record<string, MistakeData>;
 };
 
 type GameAction =
@@ -43,6 +50,7 @@ type GameAction =
   | { type: 'REMOVE_ITEM'; payload: string }
   | { type: 'CLEAR_PLATE' }
   | { type: 'SERVE_PLATE' }
+  | { type: 'TRACK_MISTAKES'; payload: Record<string, any> }
   | { type: 'SHOW_CHANGELOG' }
   | { type: 'CLOSE_MODAL' };
 
@@ -55,6 +63,7 @@ const initialState: GameState = {
   plateItems: [],
   view: 'playing',
   resultData: null,
+  mistakes: {},
 };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -78,6 +87,24 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const totals = calculateMealTotals(state.plateItems);
       const { score, feedback } = calculateScoreAndFeedback(totals, state.customer.targets);
       return { ...state, totalScore: state.totalScore + score, view: 'result', resultData: { score, feedback } };
+    }
+    case 'TRACK_MISTAKES': {
+      const feedback = action.payload;
+      const newMistakes = { ...state.mistakes };
+
+      // Track each nutrient that wasn't "good"
+      Object.entries(feedback).forEach(([nutrient, status]) => {
+        if (status !== 'good') {
+          const type = status as 'high' | 'low' | 'off';
+          if (newMistakes[nutrient]) {
+            newMistakes[nutrient].count += 1;
+          } else {
+            newMistakes[nutrient] = { nutrient, count: 1, type };
+          }
+        }
+      });
+
+      return { ...state, mistakes: newMistakes };
     }
     case 'SHOW_CHANGELOG':
       return { ...state, view: 'changelog' };
@@ -213,6 +240,7 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
     trackNutriServeRound(gameState.round, score, userId);
 
     dispatch({ type: 'SERVE_PLATE' });
+    dispatch({ type: 'TRACK_MISTAKES', payload: feedback });
   };
 
   const handleNext = () => {
@@ -322,7 +350,7 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0">
         {/* Left Column: Food Library */}
         <div className="lg:col-span-4 overflow-y-auto">
-          <FoodLibrary />
+          <FoodLibrary roundNumber={gameState.round} />
         </div>
 
         {/* Center Column: Plate */}
@@ -371,8 +399,10 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
       )}
 
        {gameState.view === 'gameover' && (
-        <GameOverModal
+        <NutriServeGameOverModal
           score={gameState.totalScore}
+          roundScores={roundScoresRef.current}
+          mistakes={gameState.mistakes}
           onPlayAgain={handlePlayAgain}
           onExit={handleExitGame}
         />
