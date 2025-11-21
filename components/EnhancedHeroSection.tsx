@@ -66,7 +66,7 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
   };
 
   return (
-    <div className="relative bg-gradient-to-br from-cream via-white to-green-50 rounded-3xl p-6 sm:p-8 mb-6 shadow-2xl border-2 border-green-100 overflow-hidden min-h-[500px]">
+    <div className="relative bg-gradient-to-br from-cream via-white to-green-50 rounded-3xl p-4 sm:p-6 mb-6 shadow-2xl border-2 border-green-100 overflow-hidden min-h-[320px]">
       {/* Parallax Background Blobs */}
       <motion.div
         style={{ y: y1, opacity: opacity1 }}
@@ -120,7 +120,7 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
         <div className="flex-1 text-center md:text-left">
           <motion.h1
             variants={itemVariants}
-            className="font-display text-4xl sm:text-5xl md:text-6xl font-black mb-6 leading-tight tracking-tight"
+            className="font-display text-3xl sm:text-4xl md:text-5xl font-black mb-4 leading-tight tracking-tight"
           >
             <span className="bg-gradient-to-r from-green-600 via-green-500 to-green-600 bg-clip-text text-transparent">
               Your Logan Health Journey
@@ -130,24 +130,24 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
           {/* Glass Morphism Stats Cards */}
           <motion.div
             variants={itemVariants}
-            className="flex flex-wrap gap-3 justify-center md:justify-start"
+            className="flex flex-wrap gap-2 justify-center md:justify-start"
           >
             {/* Streak Card with Gradient */}
             <motion.div
               whileHover={{ scale: 1.05, y: -2 }}
-              className={`glass-card rounded-2xl p-4 hover:shadow-lg transition-all flex items-center gap-3 ${
+              className={`glass-card rounded-xl p-3 hover:shadow-lg transition-all flex items-center gap-2 ${
                 currentStreak > 0 ? 'ring-2 ring-orange-400' : ''
               }`}
             >
               <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
+                className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
                   currentStreak > 0 ? 'bg-gradient-to-br from-orange-400 to-red-500' : 'bg-gray-100'
                 }`}
               >
                 {currentStreak > 0 ? '🔥' : '📅'}
               </div>
               <div>
-                <div className="font-display text-xl font-bold text-gray-900">
+                <div className="font-display text-lg font-bold text-gray-900">
                   {currentStreak} {currentStreak === 1 ? 'day' : 'days'}
                 </div>
                 <div className="font-sans text-xs text-gray-500">Streak</div>
@@ -157,13 +157,13 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
             {/* HbA1c Card */}
             <motion.div
               whileHover={{ scale: 1.05, y: -2 }}
-              className="glass-card rounded-2xl p-4 hover:shadow-lg transition-all flex items-center gap-3"
+              className="glass-card rounded-xl p-3 hover:shadow-lg transition-all flex items-center gap-2"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center text-xl">
+              <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center text-lg">
                 📊
               </div>
               <div>
-                <div className="font-display text-xl font-bold text-gray-900">{mockHbA1c}%</div>
+                <div className="font-display text-lg font-bold text-gray-900">{mockHbA1c}%</div>
                 <div className="font-sans text-xs text-gray-500">HbA1c</div>
               </div>
             </motion.div>
@@ -171,13 +171,13 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
             {/* Active Days Card */}
             <motion.div
               whileHover={{ scale: 1.05, y: -2 }}
-              className="glass-card rounded-2xl p-4 hover:shadow-lg transition-all flex items-center gap-3"
+              className="glass-card rounded-xl p-3 hover:shadow-lg transition-all flex items-center gap-2"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center text-xl">
+              <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center text-lg">
                 🏃
               </div>
               <div>
-                <div className="font-display text-xl font-bold text-gray-900">{uniqueGameDays} days</div>
+                <div className="font-display text-lg font-bold text-gray-900">{uniqueGameDays} days</div>
                 <div className="font-sans text-xs text-gray-500">Active</div>
               </div>
             </motion.div>
@@ -185,13 +185,13 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
             {/* Veg Serves Card */}
             <motion.div
               whileHover={{ scale: 1.05, y: -2 }}
-              className="glass-card rounded-2xl p-4 hover:shadow-lg transition-all flex items-center gap-3"
+              className="glass-card rounded-xl p-3 hover:shadow-lg transition-all flex items-center gap-2"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-kiwi to-green-600 rounded-xl flex items-center justify-center text-xl">
+              <div className="w-8 h-8 bg-gradient-to-br from-kiwi to-green-600 rounded-lg flex items-center justify-center text-lg">
                 🥗
               </div>
               <div>
-                <div className="font-display text-xl font-bold text-gray-900">{averageVegServings}</div>
+                <div className="font-display text-lg font-bold text-gray-900">{averageVegServings}</div>
                 <div className="font-sans text-xs text-gray-500">Veg serves</div>
               </div>
             </motion.div>
@@ -201,7 +201,7 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
         {/* Hero Illustration - Animated Fruit Cluster */}
         <motion.div
           variants={itemVariants}
-          className="relative"
+          className="relative hidden md:block"
         >
           <motion.div
             animate={{
@@ -213,11 +213,11 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="w-32 h-32 sm:w-40 sm:h-40 relative"
+            className="w-24 h-24 sm:w-28 sm:h-28 relative"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-green-600 rounded-full opacity-20 blur-2xl"></div>
             <div className="relative z-10">
-              <GrapeCluster size={160} />
+              <GrapeCluster size={120} />
             </div>
           </motion.div>
         </motion.div>
@@ -228,10 +228,10 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
-        className="mt-8 glass-card rounded-full p-2 flex items-center gap-4 max-w-md mx-auto md:mx-0 relative z-10"
+        className="mt-4 glass-card rounded-full p-1.5 flex items-center gap-3 max-w-sm mx-auto md:mx-0 relative z-10"
       >
-        <span className="font-display text-sm font-bold text-green-600 ml-2">✨ Level {level}</span>
-        <div className="flex-1 h-3 bg-green-100 rounded-full overflow-hidden">
+        <span className="font-display text-xs font-bold text-green-600 ml-2">✨ Level {level}</span>
+        <div className="flex-1 h-2 bg-green-100 rounded-full overflow-hidden">
           <motion.div
             className="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full relative"
             initial={{ width: 0 }}

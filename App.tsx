@@ -91,10 +91,12 @@ const AppContent: React.FC = () => {
     <>
       <SmoothScroll />
       <CustomCursor />
-      <FloatingBackgroundFruits />
-      <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
-        <TabRouter activeTab={activeTab} onPlayGame={handlePlayGame} />
-      </MainLayout>
+      <div className="relative">
+        <FloatingBackgroundFruits />
+        <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
+          <TabRouter activeTab={activeTab} onPlayGame={handlePlayGame} />
+        </MainLayout>
+      </div>
     </>
   );
 };
