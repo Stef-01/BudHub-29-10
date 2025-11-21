@@ -141,23 +141,78 @@ export async function calculateAndStoreWeeklyProgress(userId: string): Promise<v
 }
 
 /**
+ * Get daily game progress for the last N days (simplified approach using game_scores)
+ * Returns daily average scores calculated directly from game_scores table
+ */
+export async function getDailyProgress(userId: string, days: number = 7): Promise<Array<{
+  date: string;
+  average_score: number;
+  games_played: number;
+  best_score: number;
+}>> {
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Get all scores for the last N days
+    const { data: scores, error } = await supabase
+      .from('game_scores')
+      .select('score, created_at')
+      .eq('user_id', userId)
+      .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    if (!scores || scores.length === 0) return [];
+
+    // Group scores by date and calculate daily averages
+    const dailyData: { [key: string]: number[] } = {};
+
+    scores.forEach(score => {
+      const date = new Date(score.created_at).toISOString().split('T')[0];
+      if (!dailyData[date]) {
+        dailyData[date] = [];
+      }
+      dailyData[date].push(score.score);
+    });
+
+    // Convert to array format
+    const result = Object.entries(dailyData).map(([date, scoresList]) => ({
+      date,
+      average_score: Math.round(scoresList.reduce((a, b) => a + b, 0) / scoresList.length),
+      games_played: scoresList.length,
+      best_score: Math.max(...scoresList)
+    }));
+
+    return result.sort((a, b) => a.date.localeCompare(b.date));
+  } catch (error) {
+    console.error('[gameProgressService] Error fetching daily progress:', error);
+    return [];
+  }
+}
+
+/**
  * Get improvement trend (percentage change from previous week)
  */
 export async function getImprovementTrend(userId: string, gameMode?: string): Promise<number> {
   try {
-    const progress = gameMode
-      ? await getProgressByGameMode(userId, gameMode, 2)
-      : await getWeeklyProgress(userId, 2);
+    // Use daily progress instead of weekly aggregation
+    const progress = await getDailyProgress(userId, 14);
 
-    if (progress.length < 2) return 0;
+    if (progress.length < 7) return 0;
 
-    // Calculate average score improvement
-    const thisWeek = progress[progress.length - 1];
-    const lastWeek = progress[progress.length - 2];
+    // Compare last 7 days vs previous 7 days
+    const thisWeek = progress.slice(-7);
+    const lastWeek = progress.slice(-14, -7);
 
-    if (lastWeek.average_score === 0) return 0;
+    if (lastWeek.length === 0) return 0;
 
-    const improvement = ((thisWeek.average_score - lastWeek.average_score) / lastWeek.average_score) * 100;
+    const thisWeekAvg = thisWeek.reduce((sum, day) => sum + day.average_score, 0) / thisWeek.length;
+    const lastWeekAvg = lastWeek.reduce((sum, day) => sum + day.average_score, 0) / lastWeek.length;
+
+    if (lastWeekAvg === 0) return 0;
+
+    const improvement = ((thisWeekAvg - lastWeekAvg) / lastWeekAvg) * 100;
     return Math.round(improvement);
   } catch (error) {
     console.error('[gameProgressService] Error calculating improvement trend:', error);

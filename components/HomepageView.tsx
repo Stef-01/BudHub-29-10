@@ -24,8 +24,10 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
   // Logan-specific data
   const { prices, markets, resources, loading: loganDataLoading, lastUpdated, refreshPrices } = useHomepageData();
 
-  // Game progress data - using 'demo_user' as placeholder until user authentication is implemented
-  const { progress: weeklyProgress, improvement: improvementTrend } = useWeeklyGameProgress('demo_user', 4);
+  // Game progress data - Get userId from URL parameter or default to 'demo_user'
+  const urlParams = new URLSearchParams(window.location.search);
+  const userId = urlParams.get('user') || 'demo_user';
+  const { progress: dailyProgress, improvement: improvementTrend } = useWeeklyGameProgress(userId, 7);
 
   const produceCarouselRef = useRef<HTMLDivElement>(null);
   const recipeCarouselRef = useRef<HTMLDivElement>(null);
@@ -71,14 +73,15 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
   const daysSinceLastGame = scores.length > 0 ?
     Math.floor((Date.now() - new Date(scores[scores.length - 1].date).getTime()) / (1000 * 60 * 60 * 24)) : 5;
 
-  // Transform weekly progress into chart data points
+  // Transform daily progress into chart data points
   // If we have real Supabase data, use it; otherwise fall back to mock pattern
-  const useRealData = weeklyProgress && weeklyProgress.length >= 4;
+  const useRealData = dailyProgress && dailyProgress.length >= 2;
 
   const chartPoints = useRealData
-    ? weeklyProgress.slice(-7).map((week, index) => {
+    ? dailyProgress.map((day, index) => {
         // Normalize scores to fit chart height (0-200, with higher scores at top)
-        const normalizedScore = Math.max(20, Math.min(180, 200 - (week.average_score * 1.5)));
+        // Assuming scores range from 0-100, we invert for chart display (higher = lower y)
+        const normalizedScore = Math.max(20, Math.min(180, 200 - (day.average_score * 1.8)));
         return { x: 20 + index * 60, y: normalizedScore };
       })
     : [
@@ -93,14 +96,17 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
 
   // Get day labels based on data availability
   const dayLabels = useRealData
-    ? weeklyProgress.slice(-7).map(week => {
-        const date = new Date(week.week_start_date);
+    ? dailyProgress.map(day => {
+        const date = new Date(day.date);
         return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
       })
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   // Use real improvement trend or fallback to +12%
   const displayImprovement = useRealData ? `${improvementTrend > 0 ? '+' : ''}${improvementTrend}%` : '+12%';
+
+  // Display indicator if using real data
+  const dataSource = useRealData ? `Based on ${dailyProgress.length} days of game play` : 'Demo data - play games to see your progress';
 
   return (
     <div className="pb-20 min-h-screen">
@@ -510,12 +516,19 @@ const HomepageView: React.FC<HomepageViewProps> = ({ onPlayGame }) => {
       <section className="mb-8">
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-lg">
           <div className="mb-6">
-            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide mb-2">
-              📊 Progress Tracking
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide mb-2">
+                  📊 Progress Tracking
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  Your Weekly Performance
+                </h2>
+              </div>
+              <div className={`px-3 py-1.5 rounded-lg text-xs font-medium ${useRealData ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                {dataSource}
+              </div>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Your Weekly Performance
-            </h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">

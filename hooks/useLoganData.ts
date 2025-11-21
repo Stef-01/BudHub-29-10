@@ -16,7 +16,7 @@ import {
   getIndianDietaryResources
 } from '../services/resourcesService';
 import {
-  getWeeklyProgress,
+  getDailyProgress,
   getImprovementTrend
 } from '../services/gameProgressService';
 import {
@@ -193,10 +193,15 @@ export function useIndianResources() {
 }
 
 /**
- * Hook to fetch weekly game progress
+ * Hook to fetch daily game progress (last 7 days)
  */
-export function useWeeklyGameProgress(userId: string, weeks: number = 4) {
-  const [progress, setProgress] = useState<GameProgressWeekly[]>([]);
+export function useWeeklyGameProgress(userId: string, days: number = 7) {
+  const [progress, setProgress] = useState<Array<{
+    date: string;
+    average_score: number;
+    games_played: number;
+    best_score: number;
+  }>>([]);
   const [improvement, setImprovement] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -213,7 +218,7 @@ export function useWeeklyGameProgress(userId: string, weeks: number = 4) {
       try {
         setLoading(true);
         const [progressData, improvementData] = await Promise.all([
-          getWeeklyProgress(userId, weeks),
+          getDailyProgress(userId, days),
           getImprovementTrend(userId)
         ]);
 
@@ -238,7 +243,7 @@ export function useWeeklyGameProgress(userId: string, weeks: number = 4) {
     return () => {
       mounted = false;
     };
-  }, [userId, weeks]);
+  }, [userId, days]);
 
   return { progress, improvement, loading, error };
 }
