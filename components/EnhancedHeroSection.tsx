@@ -117,9 +117,9 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
               </div>
               <div>
                 <div className="font-display text-lg font-bold text-gray-900">
-                  {currentStreak} {currentStreak === 1 ? 'day' : 'days'}
+                  {currentStreak}
                 </div>
-                <div className="font-sans text-xs text-gray-500">Streak</div>
+                <div className="font-sans text-xs text-gray-500">{currentStreak === 1 ? 'day' : 'days'} streak</div>
               </div>
             </motion.div>
 
@@ -161,7 +161,7 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
               </div>
               <div>
                 <div className="font-display text-lg font-bold text-gray-900">{averageVegServings}</div>
-                <div className="font-sans text-xs text-gray-500">Veg serves</div>
+                <div className="font-sans text-xs text-gray-500">daily veg serves avg.</div>
               </div>
             </motion.div>
           </motion.div>

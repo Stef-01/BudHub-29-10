@@ -37,14 +37,14 @@ const PantryBingo: React.FC<PantryBingoProps> = ({
       name: 'North Staples',
       emoji: '🫓',
       ingredients: ['wheat', 'dairy', 'chickpea', 'cumin', 'turmeric', 'red chilli powder'],
-      description: 'Common in Punjab, Delhi, UP',
+      description: 'Wheat-based breads, dairy, cumin & turmeric spicing',
     },
     {
       id: 'south_staples',
       name: 'South Staples',
       emoji: '🥥',
       ingredients: ['rice', 'coconut', 'curry leaves', 'tamarind', 'mustard seeds', 'urad dal'],
-      description: 'Tamil Nadu, Kerala, Karnataka',
+      description: 'Rice-based, coconut, curry leaves & tangy tamarind',
     },
     {
       id: 'dal_kit',

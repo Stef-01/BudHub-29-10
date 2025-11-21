@@ -125,7 +125,7 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
     return true;
   };
 
-  // Navigation
+  // Navigation with preserved state
   const handleNext = () => {
     if (!canProceed()) return;
 
@@ -142,6 +142,13 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
     else if (currentStep === 'flavor') setCurrentStep('pantry');
     else if (currentStep === 'masala_tadka') setCurrentStep('flavor');
     else if (currentStep === 'results') setCurrentStep('masala_tadka');
+  };
+
+  // Allow jumping to any completed step from results
+  const handleJumpToStep = (step: SurveyStep) => {
+    if (step !== 'results') {
+      setCurrentStep(step);
+    }
   };
 
   const handleReset = () => {
@@ -182,25 +189,32 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
           </motion.p>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Bar - Clickable from results page */}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
             {['craving', 'region', 'pantry', 'flavor', 'masala_tadka', 'results'].map((step, idx) => {
               const stepIndex = ['craving', 'region', 'pantry', 'flavor', 'masala_tadka', 'results'].indexOf(currentStep);
               const isActive = idx <= stepIndex;
               const isCurrent = step === currentStep;
+              const isClickable = currentStep === 'results' && step !== 'results' && isActive;
 
               return (
                 <React.Fragment key={step}>
-                  <div
+                  <motion.button
+                    whileHover={isClickable ? { scale: 1.15 } : {}}
+                    whileTap={isClickable ? { scale: 0.95 } : {}}
+                    onClick={() => isClickable && handleJumpToStep(step as SurveyStep)}
+                    disabled={!isClickable}
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                       isActive
                         ? 'bg-orange-500 text-white'
                         : 'bg-gray-200 text-gray-400'
-                    } ${isCurrent ? 'ring-4 ring-orange-200' : ''}`}
+                    } ${isCurrent ? 'ring-4 ring-orange-200' : ''} ${
+                      isClickable ? 'cursor-pointer hover:ring-2 hover:ring-orange-300' : 'cursor-default'
+                    }`}
                   >
                     {idx + 1}
-                  </div>
+                  </motion.button>
                   {idx < 5 && (
                     <div
                       className={`w-8 h-1 rounded transition-all ${
@@ -232,6 +246,15 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
               Results
             </span>
           </div>
+          {currentStep === 'results' && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center text-xs text-orange-600 mt-2 font-medium"
+            >
+              💡 Click any step above to adjust your preferences
+            </motion.p>
+          )}
         </div>
 
         {/* Survey Steps */}

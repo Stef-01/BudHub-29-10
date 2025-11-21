@@ -49,10 +49,31 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
               </div>
             )}
 
-            {/* Subtle flip indicator - only shows on hover */}
-            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
-                👆 Tap to flip
+            {/* Hover Overlay with Recipe Name and Save Button */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-4">
+              <h4 className="text-white font-bold text-lg mb-2 leading-tight">
+                {recipe.name}
+              </h4>
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Save to cookbook logic will be handled by parent
+                    console.log('Save to cookbook:', recipe.name);
+                  }}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all hover:scale-105"
+                >
+                  📚 Save to Cookbook
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFlipped(!isFlipped);
+                  }}
+                  className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-3 rounded-lg backdrop-blur-sm transition-all"
+                >
+                  ℹ️ Details
+                </button>
               </div>
             </div>
           </div>
