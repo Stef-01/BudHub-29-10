@@ -438,6 +438,14 @@ ALTER TABLE game_scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_progress_weekly ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_activity_daily ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public read access to game scores" ON game_scores;
+DROP POLICY IF EXISTS "Public read access to weekly progress" ON game_progress_weekly;
+DROP POLICY IF EXISTS "Public read access to daily activity" ON game_activity_daily;
+DROP POLICY IF EXISTS "Users can insert their own scores" ON game_scores;
+DROP POLICY IF EXISTS "System can manage weekly progress" ON game_progress_weekly;
+DROP POLICY IF EXISTS "System can manage daily activity" ON game_activity_daily;
+
 -- Public read access to allow anon key to read data
 CREATE POLICY "Public read access to game scores"
   ON game_scores FOR SELECT
@@ -738,11 +746,13 @@ CREATE INDEX IF NOT EXISTS idx_mission_leaderboard_mission ON mission_leaderboar
 CREATE INDEX IF NOT EXISTS idx_mission_leaderboard_user ON mission_leaderboard(user_id);
 
 -- Updated at triggers
+DROP TRIGGER IF EXISTS update_budget_missions_updated_at ON budget_missions;
 CREATE TRIGGER update_budget_missions_updated_at
     BEFORE UPDATE ON budget_missions
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_mission_attempts_updated_at ON user_mission_attempts;
 CREATE TRIGGER update_user_mission_attempts_updated_at
     BEFORE UPDATE ON user_mission_attempts
     FOR EACH ROW
@@ -773,6 +783,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to automatically calculate success when mission is marked completed
+DROP TRIGGER IF EXISTS calculate_mission_success ON user_mission_attempts;
 CREATE TRIGGER calculate_mission_success
     BEFORE UPDATE OF status ON user_mission_attempts
     FOR EACH ROW
@@ -844,6 +855,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to update leaderboard
+DROP TRIGGER IF EXISTS update_leaderboard_on_completion ON user_mission_attempts;
 CREATE TRIGGER update_leaderboard_on_completion
     AFTER UPDATE OF status ON user_mission_attempts
     FOR EACH ROW
@@ -867,6 +879,15 @@ GROUP BY bm.id;
 ALTER TABLE budget_missions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_mission_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mission_leaderboard ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Everyone can view active missions" ON budget_missions;
+DROP POLICY IF EXISTS "Users can view their own mission attempts" ON user_mission_attempts;
+DROP POLICY IF EXISTS "Users can create their own mission attempts" ON user_mission_attempts;
+DROP POLICY IF EXISTS "Users can update their own mission attempts" ON user_mission_attempts;
+DROP POLICY IF EXISTS "Everyone can view mission leaderboards" ON mission_leaderboard;
+DROP POLICY IF EXISTS "System can manage leaderboard" ON mission_leaderboard;
+DROP POLICY IF EXISTS "Admins can manage budget missions" ON budget_missions;
 
 -- Public can view active missions
 CREATE POLICY "Everyone can view active missions"
