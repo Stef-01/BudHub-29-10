@@ -167,6 +167,14 @@ ALTER TABLE game_scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_progress_weekly ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_activity_daily ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public read access to game scores" ON game_scores;
+DROP POLICY IF EXISTS "Public read access to weekly progress" ON game_progress_weekly;
+DROP POLICY IF EXISTS "Public read access to daily activity" ON game_activity_daily;
+DROP POLICY IF EXISTS "Users can insert their own scores" ON game_scores;
+DROP POLICY IF EXISTS "System can manage weekly progress" ON game_progress_weekly;
+DROP POLICY IF EXISTS "System can manage daily activity" ON game_activity_daily;
+
 -- Public read access to allow anon key to read data
 CREATE POLICY "Public read access to game scores"
   ON game_scores FOR SELECT
