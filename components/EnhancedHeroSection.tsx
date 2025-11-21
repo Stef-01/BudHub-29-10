@@ -120,37 +120,12 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
         <div className="flex-1 text-center md:text-left">
           <motion.h1
             variants={itemVariants}
-            className="font-display text-4xl sm:text-5xl md:text-6xl font-black mb-3 leading-tight tracking-tight"
+            className="font-display text-4xl sm:text-5xl md:text-6xl font-black mb-6 leading-tight tracking-tight"
           >
             <span className="bg-gradient-to-r from-green-600 via-green-500 to-green-600 bg-clip-text text-transparent">
               Your Logan Health Journey
             </span>
           </motion.h1>
-
-          <motion.div
-            variants={itemVariants}
-            className="flex items-center justify-center md:justify-start gap-2 text-gray-600 mb-4"
-          >
-            <span>📍</span>
-            <span className="font-sans font-medium">{weather?.location.name || 'Logan'}, QLD • This week</span>
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            className="flex items-baseline justify-center md:justify-start gap-3 mb-4"
-          >
-            <span className="font-display text-5xl sm:text-6xl font-black bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
-              {loganDiabeticsCount.toLocaleString()}
-            </span>
-            <span className="font-sans text-lg text-gray-600">people in Logan managing diabetes</span>
-          </motion.div>
-
-          <motion.p
-            variants={itemVariants}
-            className="font-sans text-gray-600 mb-6 text-base max-w-2xl"
-          >
-            Together, we're building healthier communities, one family at a time.
-          </motion.p>
 
           {/* Glass Morphism Stats Cards */}
           <motion.div
