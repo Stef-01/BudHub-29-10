@@ -1,7 +1,7 @@
 // components/EnhancedHeroSection.tsx
 import React from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { FloatingFruit, RotatingFruit, BouncingFruit, Puls atingFruit } from '../src/components/animations/FruitAnimations';
+import { FloatingFruit, RotatingFruit, BouncingFruit, PulsatingFruit } from '../src/components/animations/FruitAnimations';
 import { Strawberry, Blueberry, Kiwi, Watermelon, PineappleSlice, GrapeCluster } from '../src/components/illustrations/FruitIllustrations';
 import { BlobShape, LeafShape } from '../src/components/illustrations/DecorativeShapes';
 
