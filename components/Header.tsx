@@ -13,7 +13,7 @@ const Header: React.FC = () => {
             <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-sm shadow-md z-40 p-4">
                 <div className="max-w-7xl mx-auto">
                     <div className="flex justify-between items-center">
-                        <h1 className="text-2xl font-bold text-green-800">Garden<span className="text-green-500">Vibe</span></h1>
+                        <h1 className="text-2xl font-bold text-green-800">SWAAD</h1>
                         <div className="text-lg font-bold text-green-700">Level {level}</div>
                     </div>
                     <div className="mt-2">
