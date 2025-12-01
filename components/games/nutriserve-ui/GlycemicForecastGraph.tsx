@@ -1,93 +1,95 @@
 // components/games/nutriserve-ui/GlycemicForecastGraph.tsx
-import React from 'react';
-import type { Nutrients } from '../NutriServeTypes';
-// FIX: Corrected import path
+import React, { useMemo } from 'react';
 import { calculateGlycemicCurve } from '../../../services/nutriserveUtils';
 
 interface GlycemicForecastGraphProps {
-  totalNutrients: Nutrients;
+  carbs: number;
+  fiber: number;
+  fat: number;
 }
 
-/**
- * @description Renders a graph simulating the post-meal glycemic response.
- * The curve is calculated based on the meal's total carbs, fiber, and fat.
- * This provides a visual tool for players to learn how to "flatten the curve."
- */
-const GlycemicForecastGraph: React.FC<GlycemicForecastGraphProps> = ({ totalNutrients }) => {
-  const { carbs_g, fiber_g, fat_g } = totalNutrients;
-  const curveData = calculateGlycemicCurve(carbs_g, fiber_g, fat_g);
+const GlycemicForecastGraph: React.FC<GlycemicForecastGraphProps> = ({ carbs, fiber, fat }) => {
+  const curveData = useMemo(() => calculateGlycemicCurve(carbs, fiber, fat), [carbs, fiber, fat]);
 
-  // SVG dimensions with proper padding to prevent text cutoff
-  const width = 140;
-  const height = 90;
-  const padding = { top: 18, right: 12, bottom: 24, left: 34 }; // Increased left padding to fix "High" truncation
+  // Graph dimensions
+  const width = 320;
+  const height = 160;
+  const padding = 25;
+  const graphWidth = width - padding * 2;
+  const graphHeight = height - padding * 2;
 
-  // Calculate scales
-  const maxTime = 180; // 3 hours
-  const maxRise = Math.max(50, ...curveData.map(d => d.rise)); // Ensure a minimum height for the y-axis
+  // Scales
+  const maxTime = 180; // 3 hours (matches curve data)
+  const maxRise = 100; // mg/dL rise cap for visualization
 
-  const xScale = (time: number) => padding.left + (time / maxTime) * (width - padding.left - padding.right);
-  const yScale = (rise: number) => height - padding.bottom - (rise / maxRise) * (height - padding.top - padding.bottom);
+  const xScale = (t: number) => padding + (t / maxTime) * graphWidth;
+  const yScale = (v: number) => height - padding - (v / maxRise) * graphHeight;
 
-  // Create the SVG path string for the curve
-  const pathData = curveData
-    .map((p, i) => {
-      const x = xScale(p.time);
-      const y = yScale(p.rise);
-      return i === 0 ? `M ${x},${y}` : `L ${x},${y}`;
-    })
-    .join(' ');
+  // Generate path
+  const pathD = curveData.reduce((d, point, i) => {
+    const x = xScale(point.time);
+    const y = yScale(point.rise);
+    return i === 0 ? `M ${x} ${y}` : `${d} L ${x} ${y}`;
+  }, '');
 
-  // Determine curve color based on peak height for quick visual feedback
-  const peakValue = Math.max(...curveData.map(d => d.rise));
-  let curveColor = 'stroke-emerald-500'; // Good, low peak
-  let bgColor = 'bg-emerald-50/30'; // Matching background tint
-  if (peakValue > 75) {
-    curveColor = 'stroke-amber-500'; // Moderate peak
-    bgColor = 'bg-amber-50/30';
+  // Create area path (close the loop at the bottom)
+  const areaPathD = `${pathD} L ${xScale(curveData[curveData.length - 1].time)} ${yScale(0)} L ${xScale(0)} ${yScale(0)} Z`;
+
+  // Determine color based on peak
+  const peak = Math.max(...curveData.map(p => p.rise));
+  let color = '#10b981'; // Emerald-500 (Good)
+  let label = 'Stable';
+
+  if (peak > 50) {
+    color = '#f59e0b'; // Amber-500 (Moderate)
+    label = 'Moderate Rise';
   }
-  if (peakValue > 100) {
-    curveColor = 'stroke-rose-500'; // High peak
-    bgColor = 'bg-rose-50/30';
+  if (peak > 80) {
+    color = '#ef4444'; // Red-500 (Spike)
+    label = 'Spike Risk';
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center">
-      {/* Graph Container with Card Styling */}
-      <div className={`w-full rounded-lg border border-slate-200 p-3 ${bgColor} shadow-sm`}>
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
-          {/* Grid lines - more visible */}
-          <g className="text-slate-200" stroke="currentColor" strokeWidth="0.5" opacity="0.6">
-            {[0.25, 0.5, 0.75, 1].map(f => (
-              <line key={f} x1={padding.left} y1={yScale(maxRise * f)} x2={width - padding.right} y2={yScale(maxRise * f)} />
-            ))}
-            {[60, 120, 180].map(t => (
-              <line key={t} x1={xScale(t)} y1={padding.top} x2={xScale(t)} y2={height - padding.bottom} />
-            ))}
-          </g>
+    <div className="h-full w-full min-h-[140px]">
+      <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-200 h-full flex flex-col">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-sm font-bold text-slate-700">Glycemic Forecast</h3>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: color }}>
+            {label}
+          </span>
+        </div>
 
-          {/* Axes - more prominent */}
-          <line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} stroke="currentColor" className="text-slate-400" strokeWidth="1.5" />
-          <line x1={padding.left} y1={padding.top} x2={padding.left} y2={height - padding.bottom} stroke="currentColor" className="text-slate-400" strokeWidth="1.5" />
+        <div className="flex-1 min-h-0">
+          <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="overflow-visible">
+            {/* Grid lines */}
+            <line x1={padding} y1={yScale(0)} x2={width - padding} y2={yScale(0)} stroke="#e2e8f0" strokeWidth="1" />
+            <line x1={padding} y1={yScale(50)} x2={width - padding} y2={yScale(50)} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
+            <line x1={padding} y1={yScale(100)} x2={width - padding} y2={yScale(100)} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
 
-          {/* The glycemic curve - thicker and more visible */}
-          <path d={pathData} fill="none" className={curveColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            {/* Area fill */}
+            <path d={areaPathD} fill={color} fillOpacity="0.2" />
 
-          {/* Axis Labels - larger and more readable */}
-          <g className="text-[9px] fill-current text-slate-600 font-semibold">
-            <text x={xScale(60)} y={height - padding.bottom + 14} textAnchor="middle">60m</text>
-            <text x={xScale(120)} y={height - padding.bottom + 14} textAnchor="middle">120m</text>
-            <text x={xScale(180)} y={height - padding.bottom + 14} textAnchor="middle">180m</text>
-            <text x={padding.left - 6} y={yScale(0) + 2} textAnchor="end" alignmentBaseline="middle">Low</text>
-            <text x={padding.left - 6} y={yScale(maxRise) + 2} textAnchor="end" alignmentBaseline="middle">High</text>
-          </g>
-        </svg>
-      </div>
+            {/* Line */}
+            <path d={pathD} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
-      {/* Info Box - more compact and integrated */}
-      <div className="bg-slate-100/80 rounded-md px-3 py-2 mt-2 w-full border border-slate-200">
-        <p className="text-center text-[10px] text-slate-600 leading-snug font-medium">
-          💡 Lower, flatter curves help prevent complications and maintain stable energy
+            {/* Peak Indicator */}
+            {peak > 0 && (
+              <circle cx={xScale(curveData.find(p => p.rise === peak)?.time || 0)} cy={yScale(peak)} r="4" fill="white" stroke={color} strokeWidth="2" />
+            )}
+
+            {/* Axis Labels */}
+            <text x={width / 2} y={height - 3} textAnchor="middle" fontSize="10" fill="#64748b">Time (minutes)</text>
+            <text x={5} y={height / 2} textAnchor="middle" fontSize="10" fill="#64748b" transform={`rotate(-90, 10, ${height / 2})`}>Glucose Rise</text>
+
+            {/* X-Axis Ticks */}
+            <text x={xScale(0)} y={height - 15} textAnchor="middle" fontSize="9" fill="#94a3b8">0</text>
+            <text x={xScale(60)} y={height - 15} textAnchor="middle" fontSize="9" fill="#94a3b8">60</text>
+            <text x={xScale(120)} y={height - 15} textAnchor="middle" fontSize="9" fill="#94a3b8">120</text>
+
+          </svg>
+        </div>
+        <p className="text-[10px] text-slate-400 mt-0.5 text-center">
+          Estimated blood sugar response based on meal composition.
         </p>
       </div>
     </div>

@@ -33,7 +33,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         volume_options_ml: [80, 160, 240, 360],
         volume_labels: ['Small Katori', 'Scoop', 'Large Katori', 'Full Plate'],
       },
-       {
+      {
         id: 'rice_red',
         label: 'Red Rice',
         category: 'Grains',
@@ -43,7 +43,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         volume_options_ml: [80, 160, 240],
         volume_labels: ['Small Katori', 'Scoop', 'Large Katori'],
       },
-       {
+      {
         id: 'veg_biryani',
         label: 'Veg Biryani',
         category: 'Grains',
@@ -53,7 +53,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         volume_options_ml: [200, 300, 400],
         volume_labels: ['Small', 'Regular', 'Large'],
       },
-       {
+      {
         id: 'lemon_rice',
         label: 'Lemon Rice',
         category: 'Grains',
@@ -78,7 +78,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         volume_options_ml: [120, 180, 240],
         volume_labels: ['Side', 'Standard', 'Large'],
       },
-       {
+      {
         id: 'chickpea_curry',
         label: 'Chickpea Curry',
         category: 'Lentils & Curries',
@@ -149,7 +149,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         volume_labels: ['Side', 'Standard', 'Large'],
         isTreat: true,
       },
-       {
+      {
         id: 'chicken_curry',
         label: 'Chicken Curry',
         category: 'Lentils & Curries',
@@ -214,7 +214,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
   {
     name: 'Vegetable Dishes',
     items: [
-       {
+      {
         id: 'baingan_bharta',
         label: 'Baingan Bharta',
         category: 'Vegetable Dishes',
@@ -244,7 +244,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         volume_options_ml: [120, 180, 240],
         volume_labels: ['Side', 'Standard', 'Large'],
       },
-       {
+      {
         id: 'mixed_veg_curry',
         label: 'Mixed Veg Curry',
         category: 'Vegetable Dishes',
@@ -304,6 +304,66 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         volume_options_ml: [100, 150, 200],
         volume_labels: ['Side', 'Standard', 'Large'],
       },
+      {
+        id: 'cabbage_thoran',
+        label: 'Cabbage Thoran',
+        category: 'Vegetable Dishes',
+        visual: visuals.CabbageThoranVisual, // Assuming visual exists or mapping to generic
+        nutrients_per_100g: { calories_kcal: 70, protein_g: 2, carbs_g: 8, fiber_g: 3, fat_g: 4, sodium_mg: 160 },
+        density_g_per_ml: 0.85,
+        volume_options_ml: [100, 150, 200],
+        volume_labels: ['Side', 'Standard', 'Large'],
+      },
+      {
+        id: 'beetroot_thoran',
+        label: 'Beetroot Thoran',
+        category: 'Vegetable Dishes',
+        visual: visuals.BeetrootThoranVisual,
+        nutrients_per_100g: { calories_kcal: 85, protein_g: 2, carbs_g: 12, fiber_g: 4, fat_g: 3, sodium_mg: 170 },
+        density_g_per_ml: 0.90,
+        volume_options_ml: [100, 150, 200],
+        volume_labels: ['Side', 'Standard', 'Large'],
+      },
+      {
+        id: 'snake_gourd_thoran',
+        label: 'Snake Gourd Thoran (Padavalanga)',
+        category: 'Vegetable Dishes',
+        visual: visuals.SnakeGourdThoranVisual,
+        nutrients_per_100g: { calories_kcal: 60, protein_g: 1, carbs_g: 6, fiber_g: 2, fat_g: 3, sodium_mg: 140 },
+        density_g_per_ml: 0.80,
+        volume_options_ml: [100, 150, 200],
+        volume_labels: ['Side', 'Standard', 'Large'],
+      },
+      {
+        id: 'bitter_gourd_pavakka',
+        label: 'Bitter Gourd Fry (Pavakka)',
+        category: 'Vegetable Dishes',
+        visual: visuals.BitterGourdVisual,
+        nutrients_per_100g: { calories_kcal: 110, protein_g: 3, carbs_g: 10, fiber_g: 3, fat_g: 7, sodium_mg: 200 },
+        density_g_per_ml: 0.85,
+        volume_options_ml: [80, 120, 160],
+        volume_labels: ['Small', 'Standard', 'Large'],
+      },
+      {
+        id: 'kovakka_fry',
+        label: 'Ivy Gourd Fry (Kovakka)',
+        category: 'Vegetable Dishes',
+        visual: visuals.IvyGourdVisual,
+        nutrients_per_100g: { calories_kcal: 95, protein_g: 2, carbs_g: 9, fiber_g: 2, fat_g: 6, sodium_mg: 180 },
+        density_g_per_ml: 0.85,
+        volume_options_ml: [100, 150, 200],
+        volume_labels: ['Side', 'Standard', 'Large'],
+      },
+      {
+        id: 'avial',
+        label: 'Avial (Mixed Veg with Coconut)',
+        category: 'Vegetable Dishes',
+        visual: visuals.AvialVisual,
+        nutrients_per_100g: { calories_kcal: 130, protein_g: 3, carbs_g: 14, fiber_g: 5, fat_g: 7, sodium_mg: 220 },
+        density_g_per_ml: 0.95,
+        volume_options_ml: [120, 180, 240],
+        volume_labels: ['Side', 'Standard', 'Large'],
+      },
     ],
   },
   {
@@ -318,7 +378,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         portion_g: [30, 60, 90],
         portion_labels: ['1 Roti', '2 Roti', '3 Roti'],
       },
-       {
+      {
         id: 'paratha',
         label: 'Paratha',
         category: 'Breads & Breakfast',
@@ -328,7 +388,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         portion_labels: ['1 Paratha', '2 Parathas'],
         isTreat: true,
       },
-       {
+      {
         id: 'naan_plain',
         label: 'Plain Naan',
         category: 'Breads & Breakfast',
@@ -418,10 +478,10 @@ export const FOOD_LIBRARY: FoodGroup[] = [
       },
     ],
   },
-   {
+  {
     name: 'Soups, Salads & Sides',
     items: [
-       {
+      {
         id: 'sambar',
         label: 'Sambar',
         category: 'Soups, Salads & Sides',
@@ -431,7 +491,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         volume_options_ml: [150, 250],
         volume_labels: ['Side Soup', 'Main Soup'],
       },
-       {
+      {
         id: 'raita',
         label: 'Cucumber Raita',
         category: 'Soups, Salads & Sides',
@@ -486,7 +546,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         portion_g: [80, 160],
         portion_labels: ['1 Samosa', '2 Samosas'],
       },
-       {
+      {
         id: 'laddu',
         label: 'Laddu',
         category: 'Treats',
@@ -496,7 +556,7 @@ export const FOOD_LIBRARY: FoodGroup[] = [
         portion_g: [30, 60],
         portion_labels: ['1 Laddu', '2 Laddus'],
       },
-       {
+      {
         id: 'jalebi',
         label: 'Jalebi',
         category: 'Treats',
@@ -533,14 +593,14 @@ export const FOOD_LIBRARY: FoodGroup[] = [
 ];
 
 export const DID_YOU_KNOW_TIPS: { id: string, text: string, source_name?: string, source_url?: string }[] = [
-    {id: 'fiber', text: "Fiber helps slow down sugar absorption, which is great for stable energy levels."},
-    {id: 'protein', text: "Protein is essential for muscle repair, especially after exercise."},
-    {id: 'brown_rice', text: "Brown rice retains the bran and germ, giving it more fiber and nutrients than white rice."},
-    {id: 'lentils', text: "Lentils (Dal) are a fantastic source of both protein and fiber."},
-    {id: 'chillies', text: "The spicy compound in chillies, capsaicin, can have metabolism-boosting effects."},
-    {id: 'turmeric', text: "Turmeric, a common spice in Indian cooking, contains curcumin, which has anti-inflammatory properties."},
-    {id: 'plate_method', text: "A balanced plate is often described as ½ veggies, ¼ protein, and ¼ complex carbs.", source_name: "ADA", source_url: "https://diabetes.org/food-nutrition/plate-method"},
-    {id: 'sodium', text: "Sodium is an essential mineral, but too much can impact blood pressure. Aim for less than 2300mg per day.", source_name: "Dietary Guidelines for Americans", source_url: "https://www.dietaryguidelines.gov/"},
-    {id: 'healthy_fats', text: "Healthy fats, like those in avocados and nuts, are vital for brain health."},
-    {id: 'whole_wheat', text: "Roti made from whole wheat flour is a great source of complex carbohydrates and fiber."},
+  { id: 'fiber', text: "Fiber helps slow down sugar absorption, which is great for stable energy levels." },
+  { id: 'protein', text: "Protein is essential for muscle repair, especially after exercise." },
+  { id: 'brown_rice', text: "Brown rice retains the bran and germ, giving it more fiber and nutrients than white rice." },
+  { id: 'lentils', text: "Lentils (Dal) are a fantastic source of both protein and fiber." },
+  { id: 'chillies', text: "The spicy compound in chillies, capsaicin, can have metabolism-boosting effects." },
+  { id: 'turmeric', text: "Turmeric, a common spice in Indian cooking, contains curcumin, which has anti-inflammatory properties." },
+  { id: 'plate_method', text: "A balanced plate is often described as ½ veggies, ¼ protein, and ¼ complex carbs.", source_name: "ADA", source_url: "https://diabetes.org/food-nutrition/plate-method" },
+  { id: 'sodium', text: "Sodium is an essential mineral, but too much can impact blood pressure. Aim for less than 2300mg per day.", source_name: "Dietary Guidelines for Americans", source_url: "https://www.dietaryguidelines.gov/" },
+  { id: 'healthy_fats', text: "Healthy fats, like those in avocados and nuts, are vital for brain health." },
+  { id: 'whole_wheat', text: "Roti made from whole wheat flour is a great source of complex carbohydrates and fiber." },
 ];

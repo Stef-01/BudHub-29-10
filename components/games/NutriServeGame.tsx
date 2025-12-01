@@ -1,9 +1,10 @@
+
 // components/games/NutriServeGame.tsx
 import React, { useState, useEffect, useReducer, useCallback, useRef } from 'react';
 import type { NutriServeCustomerWithTargets, PlateItem, FoodItem } from './NutriServeTypes';
 import { getNewCustomer, calculateMealTotals, calculateScoreAndFeedback } from '../../services/nutriserveUtils';
 // FIX: Corrected import casing for 'nutriserveFoodData' for consistency across the module.
-import { FOOD_LIBRARY } from '../../services/nutriServeFoodData';
+import { FOOD_LIBRARY, DID_YOU_KNOW_TIPS } from '../../services/nutriServeFoodData';
 import { useGameScores } from '../../contexts/GameScoresContext';
 import { useGamification } from '../../contexts/GamificationContext';
 import { getUserId } from '../../hooks/useUserId';
@@ -13,6 +14,7 @@ import {
   type NutriServeRoundAttempt,
 } from '../../services/supabaseLogger';
 import { trackGameStart, trackNutriServeRound, trackGameComplete } from '../../lib/analytics';
+import { swaadCoachService } from '../../services/swaadCoachService';
 
 import Plate from './nutriserve-ui/Plate';
 import FoodLibrary from './nutriserve-ui/FoodLibrary';
@@ -39,7 +41,12 @@ type GameState = {
   customer: NutriServeCustomerWithTargets | null;
   plateItems: PlateItem[];
   view: 'playing' | 'result' | 'gameover' | 'changelog';
-  resultData: { score: number; feedback: Record<string, any> } | null;
+  resultData: {
+    score: number;
+    feedback: Record<string, any>;
+    tip?: { text: string; source_name?: string; source_url?: string };
+    aiCoachSuggestion?: string;
+  } | null;
   mistakes: Record<string, MistakeData>;
 };
 
@@ -49,7 +56,8 @@ type GameAction =
   | { type: 'ADD_ITEM'; payload: PlateItem }
   | { type: 'REMOVE_ITEM'; payload: string }
   | { type: 'CLEAR_PLATE' }
-  | { type: 'SERVE_PLATE' }
+  | { type: 'SERVE_PLATE'; payload: { score: number; feedback: Record<string, any>; tip?: { text: string; source_name?: string; source_url?: string } } }
+  | { type: 'UPDATE_AI_FEEDBACK'; payload: string }
   | { type: 'TRACK_MISTAKES'; payload: Record<string, any> }
   | { type: 'SHOW_CHANGELOG' }
   | { type: 'CLOSE_MODAL' };
@@ -84,9 +92,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, plateItems: [] };
     case 'SERVE_PLATE': {
       if (!state.customer) return state;
-      const totals = calculateMealTotals(state.plateItems);
-      const { score, feedback } = calculateScoreAndFeedback(totals, state.customer.targets);
-      return { ...state, totalScore: state.totalScore + score, view: 'result', resultData: { score, feedback } };
+      const { score, feedback, tip } = action.payload;
+      return { ...state, totalScore: state.totalScore + score, view: 'result', resultData: { score, feedback, tip } };
+    }
+    case 'UPDATE_AI_FEEDBACK': {
+      if (!state.resultData) return state;
+      return { ...state, resultData: { ...state.resultData, aiCoachSuggestion: action.payload } };
     }
     case 'TRACK_MISTAKES': {
       const feedback = action.payload;
@@ -155,14 +166,14 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
   const handleAddItem = (item: PlateItem) => {
     dispatch({ type: 'ADD_ITEM', payload: item });
   };
-  
+
   const handleDropItem = (foodItemId: string) => {
     const foodItem = allFoodItems.find(i => i.id === foodItemId);
     if (foodItem) {
-        setModalItem(foodItem);
+      setModalItem(foodItem);
     }
   };
-  
+
   const handleRemoveItem = (instanceId: string) => {
     dispatch({ type: 'REMOVE_ITEM', payload: instanceId });
   };
@@ -239,26 +250,48 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
     // Track analytics
     trackNutriServeRound(gameState.round, score, userId);
 
-    dispatch({ type: 'SERVE_PLATE' });
+    // Select a random "Did You Know" tip
+    const randomTip = DID_YOU_KNOW_TIPS[Math.floor(Math.random() * DID_YOU_KNOW_TIPS.length)];
+
+    dispatch({ type: 'SERVE_PLATE', payload: { score, feedback, tip: randomTip } });
     dispatch({ type: 'TRACK_MISTAKES', payload: feedback });
+
+    // Generate AI Feedback
+    const mealItemsForAI = gameState.plateItems.map(item => ({
+      name: item.foodItem.name,
+      category: item.foodItem.category,
+      grams: item.grams
+    }));
+
+    swaadCoachService.generateMealFeedback(
+      mealItemsForAI,
+      gameState.customer.name,
+      gameState.customer.isDiabetic || false,
+      score,
+      feedback
+    ).then(suggestion => {
+      if (suggestion) {
+        dispatch({ type: 'UPDATE_AI_FEEDBACK', payload: suggestion });
+      }
+    });
   };
 
   const handleNext = () => {
     // Award XP based on round performance
     if (gameState.resultData && gameState.resultData.score > 100) {
-        addXp('High', 'add');
+      addXp('High', 'add');
     } else if (gameState.resultData && gameState.resultData.score > 50) {
-        addXp('Medium', 'add');
+      addXp('Medium', 'add');
     }
     dispatch({ type: 'NEXT_CUSTOMER' });
   };
 
   const handlePlayAgain = () => {
     if (gameState.totalScore > 0) {
-        saveScore('nutriserve', gameState.totalScore);
+      saveScore('nutriserve', gameState.totalScore);
 
-        // Log session to Supabase
-        logSessionToSupabase();
+      // Log session to Supabase
+      logSessionToSupabase();
     }
 
     // Reset tracking for new session
@@ -275,7 +308,7 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
 
     dispatch({ type: 'START_GAME' });
   };
-  
+
   const logSessionToSupabase = () => {
     const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 
@@ -311,7 +344,7 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
     () => calculateMealTotals(gameState.plateItems),
     [gameState.plateItems]
   );
-  
+
   if (!gameState.customer) {
     return <div>Loading...</div>; // Or a loading screen
   }
@@ -324,7 +357,7 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
       <div className="flex justify-between items-center mb-3">
         <h1 className="text-2xl font-bold text-emerald-700">NutriServe Chef</h1>
         <button onClick={onExit} className="p-1.5 rounded-full text-slate-500 hover:bg-slate-200">
-            <IconXCircle className="h-7 w-7" />
+          <IconXCircle className="h-7 w-7" />
         </button>
       </div>
 
@@ -357,7 +390,7 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
         <div className="lg:col-span-4 flex flex-col items-center justify-center">
           <Plate
             items={gameState.plateItems}
-            onEditItem={() => {}} // Edit functionality can be added here
+            onEditItem={() => { }} // Edit functionality can be added here
             onRemoveItem={handleRemoveItem}
             onDropItem={handleDropItem}
             plateSize={gameState.customer.order.plateSize}
@@ -373,21 +406,21 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
 
         {/* Right Column: Meal Analysis */}
         <div className="lg:col-span-4 overflow-y-auto">
-            <MealAnalysis
-                totals={mealTotals()}
-                targets={gameState.customer.targets}
-            />
+          <MealAnalysis
+            totals={mealTotals()}
+            targets={gameState.customer.targets}
+          />
         </div>
       </div>
-      
-       {modalItem && (
-        <ServingSizeModal 
+
+      {modalItem && (
+        <ServingSizeModal
           foodItem={modalItem}
           onAdd={handleAddItem}
           onClose={() => setModalItem(null)}
         />
       )}
-      
+
       {gameState.view === 'result' && gameState.resultData && (
         <ResultModal
           score={gameState.resultData.score}
@@ -395,10 +428,12 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
           feedback={gameState.resultData.feedback}
           onNext={handleNext}
           isLastRound={gameState.round >= MAX_ROUNDS}
+          tip={gameState.resultData.tip}
+          aiCoachSuggestion={gameState.resultData.aiCoachSuggestion}
         />
       )}
 
-       {gameState.view === 'gameover' && (
+      {gameState.view === 'gameover' && (
         <NutriServeGameOverModal
           score={gameState.totalScore}
           roundScores={roundScoresRef.current}
@@ -409,7 +444,7 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
       )}
 
       {gameState.view === 'changelog' && (
-        <ChangelogModal onClose={() => dispatch({ type: 'CLOSE_MODAL' })}/>
+        <ChangelogModal onClose={() => dispatch({ type: 'CLOSE_MODAL' })} />
       )}
 
     </div>

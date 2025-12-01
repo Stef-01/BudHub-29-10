@@ -362,7 +362,6 @@ export const MasalaDosaVisual: React.FC<VisualProps> = () => (
     </svg>
 );
 
-
 // --- NEW VISUALS from 2.5.0 ---
 
 export const ChanaMasalaVisual: React.FC<VisualProps> = () => (
@@ -903,4 +902,55 @@ export const IdliPlainVisual: React.FC<VisualProps> = () => (
         <ellipse cx="50" cy="50" rx="32" ry="20" fill="url(#idli-color)" filter="url(#idli-texture)"/>
         <ellipse cx="50" cy="45" rx="30" ry="15" fill="#ffffff" opacity="0.5"/>
     </svg>
+);
+export const BeetrootThoranVisual: React.FC<VisualProps> = () => (
+    <Bowl id="beetroot-thoran" fill="rgba(244, 63, 94, 0.2)">
+        <rect x="40" y="45" width="12" height="3" fill="#be123c" rx="1" transform="rotate(30 46 46.5)" />
+        <rect x="52" y="50" width="12" height="3" fill="#be123c" rx="1" transform="rotate(-20 58 51.5)" />
+        <circle cx="48" cy="52" r="1.5" fill="#fce7f3" opacity="0.6" />
+    </Bowl>
+);
+
+export const SnakeGourdThoranVisual: React.FC<VisualProps> = () => (
+    <Bowl id="snake-gourd" fill="rgba(220, 252, 231, 0.3)">
+        <path d="M40 48 Q 50 45, 60 48" stroke="#86efac" strokeWidth="3" fill="none" strokeLinecap="round" />
+        <path d="M42 52 Q 52 49, 62 52" stroke="#86efac" strokeWidth="3" fill="none" strokeLinecap="round" />
+        <circle cx="50" cy="50" r="1.5" fill="#f0fdf4" opacity="0.6" />
+    </Bowl>
+);
+
+export const BitterGourdVisual: React.FC<VisualProps> = () => (
+    <Bowl id="bitter-gourd" fill="rgba(20, 83, 45, 0.1)">
+        <ellipse cx="45" cy="48" rx="7" ry="3" fill="#166534" transform="rotate(45 45 48)" />
+        <ellipse cx="55" cy="52" rx="7" ry="3" fill="#166534" transform="rotate(-45 55 52)" />
+        <path d="M45 48 L 55 52" stroke="#14532d" strokeWidth="1" opacity="0.5" />
+    </Bowl>
+);
+
+export const IvyGourdVisual: React.FC<VisualProps> = () => (
+    <Bowl id="ivy-gourd" fill="rgba(22, 101, 52, 0.1)">
+        <ellipse cx="48" cy="48" rx="6" ry="2.5" fill="#15803d" transform="rotate(10 48 48)" />
+        <ellipse cx="52" cy="52" rx="6" ry="2.5" fill="#15803d" transform="rotate(-10 52 52)" />
+    </Bowl>
+);
+
+export const CabbageThoranVisual: React.FC<VisualProps> = () => (
+    <Bowl id="cabbage-thoran" fill="rgba(220, 252, 231, 0.4)">
+        <rect x="40" y="45" width="15" height="3" fill="#86efac" rx="1" transform="rotate(25 47.5 46.5)" />
+        <rect x="50" y="50" width="15" height="3" fill="#86efac" rx="1" transform="rotate(-15 57.5 51.5)" />
+        <rect x="35" y="55" width="15" height="3" fill="#a3e635" rx="1" transform="rotate(45 42.5 56.5)" />
+        <rect x="55" y="55" width="15" height="3" fill="#a3e635" rx="1" transform="rotate(-35 62.5 56.5)" />
+        <circle cx="48" cy="52" r="1.5" fill="#f8fafc" opacity="0.8" />
+        <circle cx="55" cy="48" r="1.5" fill="#f8fafc" opacity="0.8" />
+    </Bowl>
+);
+
+export const AvialVisual: React.FC<VisualProps> = () => (
+    <Bowl id="avial" fill="rgba(254, 252, 232, 0.6)">
+        <rect x="38" y="46" width="8" height="4" fill="#fb923c" rx="1" transform="rotate(15 42 48)" />
+        <rect x="50" y="48" width="8" height="4" fill="#4ade80" rx="1" transform="rotate(-10 54 50)" />
+        <ellipse cx="45" cy="55" rx="4" ry="3" fill="#fef3c7" transform="rotate(20 45 55)" />
+        <ellipse cx="58" cy="53" rx="4" ry="3" fill="#fef3c7" transform="rotate(-15 58 53)" />
+        <circle cx="50" cy="50" r="1.5" fill="#f8fafc" opacity="0.7" />
+    </Bowl>
 );

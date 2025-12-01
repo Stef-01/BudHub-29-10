@@ -696,4 +696,424 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             negative: "Too many carbs! This will spike my blood sugar!",
         }
     },
+    {
+        id: 'sara_wholegrains',
+        name: 'Sara',
+        visuals: {
+            default: visuals.CharacterAH,
+            happy: visuals.CharacterAHHappy,
+            sad: visuals.CharacterAHSad,
+        },
+        order: {
+            description: "I'm pre-diabetic, love whole grains! Millet Rice - ancient grains, low GI!",
+            plateSize: 'Regular',
+            diabetesMode: 'Balanced',
+            required_items: ['brown_rice'],
+        },
+        dialogue: {
+            intro: "Looking for diabetes-friendly whole grains!",
+            positive: "These whole grains are amazing for my blood sugar!",
+            neutral: "Good, but not sure about the glycemic load.",
+            negative: "This doesn't feel like whole grains to me!",
+        }
+    },
+    {
+        id: 'omar_protein',
+        name: 'Omar',
+        visuals: {
+            default: visuals.CharacterAI,
+            happy: visuals.CharacterAIHappy,
+            sad: visuals.CharacterAISad,
+        },
+        order: {
+            description: "Diabetic athlete! Toor Dal - protein-packed, slow-release energy!",
+            plateSize: 'Hearty',
+            diabetesMode: 'Low-Carb',
+            required_items: ['dal_tadka'],
+        },
+        dialogue: {
+            intro: "Need diabetes-safe protein for my workout!",
+            positive: "Perfect protein! This won't spike my sugar during training!",
+            neutral: "Decent, but could use more protein.",
+            negative: "Not enough protein and too many carbs!",
+        }
+    },
+    {
+        id: 'fatima_light',
+        name: 'Fatima',
+        visuals: {
+            default: visuals.CharacterAJ,
+            happy: visuals.CharacterAJHappy,
+            sad: visuals.CharacterAJSad,
+        },
+        order: {
+            description: "I'm diabetic, watching portions. Light Cucumber Raita - cooling and blood sugar friendly!",
+            plateSize: 'Light',
+            diabetesMode: 'Balanced',
+            required_items: ['raita'],
+        },
+        dialogue: {
+            intro: "Just a light diabetes-safe snack please!",
+            positive: "This is perfect! Light and won't affect my sugar!",
+            neutral: "A bit more than I wanted.",
+            negative: "This is too heavy for what I need!",
+        }
+    },
+    {
+        id: 'chen_veggie',
+        name: 'Chen',
+        visuals: {
+            default: visuals.CharacterAK,
+            happy: visuals.CharacterAKHappy,
+            sad: visuals.CharacterAKSad,
+        },
+        order: {
+            description: "Pre-diabetic vegetable enthusiast! Bhindi Masala - fiber-rich, low carb!",
+            plateSize: 'Regular',
+            diabetesMode: 'Balanced',
+            required_items: ['bhindi_masala'],
+        },
+        dialogue: {
+            intro: "I need diabetes-friendly vegetables!",
+            positive: "So many veggies! Perfect for my blood sugar!",
+            neutral: "Good vegetables, but portion seems off.",
+            negative: "Where are the low-carb vegetables?!",
+        }
+    },
+    {
+        id: 'elena_breakfast',
+        name: 'Elena',
+        visuals: {
+            default: visuals.CharacterAL,
+            happy: visuals.CharacterALHappy,
+            sad: visuals.CharacterALSad,
+        },
+        order: {
+            description: "Morning! I'm diabetic. Poha - light breakfast, won't spike sugar!",
+            plateSize: 'Light',
+            diabetesMode: 'Balanced',
+            required_items: ['poha'],
+        },
+        dialogue: {
+            intro: "Need a diabetes-safe light breakfast!",
+            positive: "Perfect morning meal! Light and blood sugar friendly!",
+            neutral: "A bit heavy for early morning.",
+            negative: "This will spike my sugar too early!",
+        }
+    },
+    {
+        id: 'hassan_hearty',
+        name: 'Hassan',
+        visuals: {
+            default: visuals.CharacterAM,
+            happy: visuals.CharacterAMHappy,
+            sad: visuals.CharacterAMSad,
+        },
+        order: {
+            description: "I'm diabetic with big appetite! Hearty Roti - whole wheat, fiber-rich!",
+            plateSize: 'Hearty',
+            diabetesMode: 'Balanced',
+            required_items: ['roti'],
+        },
+        dialogue: {
+            intro: "I need hearty diabetes-friendly bread!",
+            positive: "This whole wheat is perfect! Filling and blood sugar safe!",
+            neutral: "Good, but might spike my sugar a bit.",
+            negative: "Too refined! This will spike my blood sugar!",
+        }
+    },
+    {
+        id: 'ling_traditional',
+        name: 'Ling',
+        visuals: {
+            default: visuals.CharacterAN,
+            happy: visuals.CharacterANHappy,
+            sad: visuals.CharacterANSad,
+        },
+        order: {
+            description: "Diabetic craving comfort food. Sambar - traditional and blood sugar friendly!",
+            plateSize: 'Regular',
+            diabetesMode: 'Balanced',
+            required_items: ['sambar'],
+        },
+        dialogue: {
+            intro: "I need traditional diabetes-safe comfort food!",
+            positive: "This tastes like home AND is good for my sugar!",
+            neutral: "Traditional, but not sure about my blood sugar.",
+            negative: "This doesn't feel diabetes-friendly!",
+        }
+    },
+    {
+        id: 'marcus_lowcarb',
+        name: 'Marcus',
+        visuals: {
+            default: visuals.CharacterAO,
+            happy: visuals.CharacterAOHappy,
+            sad: visuals.CharacterAOSad,
+        },
+        order: {
+            description: "Pre-diabetic on keto! Palak Paneer - high fat, low carb, perfect!",
+            plateSize: 'Regular',
+            diabetesMode: 'Low-Carb',
+            required_items: ['palak_paneer'],
+        },
+        dialogue: {
+            intro: "I need strict low-carb diabetes-safe food!",
+            positive: "Perfect macros! Low carb and won't spike my sugar!",
+            neutral: "Good, but worried about hidden carbs.",
+            negative: "Too many carbs! This isn't keto-friendly!",
+        }
+    },
+    {
+        id: 'sofia_fiber',
+        name: 'Sofia',
+        visuals: {
+            default: visuals.CharacterAP,
+            happy: visuals.CharacterAPHappy,
+            sad: visuals.CharacterAPSad,
+        },
+        order: {
+            description: "I'm diabetic, doctor says more fiber! Sprouts Salad - fiber bomb!",
+            plateSize: 'Regular',
+            diabetesMode: 'Balanced',
+            required_items: ['sprouts_salad'],
+        },
+        dialogue: {
+            intro: "I need high-fiber diabetes-friendly food!",
+            positive: "So much fiber! Perfect for my blood sugar control!",
+            neutral: "Good, but could use more fiber.",
+            negative: "Not enough fiber for my needs!",
+        }
+    },
+    {
+        id: 'ahmed_spice',
+        name: 'Ahmed',
+        visuals: {
+            default: visuals.CharacterAQ,
+            happy: visuals.CharacterAQHappy,
+            sad: visuals.CharacterAQSad,
+        },
+        order: {
+            description: "Diabetic who loves spice! Baingan Bharta - spicy and low carb!",
+            plateSize: 'Regular',
+            diabetesMode: 'Balanced',
+            required_items: ['baingan_bharta'],
+        },
+        dialogue: {
+            intro: "Give me spicy diabetes-friendly food!",
+            positive: "Perfect spice level and blood sugar friendly!",
+            neutral: "Good flavor, but portion seems off.",
+            negative: "Not spicy enough and too many carbs!",
+        }
+    },
+    {
+        id: 'nina_simple',
+        name: 'Nina',
+        visuals: {
+            default: visuals.CharacterAR,
+            happy: visuals.CharacterARHappy,
+            sad: visuals.CharacterARSad,
+        },
+        order: {
+            description: "I'm diabetic, keep it simple! Plain Idli - steamed, no oil, low GI!",
+            plateSize: 'Light',
+            diabetesMode: 'Balanced',
+            required_items: ['idli_plain'],
+        },
+        dialogue: {
+            intro: "Simple diabetes-safe food please!",
+            positive: "Simple and perfect for my blood sugar!",
+            neutral: "Good, but maybe too simple.",
+            negative: "I said simple AND diabetes-safe!",
+        }
+    },
+    {
+        id: 'raj_protein_rich',
+        name: 'Rajesh',
+        visuals: {
+            default: visuals.CharacterAS,
+            happy: visuals.CharacterASHappy,
+            sad: visuals.CharacterASSad,
+        },
+        order: {
+            description: "Pre-diabetic bodybuilder! Chicken Curry - lean protein, muscle fuel!",
+            plateSize: 'Hearty',
+            diabetesMode: 'Low-Carb',
+            required_items: ['chicken_curry'],
+        },
+        dialogue: {
+            intro: "Need diabetes-safe lean protein!",
+            positive: "Lean protein perfection! Won't spike my sugar!",
+            neutral: "Good protein, but sauce has carbs.",
+            negative: "Where's the protein?! Too many carbs!",
+        }
+    },
+    {
+        id: 'yuki_balanced',
+        name: 'Yuki',
+        visuals: {
+            default: visuals.CharacterAT,
+            happy: visuals.CharacterATHappy,
+            sad: visuals.CharacterATSad,
+        },
+        order: {
+            description: "Diabetic seeking balance. Mixed Veg Curry - variety of nutrients!",
+            plateSize: 'Regular',
+            diabetesMode: 'Balanced',
+            required_items: ['mixed_veg_curry'],
+        },
+        dialogue: {
+            intro: "I need balanced diabetes-friendly meal!",
+            positive: "Perfect balance! Great for my blood sugar!",
+            neutral: "Close to balanced, but something's off.",
+            negative: "This is way out of balance!",
+        }
+    },
+    {
+        id: 'diego_energy',
+        name: 'Diego',
+        visuals: {
+            default: visuals.CharacterAU,
+            happy: visuals.CharacterAUHappy,
+            sad: visuals.CharacterAUSad,
+        },
+        order: {
+            description: "Pre-diabetic with long shift! Brown Rice - sustained energy, low GI!",
+            plateSize: 'Hearty',
+            diabetesMode: 'Balanced',
+            required_items: ['brown_rice'],
+        },
+        dialogue: {
+            intro: "Need diabetes-safe sustained energy!",
+            positive: "Perfect! This will keep me going without sugar spikes!",
+            neutral: "Good, but worried about energy crash.",
+            negative: "This will crash my energy AND spike my sugar!",
+        }
+    },
+    {
+        id: 'amara_traditional',
+        name: 'Amara',
+        visuals: {
+            default: visuals.CharacterAV,
+            happy: visuals.CharacterAVHappy,
+            sad: visuals.CharacterAVSad,
+        },
+        order: {
+            description: "I'm diabetic missing home. Dal Tadka - simple, traditional, blood sugar safe!",
+            plateSize: 'Regular',
+            diabetesMode: 'Balanced',
+            required_items: ['dal_tadka'],
+        },
+        dialogue: {
+            intro: "I need traditional diabetes-safe dal!",
+            positive: "Tastes like home and good for my sugar!",
+            neutral: "Traditional, but not quite right.",
+            negative: "This isn't traditional OR diabetes-safe!",
+        }
+    },
+    {
+        id: 'kai_veggie_lover',
+        name: 'Kai',
+        visuals: {
+            default: visuals.CharacterAW,
+            happy: visuals.CharacterAWHappy,
+            sad: visuals.CharacterAWSad,
+        },
+        order: {
+            description: "Pre-diabetic vegetable fanatic! Aloo Gobi - veggies galore!",
+            plateSize: 'Hearty',
+            diabetesMode: 'Balanced',
+            required_items: ['aloo_gobi'],
+        },
+        dialogue: {
+            intro: "Load me up with diabetes-safe vegetables!",
+            positive: "So many vegetables! Perfect for my blood sugar!",
+            neutral: "Good veggies, but too many potatoes.",
+            negative: "Where are the low-carb vegetables?!",
+        }
+    },
+    {
+        id: 'zara_light_protein',
+        name: 'Zara',
+        visuals: {
+            default: visuals.CharacterAX,
+            happy: visuals.CharacterAXHappy,
+            sad: visuals.CharacterAXSad,
+        },
+        order: {
+            description: "Diabetic, light but protein-rich! Masoor Dal - light lentils, high protein!",
+            plateSize: 'Light',
+            diabetesMode: 'Low-Carb',
+            required_items: ['masoor_dal'],
+        },
+        dialogue: {
+            intro: "Light, protein-rich, diabetes-safe please!",
+            positive: "Light yet protein-packed! Perfect for my sugar!",
+            neutral: "Decent, but portion or protein is off.",
+            negative: "Too heavy OR not enough protein!",
+        }
+    },
+    {
+        id: 'lucas_wholesome',
+        name: 'Lucas',
+        visuals: {
+            default: visuals.CharacterAY,
+            happy: visuals.CharacterAYHappy,
+            sad: visuals.CharacterAYSad,
+        },
+        order: {
+            description: "I'm pre-diabetic wellness focused. Moong Dal Tadka - wholesome and blood sugar friendly!",
+            plateSize: 'Regular',
+            diabetesMode: 'Balanced',
+            required_items: ['moong_dal_tadka'],
+        },
+        dialogue: {
+            intro: "Looking for wholesome diabetes-safe food!",
+            positive: "So wholesome! Perfect for my blood sugar!",
+            neutral: "Healthy, but not sure about my sugar.",
+            negative: "This doesn't feel wholesome OR diabetes-safe!",
+        }
+    },
+    {
+        id: 'maya_curious',
+        name: 'Maya',
+        visuals: {
+            default: visuals.CharacterAZ,
+            happy: visuals.CharacterAZHappy,
+            sad: visuals.CharacterAZSad,
+        },
+        order: {
+            description: "Diabetic trying new things! Rajma Masala - kidney beans, unique and blood sugar safe!",
+            plateSize: 'Regular',
+            diabetesMode: 'Balanced',
+            required_items: ['rajma_masala'],
+        },
+        dialogue: {
+            intro: "Surprise me with diabetes-friendly food!",
+            positive: "Unique and perfect for my blood sugar!",
+            neutral: "Interesting, but not sure about my sugar.",
+            negative: "This is boring AND not diabetes-safe!",
+        }
+    },
+    {
+        id: 'ibrahim_hearty_protein',
+        name: 'Ibrahim',
+        visuals: {
+            default: visuals.CharacterBA,
+            happy: visuals.CharacterBAHappy,
+            sad: visuals.CharacterBASad,
+        },
+        order: {
+            description: "I'm diabetic with big appetite! Chana Masala - hearty protein, blood sugar safe!",
+            plateSize: 'Hearty',
+            diabetesMode: 'Low-Carb',
+            required_items: ['chana_masala'],
+        },
+        dialogue: {
+            intro: "I need hearty diabetes-safe protein!",
+            positive: "Hearty AND my blood sugar will stay stable!",
+            neutral: "Filling, but might spike my sugar.",
+            negative: "This will mess with my blood sugar!",
+        }
+    },
 ];

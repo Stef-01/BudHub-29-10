@@ -1,6 +1,6 @@
 // components/UnifiedNutrientGame.tsx
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { GameQuestion } from '../types';
 import { useGameScores } from '../contexts/GameScoresContext';
 import { useGamification } from '../contexts/GamificationContext';
@@ -16,8 +16,10 @@ import {
   type NutrientChallengeAttempt,
 } from '../services/supabaseLogger';
 import { trackGameStart, trackNutrientChallengeAttempt, trackGameComplete } from '../lib/analytics';
+import { generateAIFeedback, calculatePercentile } from '../services/AIFeedbackGenerator';
 
 const ROUND_TIME = 15; // seconds
+const MAX_QUESTIONS = 10;
 
 interface UnifiedNutrientGameProps {
   onExit: () => void;
@@ -40,6 +42,7 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
   const [isRevealed, setIsRevealed] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
   const [currentMetric, setCurrentMetric] = useState<'high_protein' | 'high_fiber' | 'low_carb' | 'diabetic_friendly'>('high_protein');
+  const [questionsAnswered, setQuestionsAnswered] = useState(0);
 
   // Supabase tracking
   const sessionId = useRef(crypto.randomUUID());
@@ -67,6 +70,11 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
   }, [userId]);
 
   const nextQuestion = useCallback(() => {
+    if (questionsAnswered >= MAX_QUESTIONS) {
+      setIsGameOver(true);
+      return;
+    }
+
     console.log('[UnifiedNutrientGame] Attempting to generate question...');
     console.log('[UnifiedNutrientGame] Total recipes in cookbook:', recipes.length);
 
@@ -109,11 +117,14 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
       // Not enough recipes to continue, end the game.
       setIsGameOver(true);
     }
-  }, [recipes]);
+  }, [recipes, questionsAnswered]);
 
   useEffect(() => {
-    nextQuestion();
-  }, [nextQuestion]);
+    // Initial load
+    if (!question && !isGameOver && questionsAnswered === 0) {
+      nextQuestion();
+    }
+  }, [nextQuestion, question, isGameOver, questionsAnswered]);
 
   useEffect(() => {
     if (isRevealed || isGameOver) return;
@@ -122,6 +133,8 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
       // Time's up
       setIsRevealed(true);
       setLives(prev => prev - 1);
+      setQuestionsAnswered(prev => prev + 1);
+
       setTimeout(() => {
         if (lives - 1 > 0) {
           nextQuestion();
@@ -144,6 +157,7 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
 
     setSelectedAnswerId(recipeId);
     setIsRevealed(true);
+    setQuestionsAnswered(prev => prev + 1);
 
     const isCorrect = recipeId === question?.correctAnswerId;
     const points = isCorrect ? 10 + timer : 0;
@@ -206,9 +220,10 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
   const handlePlayAgain = () => {
     setScore(0);
     setLives(3);
+    setQuestionsAnswered(0);
     setIsGameOver(false);
     setQuestion(null);
-    nextQuestion();
+    // nextQuestion will be called by useEffect
   };
 
   const handleExit = () => {
@@ -241,7 +256,11 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
     onExit();
   };
 
-  if (!question) {
+  // Calculate extra stats for Game Over
+  const percentile = useMemo(() => calculatePercentile(score, 'nutrient_challenge'), [score]);
+  const aiFeedback = useMemo(() => generateAIFeedback('nutrient_challenge', { score }), [score]);
+
+  if (!question && !isGameOver) {
     return (
       <div className="text-center p-8">
         <h3 className="text-xl font-semibold">Loading Game...</h3>
@@ -265,7 +284,7 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
       <div className="flex justify-between items-center mb-4 bg-white/80 p-4 rounded-xl shadow-sm">
         <div>Score: <span className="font-bold text-xl">{score}</span></div>
         <div>Lives: <span className="font-bold text-xl">{'❤️'.repeat(lives)}</span></div>
-        <div>Time: <span className="font-bold text-xl">{timer}</span></div>
+        <div>Round: <span className="font-bold text-xl">{Math.min(questionsAnswered + 1, MAX_QUESTIONS)}/{MAX_QUESTIONS}</span></div>
       </div>
 
       <div className="relative w-full bg-gray-200 rounded-full h-2.5 mb-4">
@@ -276,29 +295,35 @@ const UnifiedNutrientGame: React.FC<UnifiedNutrientGameProps> = ({ onExit }) => 
       </div>
 
       {/* Challenge Text */}
-      <div className="mb-6 text-center">
-        <h3 className="text-2xl font-bold text-emerald-700 bg-gradient-to-r from-emerald-50 to-green-50 p-4 rounded-xl shadow-md">
-          {question.challenge}
-        </h3>
-      </div>
+      {question && (
+        <div className="mb-6 text-center">
+          <h3 className="text-2xl font-bold text-emerald-700 bg-gradient-to-r from-emerald-50 to-green-50 p-4 rounded-xl shadow-md">
+            {question.challenge}
+          </h3>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {question.options.map(recipe => (
-          <GameRecipeCard
-            key={recipe.id}
-            recipe={recipe}
-            onClick={handleAnswerClick}
-            isSelected={selectedAnswerId === recipe.id}
-            isCorrect={question.correctAnswerId === recipe.id}
-            isRevealed={isRevealed}
-            gameMode={currentMetric}
-          />
-        ))}
-      </div>
+      {question && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {question.options.map(recipe => (
+            <GameRecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              onClick={handleAnswerClick}
+              isSelected={selectedAnswerId === recipe.id}
+              isCorrect={question.correctAnswerId === recipe.id}
+              isRevealed={isRevealed}
+              gameMode={currentMetric}
+            />
+          ))}
+        </div>
+      )}
 
       {isGameOver && (
         <GameOverModal
           score={score}
+          percentile={percentile}
+          aiFeedback={aiFeedback}
           onPlayAgain={handlePlayAgain}
           onExit={handleExit}
         />

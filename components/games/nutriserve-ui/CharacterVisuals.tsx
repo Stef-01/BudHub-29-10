@@ -75,9 +75,9 @@ export const CharacterCHappy: React.FC = () => (
   <svg viewBox="0 0 100 100">
     <circle cx="50" cy="30" r="20" fill="#c18c5d" />
     <rect x="30" y="50" width="40" height="50" rx="5" fill="#4a7c59" />
-    <path d="M38 28 L 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M58 28 L 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M45 40 Q 50 45 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M38 28 L 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 L 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 45 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
     <rect x="40" y="20" width="20" height="2" fill="black" opacity="0.5" />
   </svg>
 );
@@ -87,7 +87,7 @@ export const CharacterCSad: React.FC = () => (
     <rect x="30" y="50" width="40" height="50" rx="5" fill="#4a7c59" />
     <circle cx="40" cy="30" r="3" fill="black" />
     <circle cx="60" cy="30" r="3" fill="black" />
-    <path d="M45 42 Q 50 38 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M45 42 Q 50 38 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
     <rect x="40" y="20" width="20" height="2" fill="black" opacity="0.5" />
   </svg>
 );
@@ -1052,5 +1052,634 @@ export const CharacterAGSad: React.FC = () => (
     <circle cx="60" cy="30" r="3" fill="black" />
     <path d="M45 42 Q 50 35 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
     <rect x="38" y="22" width="24" height="2" fill="#b8860b" />
+  </svg>
+);
+
+// --- Character AH ---
+export const CharacterAH: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#a0522d" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#00bfff" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="50" cy="20" r="8" fill="#654321" />
+  </svg>
+);
+export const CharacterAHHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#a0522d" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#00bfff" />
+    <path d="M38 28 Q 40 25 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 Q 60 25 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 48 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="50" cy="20" r="8" fill="#654321" />
+  </svg>
+);
+export const CharacterAHSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#a0522d" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#00bfff" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 35 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="50" cy="20" r="8" fill="#654321" />
+  </svg>
+);
+
+// --- Character AI ---
+export const CharacterAI: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f5f5f5" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff6347" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 L 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M35 25 Q 40 20 45 25 M55 25 Q 60 20 65 25" stroke="#333" strokeWidth="2" fill="none" />
+  </svg>
+);
+export const CharacterAIHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f5f5f5" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff6347" />
+    <path d="M38 28 L 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 L 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 45 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M35 25 Q 40 20 45 25 M55 25 Q 60 20 65 25" stroke="#333" strokeWidth="2" fill="none" />
+  </svg>
+);
+export const CharacterAISad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f5f5f5" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff6347" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 38 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M35 25 Q 40 20 45 25 M55 25 Q 60 20 65 25" stroke="#333" strokeWidth="2" fill="none" />
+  </svg>
+);
+
+// --- Character AJ ---
+export const CharacterAJ: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#d2b48c" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#9932cc" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <rect x="42" y="18" width="16" height="4" fill="#9932cc" rx="2" />
+  </svg>
+);
+export const CharacterAJHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#d2b48c" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#9932cc" />
+    <path d="M38 28 A 5 5 0 0 1 42 28" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M58 28 A 5 5 0 0 1 62 28" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M45 40 A 10 10 0 0 0 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <rect x="42" y="18" width="16" height="4" fill="#9932cc" rx="2" />
+  </svg>
+);
+export const CharacterAJSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#d2b48c" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#9932cc" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 A 10 10 0 0 1 55 42" stroke="black" fill="none" strokeWidth="1.5" />
+    <rect x="42" y="18" width="16" height="4" fill="#9932cc" rx="2" />
+  </svg>
+);
+
+// --- Character AK ---
+export const CharacterAK: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#8b7355" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#00fa9a" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M40 22 L 35 18 M60 22 L 65 18" stroke="#654321" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+export const CharacterAKHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#8b7355" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#00fa9a" />
+    <path d="M38 28 Q 40 26 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 Q 60 26 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 46 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M40 22 L 35 18 M60 22 L 65 18" stroke="#654321" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+export const CharacterAKSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#8b7355" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#00fa9a" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 36 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M40 22 L 35 18 M60 22 L 65 18" stroke="#654321" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+// --- Character AL ---
+export const CharacterAL: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffefd5" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff1493" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 L 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="38" cy="24" r="4" fill="#ff69b4" />
+    <circle cx="62" cy="24" r="4" fill="#ff69b4" />
+  </svg>
+);
+export const CharacterALHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffefd5" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff1493" />
+    <path d="M38 28 L 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 L 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 45 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="38" cy="24" r="4" fill="#ff69b4" />
+    <circle cx="62" cy="24" r="4" fill="#ff69b4" />
+  </svg>
+);
+export const CharacterALSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffefd5" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff1493" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 38 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="38" cy="24" r="4" fill="#ff69b4" />
+    <circle cx="62" cy="24" r="4" fill="#ff69b4" />
+  </svg>
+);
+
+// --- Character AM ---
+export const CharacterAM: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#cd5c5c" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#4b0082" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <rect x="40" y="20" width="20" height="3" fill="#8b4513" />
+  </svg>
+);
+export const CharacterAMHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#cd5c5c" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#4b0082" />
+    <path d="M38 28 Q 40 25 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 Q 60 25 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 48 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="40" y="20" width="20" height="3" fill="#8b4513" />
+  </svg>
+);
+export const CharacterAMSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#cd5c5c" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#4b0082" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 35 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="40" y="20" width="20" height="3" fill="#8b4513" />
+  </svg>
+);
+
+// --- Character AN ---
+export const CharacterAN: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f0e68c" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#008b8b" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="50" cy="22" r="6" fill="#daa520" />
+  </svg>
+);
+export const CharacterANHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f0e68c" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#008b8b" />
+    <path d="M38 28 A 5 5 0 0 1 42 28" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M58 28 A 5 5 0 0 1 62 28" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M45 40 A 10 10 0 0 0 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="50" cy="22" r="6" fill="#daa520" />
+  </svg>
+);
+export const CharacterANSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f0e68c" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#008b8b" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 A 10 10 0 0 1 55 42" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="50" cy="22" r="6" fill="#daa520" />
+  </svg>
+);
+
+// --- Character AO ---
+export const CharacterAO: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#dda0dd" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#556b2f" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 L 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M35 20 L 50 16 L 65 20" stroke="#8b008b" strokeWidth="2" fill="none" strokeLinecap="round" />
+  </svg>
+);
+export const CharacterAOHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#dda0dd" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#556b2f" />
+    <path d="M38 28 L 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 L 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 45 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M35 20 L 50 16 L 65 20" stroke="#8b008b" strokeWidth="2" fill="none" strokeLinecap="round" />
+  </svg>
+);
+export const CharacterAOSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#dda0dd" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#556b2f" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 38 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M35 20 L 50 16 L 65 20" stroke="#8b008b" strokeWidth="2" fill="none" strokeLinecap="round" />
+  </svg>
+);
+
+// --- Character AP ---
+export const CharacterAP: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffa07a" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#1e90ff" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <rect x="44" y="32" width="12" height="2" fill="black" opacity="0.4" rx="1" />
+  </svg>
+);
+export const CharacterAPHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffa07a" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#1e90ff" />
+    <path d="M38 28 Q 40 26 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 Q 60 26 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 46 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="44" y="32" width="12" height="2" fill="black" opacity="0.4" rx="1" />
+  </svg>
+);
+export const CharacterAPSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffa07a" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#1e90ff" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 36 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="44" y="32" width="12" height="2" fill="black" opacity="0.4" rx="1" />
+  </svg>
+);
+
+// --- Character AQ ---
+export const CharacterAQ: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#98fb98" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#8b4513" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="35" cy="28" r="7" fill="#228b22" />
+    <circle cx="65" cy="28" r="7" fill="#228b22" />
+  </svg>
+);
+export const CharacterAQHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#98fb98" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#8b4513" />
+    <path d="M38 28 Q 40 25 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 Q 60 25 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 48 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="35" cy="28" r="7" fill="#228b22" />
+    <circle cx="65" cy="28" r="7" fill="#228b22" />
+  </svg>
+);
+export const CharacterAQSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#98fb98" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#8b4513" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 35 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="35" cy="28" r="7" fill="#228b22" />
+    <circle cx="65" cy="28" r="7" fill="#228b22" />
+  </svg>
+);
+
+// --- Character AR ---
+export const CharacterAR: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f4a460" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#dc143c" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 L 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <rect x="38" y="22" width="24" height="3" fill="#8b4513" />
+  </svg>
+);
+export const CharacterARHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f4a460" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#dc143c" />
+    <path d="M38 28 L 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 L 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 45 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="38" y="22" width="24" height="3" fill="#8b4513" />
+  </svg>
+);
+export const CharacterARSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f4a460" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#dc143c" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 38 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="38" y="22" width="24" height="3" fill="#8b4513" />
+  </svg>
+);
+
+// --- Character AS ---
+export const CharacterAS: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffb6c1" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#2f4f4f" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M35 22 Q 45 18 50 22" fill="#ff1493" />
+  </svg>
+);
+export const CharacterASHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffb6c1" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#2f4f4f" />
+    <path d="M38 28 A 5 5 0 0 1 42 28" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M58 28 A 5 5 0 0 1 62 28" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M45 40 A 10 10 0 0 0 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M35 22 Q 45 18 50 22" fill="#ff1493" />
+  </svg>
+);
+export const CharacterASSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffb6c1" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#2f4f4f" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 A 10 10 0 0 1 55 42" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M35 22 Q 45 18 50 22" fill="#ff1493" />
+  </svg>
+);
+
+// --- Character AT ---
+export const CharacterAT: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#b0c4de" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff8c00" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="50" cy="20" r="7" fill="#4682b4" />
+  </svg>
+);
+export const CharacterATHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#b0c4de" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff8c00" />
+    <path d="M38 28 Q 40 26 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 Q 60 26 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 46 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="50" cy="20" r="7" fill="#4682b4" />
+  </svg>
+);
+export const CharacterATSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#b0c4de" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff8c00" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 36 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="50" cy="20" r="7" fill="#4682b4" />
+  </svg>
+);
+
+// --- Character AU ---
+export const CharacterAU: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#fafad2" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#8b008b" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 L 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M40 24 L 35 20 M60 24 L 65 20" stroke="#daa520" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+export const CharacterAUHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#fafad2" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#8b008b" />
+    <path d="M38 28 L 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 L 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 45 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M40 24 L 35 20 M60 24 L 65 20" stroke="#daa520" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+export const CharacterAUSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#fafad2" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#8b008b" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 38 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M40 24 L 35 20 M60 24 L 65 20" stroke="#daa520" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+// --- Character AV ---
+export const CharacterAV: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#c0c0c0" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#006400" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <rect x="42" y="18" width="16" height="4" fill="#808080" rx="2" />
+  </svg>
+);
+export const CharacterAVHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#c0c0c0" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#006400" />
+    <path d="M38 28 Q 40 25 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 Q 60 25 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 48 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="42" y="18" width="16" height="4" fill="#808080" rx="2" />
+  </svg>
+);
+export const CharacterAVSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#c0c0c0" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#006400" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 35 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="42" y="18" width="16" height="4" fill="#808080" rx="2" />
+  </svg>
+);
+
+// --- Character AW ---
+export const CharacterAW: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f08080" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#4169e1" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="50" cy="24" r="4" fill="#ff6347" />
+  </svg>
+);
+export const CharacterAWHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f08080" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#4169e1" />
+    <path d="M38 28 A 5 5 0 0 1 42 28" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M58 28 A 5 5 0 0 1 62 28" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M45 40 A 10 10 0 0 0 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="50" cy="24" r="4" fill="#ff6347" />
+  </svg>
+);
+export const CharacterAWSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#f08080" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#4169e1" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 A 10 10 0 0 1 55 42" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M38 28 L 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 L 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 45 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="36" cy="22" r="5" fill="#add8e6" />
+    <circle cx="64" cy="22" r="5" fill="#add8e6" />
+  </svg>
+);
+export const CharacterAXSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#e0ffff" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#ff4500" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 38 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="36" cy="22" r="5" fill="#add8e6" />
+    <circle cx="64" cy="22" r="5" fill="#add8e6" />
+  </svg>
+);
+
+// --- Character AY ---
+export const CharacterAY: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#fffacd" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#800000" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <path d="M35 18 Q 45 14 55 18 L 65 18" stroke="#f0e68c" strokeWidth="2" fill="none" />
+  </svg>
+);
+export const CharacterAYHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#fffacd" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#800000" />
+    <path d="M38 28 Q 40 26 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 Q 60 26 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 46 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M35 18 Q 45 14 55 18 L 65 18" stroke="#f0e68c" strokeWidth="2" fill="none" />
+  </svg>
+);
+export const CharacterAYSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#fffacd" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#800000" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 36 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M35 18 Q 45 14 55 18 L 65 18" stroke="#f0e68c" strokeWidth="2" fill="none" />
+  </svg>
+);
+
+// --- Character AZ ---
+export const CharacterAZ: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffc0cb" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#2f4f4f" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 Q 50 42 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <rect x="40" y="20" width="20" height="3" fill="#ff69b4" />
+  </svg>
+);
+export const CharacterAZHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffc0cb" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#2f4f4f" />
+    <path d="M38 28 Q 40 25 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 Q 60 25 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 48 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="40" y="20" width="20" height="3" fill="#ff69b4" />
+  </svg>
+);
+export const CharacterAZSad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#ffc0cb" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#2f4f4f" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 35 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="40" y="20" width="20" height="3" fill="#ff69b4" />
+  </svg>
+);
+
+// --- Character BA ---
+export const CharacterBA: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#deb887" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#20b2aa" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 40 L 55 40" stroke="black" fill="none" strokeWidth="1.5" />
+    <circle cx="50" cy="22" r="5" fill="#cd853f" />
+  </svg>
+);
+export const CharacterBAHappy: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#deb887" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#20b2aa" />
+    <path d="M38 28 L 42 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M58 28 L 62 28" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M45 40 Q 50 45 55 40" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="50" cy="22" r="5" fill="#cd853f" />
+  </svg>
+);
+export const CharacterBASad: React.FC = () => (
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="30" r="20" fill="#deb887" />
+    <rect x="30" y="50" width="40" height="50" rx="5" fill="#20b2aa" />
+    <circle cx="40" cy="30" r="3" fill="black" />
+    <circle cx="60" cy="30" r="3" fill="black" />
+    <path d="M45 42 Q 50 38 55 42" stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="50" cy="22" r="5" fill="#cd853f" />
   </svg>
 );

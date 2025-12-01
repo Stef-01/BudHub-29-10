@@ -31,46 +31,46 @@ const MealAnalysis: React.FC<MealAnalysisProps> = ({ totals, targets }) => {
   }, [showTooltip]);
   return (
     <div className="bg-white p-4 rounded-xl shadow-lg h-full flex flex-col">
-       <div className="mb-3">
-          <h2 className="text-lg font-bold text-slate-800">
-              Nutrition Analysis
-          </h2>
-       </div>
+      <div className="mb-3">
+        <h2 className="text-lg font-bold text-slate-800">
+          Nutrition Analysis
+        </h2>
+      </div>
 
-       {/* Macro Meters - 30% Larger (Again) */}
-       <div className="grid grid-cols-2 gap-3 mb-4">
-           <MacroMeter name="Cal" value={totals.calories_kcal} unit="kcal" target={targets.calories_kcal} mode="band" />
-           <MacroMeter name="Prot" value={totals.protein_g} unit="g" target={targets.protein_g} mode="min" />
-           <MacroMeter name="Carbs" value={totals.carbs_g} unit="g" target={targets.carbs_g} mode="max" />
-           <MacroMeter name="Fat" value={totals.fat_g} unit="g" target={targets.fat_g} mode="max" />
-           <MacroMeter name="Fiber" value={totals.fiber_g} unit="g" target={targets.fiber_g} mode="min" />
-           <MacroMeter name="Sodium" value={totals.sodium_mg} unit="mg" target={targets.sodium_mg} mode="max" />
-       </div>
+      {/* Macro Meters */}
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <MacroMeter name="Cal" value={totals.calories_kcal} unit="kcal" target={targets.calories_kcal} mode="band" />
+        <MacroMeter name="Protein" value={totals.protein_g} unit="g" target={targets.protein_g} mode="min" />
+        <MacroMeter name="Carbs" value={totals.carbs_g} unit="g" target={targets.carbs_g} mode="max" />
+        <MacroMeter name="Fat" value={totals.fat_g} unit="g" target={targets.fat_g} mode="max" />
+        <MacroMeter name="Fiber" value={totals.fiber_g} unit="g" target={targets.fiber_g} mode="min" />
+        <MacroMeter name="Sodium" value={totals.sodium_mg} unit="mg" target={targets.sodium_mg} mode="max" />
+      </div>
 
-       {/* Blood Sugar Levels Graph Below */}
-       <div className="flex-1 border-t border-slate-200 pt-2">
-         <div className="flex items-center gap-1 mb-1">
-           <h3 className="text-xs font-semibold text-slate-700">Blood Sugar Levels Over Time</h3>
-           <div ref={tooltipRef} className="relative">
-             <button
-               onClick={() => setShowTooltip(!showTooltip)}
-               className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-slate-500 hover:text-emerald-600 border border-slate-300 rounded-full hover:border-emerald-500 transition-colors"
-               title="Click to learn about blood sugar response"
-             >
-               ?
-             </button>
-             {showTooltip && (
-               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-lg z-50 animate-fade-in">
-                 <p className="font-semibold mb-1">Blood Sugar Response:</p>
-                 <p className="mb-1"><strong>High GI foods</strong> (white rice, sugar) cause rapid blood sugar spikes.</p>
-                 <p className="mb-1"><strong>Low GI foods</strong> (whole grains, fiber-rich) cause gradual rises.</p>
-                 <p><strong>Why it matters:</strong> Frequent spikes increase diabetes risk, cause energy crashes, and stress your body.</p>
-               </div>
-             )}
-           </div>
-         </div>
-         <GlycemicForecastGraph totalNutrients={totals} />
-       </div>
+      {/* Blood Sugar Levels Graph Below */}
+      <div className="flex-1 min-h-0 border-t border-slate-200 pt-2">
+        <div className="flex items-center gap-1 mb-1">
+          <h3 className="text-xs font-semibold text-slate-700">Blood Sugar Levels Over Time</h3>
+          <div ref={tooltipRef} className="relative">
+            <button
+              onClick={() => setShowTooltip(!showTooltip)}
+              className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-slate-500 hover:text-emerald-600 border border-slate-300 rounded-full hover:border-emerald-500 transition-colors"
+              title="Click to learn about blood sugar response"
+            >
+              ?
+            </button>
+            {showTooltip && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-lg z-50 animate-fade-in">
+                <p className="font-semibold mb-1">Blood Sugar Response:</p>
+                <p className="mb-1"><strong>High GI foods</strong> (white rice, sugar) cause rapid blood sugar spikes.</p>
+                <p className="mb-1"><strong>Low GI foods</strong> (whole grains, fiber-rich) cause gradual rises.</p>
+                <p><strong>Why it matters:</strong> Frequent spikes increase diabetes risk, cause energy crashes, and stress your body.</p>
+              </div>
+            )}
+          </div>
+        </div>
+        <GlycemicForecastGraph carbs={totals.carbs_g} fiber={totals.fiber_g} fat={totals.fat_g} />
+      </div>
     </div>
   );
 };

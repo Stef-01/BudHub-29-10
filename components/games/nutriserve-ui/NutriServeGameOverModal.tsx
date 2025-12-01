@@ -1,6 +1,8 @@
 // components/games/nutriserve-ui/NutriServeGameOverModal.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { NutrientStatus } from '../../../services/nutriserveUtils';
+import SocialShareButton from '../../SocialShareButton';
+import { generateAIFeedback, calculatePercentile } from '../../../services/AIFeedbackGenerator';
 
 interface MistakeData {
   nutrient: string;
@@ -63,9 +65,38 @@ const NutriServeGameOverModal: React.FC<NutriServeGameOverModalProps> = ({
   const perfectRounds = roundScores.filter(s => s >= 150).length;
   const avgScore = Math.round(roundScores.reduce((a, b) => a + b, 0) / roundScores.length);
 
+  const percentile = useMemo(() => calculatePercentile(score, 'nutriserve'), [score]);
+  const aiFeedback = useMemo(() => generateAIFeedback('nutriserve', { score, mistakes, totalRounds: roundScores.length }), [score, mistakes, roundScores]);
+
+  // Save score to localStorage for SWAAD Coach analysis
+  React.useEffect(() => {
+    try {
+      const savedScores = localStorage.getItem('nutriServeScores');
+      const scores = savedScores ? JSON.parse(savedScores) : [];
+      // Only add if it's a new score (simple check to avoid duplicates on re-render)
+      // In a real app, we'd use a unique game ID
+      const lastScore = scores[scores.length - 1];
+      if (lastScore !== score) {
+        scores.push(score);
+        // Keep last 20 scores
+        if (scores.length > 20) scores.shift();
+        localStorage.setItem('nutriServeScores', JSON.stringify(scores));
+
+        // Also save mistakes for analysis
+        const savedMistakes = localStorage.getItem('nutriServeMistakes');
+        const allMistakes: { date: string; mistakes: Record<string, MistakeData> }[] = savedMistakes ? JSON.parse(savedMistakes) : [];
+        allMistakes.push({ date: new Date().toISOString(), mistakes });
+        if (allMistakes.length > 10) allMistakes.shift();
+        localStorage.setItem('nutriServeMistakes', JSON.stringify(allMistakes));
+      }
+    } catch (e) {
+      console.error('Failed to save score:', e);
+    }
+  }, [score, mistakes]);
+
   // Sort mistakes by frequency to show top issues
-  const sortedMistakes = Object.entries(mistakes)
-    .sort(([, a], [, b]) => b.count - a.count)
+  const sortedMistakes: [string, MistakeData][] = Object.entries(mistakes)
+    .sort(([, a]: [string, MistakeData], [, b]: [string, MistakeData]) => b.count - a.count)
     .slice(0, 3); // Top 3 most common mistakes
 
   // Performance rating
@@ -101,6 +132,9 @@ const NutriServeGameOverModal: React.FC<NutriServeGameOverModalProps> = ({
             <div>
               <p className="text-slate-600 text-sm font-medium">Total Score</p>
               <p className="text-5xl font-black text-emerald-600">{score}</p>
+              <p className="text-sm text-emerald-600 font-semibold mt-1">
+                Better than {percentile}% of players!
+              </p>
             </div>
             <div className="text-right">
               <p className={`text-2xl font-bold ${ratingColor}`}>{rating}</p>
@@ -118,6 +152,14 @@ const NutriServeGameOverModal: React.FC<NutriServeGameOverModalProps> = ({
               <p className="text-blue-600 text-xs font-medium">Accuracy</p>
             </div>
           </div>
+        </div>
+
+        {/* AI Feedback Section */}
+        <div className="p-6 border-b border-slate-200 bg-indigo-50">
+          <h3 className="text-lg font-bold text-indigo-800 mb-2 flex items-center gap-2">
+            <span>🤖</span> AI Chef Feedback
+          </h3>
+          <p className="text-indigo-700 italic">"{aiFeedback}"</p>
         </div>
 
         {/* Personalized Feedback */}
@@ -183,6 +225,12 @@ const NutriServeGameOverModal: React.FC<NutriServeGameOverModalProps> = ({
 
         {/* Action Buttons */}
         <div className="p-6 space-y-3">
+          <SocialShareButton
+            score={score}
+            percentile={percentile}
+            gameName="NutriServe"
+          />
+
           <button
             onClick={onPlayAgain}
             className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-bold rounded-lg shadow-lg hover:from-emerald-700 hover:to-green-700 transition-all transform hover:scale-105"

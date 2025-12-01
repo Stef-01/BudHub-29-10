@@ -11,33 +11,33 @@ export type NutrientStatus = 'low' | 'good' | 'high' | 'ok';
  * Determines if a nutrient value is low, good, or high compared to its target.
  */
 export function getNutrientStatus(value: number, target: Target): NutrientStatus {
-  if ('min' in target && 'max' in target) { // TargetBand
-    if (value < target.min) return 'low';
-    if (value > target.max) return 'high';
-    return 'good';
-  }
-  if ('min' in target) { // TargetMin
-    return value >= target.min ? 'good' : 'low';
-  }
-  if ('max' in target) { // TargetMax
-    return value <= target.max ? 'good' : 'high';
-  }
-  return 'ok'; // Should not happen with valid targets
+    if ('min' in target && 'max' in target) { // TargetBand
+        if (value < target.min) return 'low';
+        if (value > target.max) return 'high';
+        return 'good';
+    }
+    if ('min' in target) { // TargetMin
+        return value >= target.min ? 'good' : 'low';
+    }
+    if ('max' in target) { // TargetMax
+        return value <= target.max ? 'good' : 'high';
+    }
+    return 'ok'; // Should not happen with valid targets
 }
 
 /**
  * Calculates the total nutrients for all items on a plate.
  */
 export function calculateMealTotals(plateItems: PlateItem[]): Nutrients {
-  const totals: Nutrients = { calories_kcal: 0, protein_g: 0, carbs_g: 0, fiber_g: 0, fat_g: 0, sodium_mg: 0 };
-  for (const item of plateItems) {
-    const multiplier = item.grams / 100;
-    for (const key in totals) {
-      const nutrientKey = key as keyof Nutrients;
-      totals[nutrientKey] += item.foodItem.nutrients_per_100g[nutrientKey] * multiplier;
+    const totals: Nutrients = { calories_kcal: 0, protein_g: 0, carbs_g: 0, fiber_g: 0, fat_g: 0, sodium_mg: 0 };
+    for (const item of plateItems) {
+        const multiplier = item.grams / 100;
+        for (const key in totals) {
+            const nutrientKey = key as keyof Nutrients;
+            totals[nutrientKey] += item.foodItem.nutrients_per_100g[nutrientKey] * multiplier;
+        }
     }
-  }
-  return totals;
+    return totals;
 }
 
 /**
@@ -110,24 +110,36 @@ export function calculateScoreAndFeedback(totals: Nutrients, targets: MealGoals)
             if (ratio > 0.75) score += MAX_SCORE_PER_NUTRIENT * 0.5; // Close
         } else if (status === 'high') {
             const { max } = targets[nutrient] as { max: number };
-            const ratio = max / totals[nutrient];
-            if (ratio > 0.75) score += MAX_SCORE_PER_NUTRIENT * 0.5; // Close
+
+            // Special handling for Sodium: Be more lenient
+            if (nutrient === 'sodium_mg') {
+                const ratio = totals[nutrient] / max;
+                if (ratio < 1.25) {
+                    // Up to 25% over limit gets 75% points
+                    score += MAX_SCORE_PER_NUTRIENT * 0.75;
+                } else if (ratio < 1.5) {
+                    // Up to 50% over limit gets 50% points
+                    score += MAX_SCORE_PER_NUTRIENT * 0.5;
+                }
+            } else {
+                const ratio = max / totals[nutrient];
+                if (ratio > 0.75) score += MAX_SCORE_PER_NUTRIENT * 0.5; // Close
+            }
         }
     }
-    
+
     // Bonus for hitting the calorie sweet spot
     const calStatus = getNutrientStatus(totals.calories_kcal, targets.calories_kcal);
-    if(calStatus === 'good') {
+    if (calStatus === 'good') {
         const calTarget = targets.calories_kcal.target;
         const diff = Math.abs(totals.calories_kcal - calTarget);
         if (diff < calTarget * 0.1) { // Within 10% of target
             score += 20;
         }
     }
-    
+
     return { score: Math.round(Math.min(150, score)), feedback };
 }
-
 
 /**
  * Returns a random customer with their generated targets.
@@ -191,12 +203,17 @@ export function getNewCustomer(round: number = 1): NutriServeCustomerWithTargets
 
 /**
  * Simulates a glycemic response curve based on meal composition.
- * A simple model: Carbs increase the peak, while Fiber and Fat flatten and delay it.
+ * A realistic model: Net carbs determine peak, fat moderates height
  */
 export function calculateGlycemicCurve(carbs: number, fiber: number, fat: number): { time: number; rise: number }[] {
     if (carbs === 0) return [{ time: 0, rise: 0 }, { time: 180, rise: 0 }];
 
-    const peakHeight = Math.max(10, carbs * 1.5 - fiber * 3 - fat * 1.5);
+    // More realistic glycemic index calculation
+    const netCarbs = Math.max(0, carbs - (fiber * 0.25)); // Fiber reduces ~25% of carb impact
+    const baseRise = netCarbs * 2.2; // ~2.2 mg/dL rise per gram net carbs
+    const fatModifier = Math.max(0.7, 1 - (fat * 0.008)); // Fat reduces peak by max 30%
+    const peakHeight = Math.max(5, baseRise * fatModifier);
+
     const peakTime = 45 + fiber * 2 + fat * 1; // Fiber and fat delay the peak
     const curve: { time: number; rise: number }[] = [];
 
@@ -213,7 +230,7 @@ export function calculateGlycemicCurve(carbs: number, fiber: number, fat: number
  */
 export function getMainDishFromOrder(requiredItems: string[]): { recipeId: string | null; foodItem: FoodItem } | null {
     if (requiredItems.length === 0) return null;
-    
+
     const allFoodItems = FOOD_LIBRARY.flatMap(group => group.items);
     const foodItem = allFoodItems.find(item => item.id === requiredItems[0]);
 

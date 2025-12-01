@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { BlobShape } from '../src/components/illustrations/DecorativeShapes';
+import SwaadCoachCard from './SwaadCoachCard';
 
 interface EnhancedHeroSectionProps {
   loganDiabeticsCount: number;
@@ -104,14 +105,12 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
             {/* Streak Card with Gradient */}
             <motion.div
               whileHover={{ scale: 1.05, y: -2 }}
-              className={`glass-card rounded-xl p-3 hover:shadow-lg transition-all flex items-center gap-2 ${
-                currentStreak > 0 ? 'ring-2 ring-orange-400' : ''
-              }`}
+              className={`glass-card rounded-xl p-3 hover:shadow-lg transition-all flex items-center gap-2 ${currentStreak > 0 ? 'ring-2 ring-orange-400' : ''
+                }`}
             >
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
-                  currentStreak > 0 ? 'bg-gradient-to-br from-orange-400 to-red-500' : 'bg-gray-100'
-                }`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${currentStreak > 0 ? 'bg-gradient-to-br from-orange-400 to-red-500' : 'bg-gray-100'
+                  }`}
               >
                 {currentStreak > 0 ? '🔥' : '📅'}
               </div>
@@ -167,30 +166,8 @@ const EnhancedHeroSection: React.FC<EnhancedHeroSectionProps> = ({
           </motion.div>
         </div>
 
-        {/* Feeling Hungry? Card */}
-        <motion.div
-          variants={itemVariants}
-          className="md:w-64 w-full"
-        >
-          <div className="glass-card rounded-2xl p-5 bg-gradient-to-br from-orange-50 via-white to-green-50 border-2 border-orange-200 hover:shadow-xl transition-all">
-            <div className="text-center mb-4">
-              <div className="text-4xl mb-2">🍛</div>
-              <h3 className="font-display text-xl font-bold text-gray-900 mb-1">
-                Feeling Hungry?
-              </h3>
-              <p className="text-xs text-gray-600">
-                Discover recipes that match your taste
-              </p>
-            </div>
-            <button
-              onClick={() => onPlayGame?.('cookventure')}
-              className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
-            >
-              <span>Start Cookventure</span>
-              <span className="text-lg">→</span>
-            </button>
-          </div>
-        </motion.div>
+        {/* SWAAD Coach Card */}
+        <SwaadCoachCard />
       </motion.div>
 
       {/* XP Bar with Glass Effect */}
