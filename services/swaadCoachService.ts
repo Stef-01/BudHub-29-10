@@ -4,7 +4,7 @@ import { Recipe } from '../types';
 
 // Initialize Gemini API
 // Note: In a production app, this should be in a backend service to protect the key
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const API_KEY = process.env.API_KEY || '';
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 export interface CoachMessage {
