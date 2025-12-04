@@ -6,20 +6,23 @@ import { UserCookbookProvider } from './UserCookbookContext';
 // ImageGenerationProvider removed - no longer using AI image generation
 import { GameScoresProvider } from './GameScoresContext';
 import { TasksProvider } from './TasksContext';
-import { WeatherProvider } from './WeatherContext';
+import { WeatherProvider } from './WeatherProvider';
+import { ToastProvider } from './ToastContext';
 
 export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <GamificationProvider>
-        <UserGardenProvider>
-            <WeatherProvider>
-                <TasksProvider>
-                    <UserCookbookProvider>
-                        <GameScoresProvider>
-                            {children}
-                        </GameScoresProvider>
-                    </UserCookbookProvider>
-                </TasksProvider>
-            </WeatherProvider>
-        </UserGardenProvider>
-    </GamificationProvider>
+    <ToastProvider>
+        <GamificationProvider>
+            <UserGardenProvider>
+                <WeatherProvider>
+                    <TasksProvider>
+                        <UserCookbookProvider>
+                            <GameScoresProvider>
+                                {children}
+                            </GameScoresProvider>
+                        </UserCookbookProvider>
+                    </TasksProvider>
+                </WeatherProvider>
+            </UserGardenProvider>
+        </GamificationProvider>
+    </ToastProvider>
 );

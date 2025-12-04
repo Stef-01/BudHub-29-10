@@ -9,6 +9,7 @@ interface RecipeResultsGridProps {
   scoredRecipes: ScoredRecipe[];
   userPrefs?: UserPreferences;
   onRecipeGenerated?: (recipe: Recipe) => void;
+  onRecipeSaved?: (recipeName: string) => void;
   onSelectRecipe?: (recipe: ScoredRecipe) => void;
 }
 
@@ -16,6 +17,7 @@ const RecipeResultsGrid: React.FC<RecipeResultsGridProps> = ({
   scoredRecipes,
   userPrefs,
   onRecipeGenerated,
+  onRecipeSaved,
   onSelectRecipe,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -126,6 +128,7 @@ const RecipeResultsGrid: React.FC<RecipeResultsGridProps> = ({
             key={scoredRecipe.recipe.id}
             scoredRecipe={scoredRecipe}
             index={idx}
+            onRecipeSaved={onRecipeSaved}
           />
         ))}
       </div>

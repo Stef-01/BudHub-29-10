@@ -3,17 +3,40 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import type { ScoredRecipe } from '../../../types/cookventure';
 import { useRecipeImage } from '../../../hooks/useRecipeImage';
+import { useUserCookbook } from '../../../contexts/UserCookbookContext';
 import { openInstacartWithRecipe } from '../../../services/instacart/instacartService';
 
 interface FlippableRecipeCardProps {
   scoredRecipe: ScoredRecipe;
   index: number;
+  onRecipeSaved?: (recipeName: string) => void;
 }
 
-const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe, index }) => {
+const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe, index, onRecipeSaved }) => {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { recipe, explanation, missing_ingredients } = scoredRecipe;
   const { imageUrl } = useRecipeImage(recipe);
+  const { saveRecipe, isRecipeSaved } = useUserCookbook();
+
+  const alreadySaved = isRecipeSaved(recipe.id);
+
+  const handleSaveRecipe = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (alreadySaved) return;
+
+    setIsSaving(true);
+    try {
+      await saveRecipe(recipe);
+      if (onRecipeSaved) {
+        onRecipeSaved(recipe.name);
+      }
+    } catch (error) {
+      console.error('Error saving recipe:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
 
@@ -58,14 +81,17 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Save to cookbook logic will be handled by parent
-                      console.log('Save to cookbook:', recipe.name);
-                    }}
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all hover:scale-105"
+                    onClick={handleSaveRecipe}
+                    disabled={isSaving || alreadySaved}
+                    className={`flex-1 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all ${
+                      alreadySaved
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : isSaving
+                        ? 'bg-green-400 cursor-wait'
+                        : 'bg-green-500 hover:bg-green-600 hover:scale-105'
+                    }`}
                   >
-                    📚 Save
+                    {isSaving ? '⏳ Saving...' : alreadySaved ? '✓ Saved' : '📚 Save'}
                   </button>
                   <button
                     onClick={(e) => {

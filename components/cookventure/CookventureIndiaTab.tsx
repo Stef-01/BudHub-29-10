@@ -6,6 +6,7 @@ import type { Recipe } from '../../types';
 import { loadCookventureData } from '../../services/cookventure/regionalPresets';
 import { calculateCookventureScore, sortScoredRecipes } from '../../services/cookventure/cookventureScoring';
 import { useUserCookbook } from '../../contexts/UserCookbookContext';
+import { useToast } from '../../contexts/ToastContext';
 
 // Survey components
 import CravingPicker from './survey/CravingPicker';
@@ -47,6 +48,9 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
 
   // Get cookbook context for saving generated recipes
   const { saveRecipe } = useUserCookbook();
+
+  // Toast notifications
+  const toast = useToast();
 
   // Update craving selection
   const handleToggleCraving = (cravingId: string) => {
@@ -132,11 +136,18 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
   const handleRecipeGenerated = async (newRecipe: Recipe) => {
     try {
       await saveRecipe(newRecipe);
+      toast.success(`✨ "${newRecipe.name}" added to your cookbook!`, 4000);
       // Note: The recipes prop will be updated by the parent component
       // which will trigger a re-render and rescore
     } catch (error) {
       console.error("Error saving generated recipe:", error);
+      toast.error('Failed to save recipe. Please try again.');
     }
+  };
+
+  // Handle recipe saved from card
+  const handleRecipeSaved = (recipeName: string) => {
+    toast.success(`📚 "${recipeName}" saved to cookbook!`, 3000);
   };
 
   // Check if can proceed to next step
@@ -334,6 +345,7 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
                 scoredRecipes={scoredRecipes}
                 userPrefs={userPrefs}
                 onRecipeGenerated={handleRecipeGenerated}
+                onRecipeSaved={handleRecipeSaved}
               />
             )}
           </motion.div>
