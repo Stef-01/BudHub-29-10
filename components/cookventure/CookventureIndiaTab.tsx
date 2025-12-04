@@ -5,6 +5,7 @@ import type { UserPreferences, TasteAxes, ScoredRecipe } from '../../types/cookv
 import type { Recipe } from '../../types';
 import { loadCookventureData } from '../../services/cookventure/regionalPresets';
 import { calculateCookventureScore, sortScoredRecipes } from '../../services/cookventure/cookventureScoring';
+import { generateCookventureRecipes } from '../../services/cookventure/cookventureRecipeGenerator';
 import { useUserCookbook } from '../../contexts/UserCookbookContext';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -148,6 +149,35 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
   // Handle recipe saved from card
   const handleRecipeSaved = (recipeName: string) => {
     toast.success(`📚 "${recipeName}" saved to cookbook!`, 3000);
+  };
+
+  // Handle recipe generation from chat
+  const handleChatGenerateRecipe = async (count: number) => {
+    try {
+      const newRecipes = await generateCookventureRecipes({
+        userPrefs,
+        count,
+      });
+
+      // Save recipes one by one with progress updates
+      for (let i = 0; i < newRecipes.length; i++) {
+        const recipeWithMetadata: Recipe = {
+          ...newRecipes[i],
+          id: `generated-${Date.now()}-${i}`,
+          source: 'gemini',
+        };
+        await handleRecipeGenerated(recipeWithMetadata);
+
+        // Small delay between saves for better UX
+        if (i < newRecipes.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+    } catch (error) {
+      console.error("Error generating recipe from chat:", error);
+      toast.error('Failed to generate recipe. Please try again.');
+      throw error; // Re-throw so chat can handle the error
+    }
   };
 
   // Check if can proceed to next step
@@ -399,6 +429,7 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
             userPreferences={userPrefs}
             currentResults={currentStep === 'results' ? scoredRecipes.map(sr => sr.recipe) : undefined}
             onClose={() => setIsChatOpen(false)}
+            onGenerateRecipe={handleChatGenerateRecipe}
           />
         )}
       </div>

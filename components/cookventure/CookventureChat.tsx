@@ -12,18 +12,21 @@ interface Message {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    showGenerateButtons?: boolean;
 }
 
 interface CookventureChatProps {
     userPreferences: UserPreferences;
     currentResults?: Recipe[];
     onClose?: () => void;
+    onGenerateRecipe?: (count: number) => Promise<void>;
 }
 
 const CookventureChat: React.FC<CookventureChatProps> = ({
     userPreferences,
     currentResults,
     onClose,
+    onGenerateRecipe,
 }) => {
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -36,6 +39,7 @@ const CookventureChat: React.FC<CookventureChatProps> = ({
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
+    const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -45,6 +49,45 @@ const CookventureChat: React.FC<CookventureChatProps> = ({
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Detect if user is asking for recipe generation
+    const isRecipeGenerationRequest = (text: string): boolean => {
+        const keywords = [
+            'generate', 'create', 'make me', 'suggest a recipe',
+            'give me a recipe', 'new recipe', 'recipe for',
+            'recipe idea', 'what should i cook', 'what can i make'
+        ];
+        const lowerText = text.toLowerCase();
+        return keywords.some(keyword => lowerText.includes(keyword));
+    };
+
+    const handleGenerateClick = async (count: number) => {
+        if (!onGenerateRecipe) return;
+
+        setIsGeneratingRecipe(true);
+        try {
+            await onGenerateRecipe(count);
+
+            const successMessage: Message = {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: `Great! I've generated ${count} recipe${count > 1 ? 's' : ''} for you based on your preferences. Check them out in your results! 🎉`,
+                timestamp: new Date(),
+            };
+            setMessages(prev => [...prev, successMessage]);
+        } catch (error) {
+            console.error("Error generating recipe:", error);
+            const errorMessage: Message = {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: "Sorry, I had trouble generating that recipe. Please try again! 😅",
+                timestamp: new Date(),
+            };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setIsGeneratingRecipe(false);
+        }
+    };
 
     const handleSend = async (textOverride?: string) => {
         const textToSend = textOverride || input;
@@ -62,6 +105,9 @@ const CookventureChat: React.FC<CookventureChatProps> = ({
         setIsTyping(true);
 
         try {
+            // Check if this is a recipe generation request
+            const wantsRecipeGeneration = isRecipeGenerationRequest(textToSend);
+
             // Convert internal message format to Gemini format
             const history: CookventureChatMessage[] = messages.map(m => ({
                 role: m.role === 'user' ? 'user' : 'model',
@@ -82,6 +128,7 @@ const CookventureChat: React.FC<CookventureChatProps> = ({
                 role: 'assistant',
                 content: responseText,
                 timestamp: new Date(),
+                showGenerateButtons: wantsRecipeGeneration && onGenerateRecipe !== undefined,
             };
             setMessages(prev => [...prev, assistantMessage]);
         } catch (error) {
@@ -168,19 +215,53 @@ const CookventureChat: React.FC<CookventureChatProps> = ({
                             animate={{ opacity: 1, y: 0 }}
                             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
-                            <div
-                                className={`max-w-[80%] px-4 py-2 rounded-2xl ${
-                                    msg.role === 'user'
-                                        ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white'
-                                        : 'bg-white border border-orange-200 text-gray-800'
-                                }`}
-                            >
-                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                <p className={`text-xs mt-1 ${
-                                    msg.role === 'user' ? 'text-white/70' : 'text-gray-400'
-                                }`}>
-                                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
+                            <div className={`max-w-[80%]`}>
+                                <div
+                                    className={`px-4 py-2 rounded-2xl ${
+                                        msg.role === 'user'
+                                            ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white'
+                                            : 'bg-white border border-orange-200 text-gray-800'
+                                    }`}
+                                >
+                                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                    <p className={`text-xs mt-1 ${
+                                        msg.role === 'user' ? 'text-white/70' : 'text-gray-400'
+                                    }`}>
+                                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                </div>
+                                {msg.showGenerateButtons && (
+                                    <div className="mt-2 flex gap-2">
+                                        <button
+                                            onClick={() => handleGenerateClick(1)}
+                                            disabled={isGeneratingRecipe}
+                                            className="px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-semibold rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isGeneratingRecipe ? (
+                                                <span className="flex items-center gap-1">
+                                                    <span className="animate-spin">🔄</span>
+                                                    Generating...
+                                                </span>
+                                            ) : (
+                                                '✨ Generate 1 Recipe'
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={() => handleGenerateClick(3)}
+                                            disabled={isGeneratingRecipe}
+                                            className="px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isGeneratingRecipe ? (
+                                                <span className="flex items-center gap-1">
+                                                    <span className="animate-spin">🔄</span>
+                                                    Generating...
+                                                </span>
+                                            ) : (
+                                                '✨✨✨ Generate 3 Recipes'
+                                            )}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     ))}
