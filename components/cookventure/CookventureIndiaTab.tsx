@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UserPreferences, TasteAxes, ScoredRecipe } from '../../types/cookventure';
+import type { Recipe } from '../../types';
 import { loadCookventureData } from '../../services/cookventure/regionalPresets';
 import { calculateCookventureScore, sortScoredRecipes } from '../../services/cookventure/cookventureScoring';
+import { useUserCookbook } from '../../contexts/UserCookbookContext';
 
 // Survey components
 import CravingPicker from './survey/CravingPicker';
@@ -14,6 +16,9 @@ import MasalaTadkaLocker from './survey/MasalaTadkaLocker';
 
 // Results components
 import RecipeResultsGrid from './results/RecipeResultsGrid';
+
+// Chat component
+import CookventureChat from './CookventureChat';
 
 type SurveyStep = 'craving' | 'region' | 'pantry' | 'flavor' | 'masala_tadka' | 'results';
 
@@ -35,9 +40,13 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
     diabetic_friendly: false,
   });
   const [scoredRecipes, setScoredRecipes] = useState<ScoredRecipe[]>([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Load taxonomy data
   const { regions, masalas, tadkas } = loadCookventureData();
+
+  // Get cookbook context for saving generated recipes
+  const { saveRecipe } = useUserCookbook();
 
   // Update craving selection
   const handleToggleCraving = (cravingId: string) => {
@@ -118,6 +127,17 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
       setScoredRecipes(sorted);
     }
   }, [currentStep, recipes, userPrefs]);
+
+  // Handle generated recipe - save to cookbook and rescore
+  const handleRecipeGenerated = async (newRecipe: Recipe) => {
+    try {
+      await saveRecipe(newRecipe);
+      // Note: The recipes prop will be updated by the parent component
+      // which will trigger a re-render and rescore
+    } catch (error) {
+      console.error("Error saving generated recipe:", error);
+    }
+  };
 
   // Check if can proceed to next step
   const canProceed = () => {
@@ -310,7 +330,11 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
             )}
 
             {currentStep === 'results' && (
-              <RecipeResultsGrid scoredRecipes={scoredRecipes} />
+              <RecipeResultsGrid
+                scoredRecipes={scoredRecipes}
+                userPrefs={userPrefs}
+                onRecipeGenerated={handleRecipeGenerated}
+              />
             )}
           </motion.div>
         </AnimatePresence>
@@ -343,6 +367,28 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
             </button>
           )}
         </div>
+
+        {/* Chat Toggle Button - Only show after first step */}
+        {currentStep !== 'craving' && !isChatOpen && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={() => setIsChatOpen(true)}
+            className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl hover:scale-110 transition-transform z-40"
+            title="Ask Cookventure Assistant"
+          >
+            💬
+          </motion.button>
+        )}
+
+        {/* Chat Component */}
+        {isChatOpen && (
+          <CookventureChat
+            userPreferences={userPrefs}
+            currentResults={currentStep === 'results' ? scoredRecipes.map(sr => sr.recipe) : undefined}
+            onClose={() => setIsChatOpen(false)}
+          />
+        )}
       </div>
     </div>
   );

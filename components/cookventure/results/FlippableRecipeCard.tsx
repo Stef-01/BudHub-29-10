@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import type { ScoredRecipe } from '../../../types/cookventure';
 import { useRecipeImage } from '../../../hooks/useRecipeImage';
+import { openInstacartWithRecipe } from '../../../services/instacart/instacartService';
 
 interface FlippableRecipeCardProps {
   scoredRecipe: ScoredRecipe;
@@ -54,25 +55,37 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe,
               <h4 className="text-white font-bold text-lg mb-2 leading-tight">
                 {recipe.name}
               </h4>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Save to cookbook logic will be handled by parent
+                      console.log('Save to cookbook:', recipe.name);
+                    }}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all hover:scale-105"
+                  >
+                    📚 Save
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsFlipped(!isFlipped);
+                    }}
+                    className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-3 rounded-lg backdrop-blur-sm transition-all"
+                  >
+                    ℹ️ Details
+                  </button>
+                </div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Save to cookbook logic will be handled by parent
-                    console.log('Save to cookbook:', recipe.name);
+                    openInstacartWithRecipe(recipe);
                   }}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all hover:scale-105"
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all hover:scale-105"
+                  title="Shop ingredients on Instacart"
                 >
-                  📚 Save to Cookbook
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsFlipped(!isFlipped);
-                  }}
-                  className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-3 rounded-lg backdrop-blur-sm transition-all"
-                >
-                  ℹ️ Details
+                  🛒 Shop on Instacart
                 </button>
               </div>
             </div>

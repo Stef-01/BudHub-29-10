@@ -107,6 +107,18 @@ export interface Recipe {
     tangy: number;     // Khata (0-3)
     sweet: number;     // Meetha (0-3)
   };
+  // Instacart integration fields
+  instacart_ingredients?: InstacartIngredient[];
+}
+
+// Structured ingredient for shopping cart integration
+export interface InstacartIngredient {
+  name: string;           // Ingredient name (e.g., "curry leaves")
+  quantity: number;       // Numeric quantity (e.g., 1, 2, 0.5)
+  unit: string;           // Unit (e.g., "cup", "tsp", "bunch", "kg")
+  searchTerm?: string;    // Optional custom search term for Instacart
+  category?: string;      // Category for grouping (e.g., "spices", "vegetables")
+  optional?: boolean;     // Whether ingredient is optional
 }
 
 // --- Community ---
