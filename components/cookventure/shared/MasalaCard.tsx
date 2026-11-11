@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Masala } from '../../../types/cookventure';
+import { MasalaLearnCard } from './LearnCards';
 
 interface MasalaCardProps {
   masala: Masala & { id: string };
@@ -13,11 +14,17 @@ const MasalaCard: React.FC<MasalaCardProps> = ({ masala, isSelected, onToggle })
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
-    <div className="relative">
+    // Hover is tracked on the wrapper so moving the pointer into the learn card keeps it open
+    <div
+      className="relative"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
       <motion.button
         onClick={onToggle}
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
+        onFocus={() => setShowTooltip(true)}
+        onBlur={() => setShowTooltip(false)}
+        aria-pressed={isSelected}
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
         className={`
@@ -72,38 +79,24 @@ const MasalaCard: React.FC<MasalaCardProps> = ({ masala, isSelected, onToggle })
         </div>
       </motion.button>
 
-      {/* Tooltip on Hover */}
+      {/* Learn card on hover / keyboard focus */}
       <AnimatePresence>
         {showTooltip && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg pointer-events-none"
+            // x is set here, not via a Tailwind translate class: framer-motion owns the transform
+            initial={{ opacity: 0, x: '-50%', y: 10 }}
+            animate={{ opacity: 1, x: '-50%', y: 0 }}
+            exit={{ opacity: 0, x: '-50%', y: 10 }}
+            // pb-2 is a transparent bridge between the card and the tooltip, so "Learn more" stays reachable
+            className="absolute z-50 bottom-full left-1/2 pb-2 w-64"
+            role="tooltip"
           >
-            <h4 className="font-semibold mb-1">
-              {masala.name} {masala.name_hi && `(${masala.name_hi})`}
-            </h4>
-            <p className="mb-2 text-gray-200">{masala.description}</p>
-            <p className="text-[10px] text-gray-300">
-              <strong>Key spices:</strong> {masala.spices.slice(0, 4).join(', ')}
-              {masala.spices.length > 4 && '...'}
-            </p>
-            {masala.refs.length > 0 && (
-              <a
-                href={masala.refs[0]}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-orange-300 hover:text-orange-200 text-[10px] underline mt-1 inline-block"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Learn more →
-              </a>
-            )}
-
-            {/* Tooltip Arrow */}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-              <div className="border-8 border-transparent border-t-gray-800"></div>
+            <div className="relative p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
+              <MasalaLearnCard masala={masala} />
+              {/* Tooltip Arrow */}
+              <div className="absolute top-full left-1/2 -translate-x-1/2">
+                <div className="border-8 border-transparent border-t-gray-800"></div>
+              </div>
             </div>
           </motion.div>
         )}

@@ -2,6 +2,7 @@
 import React from 'react';
 import FlavorAxisSlider from '../shared/FlavorAxisSlider';
 import type { TasteAxes } from '../../../types/cookventure';
+import { TASTE_AXES } from '../../../services/cookventure/labels';
 
 interface FlavorDialsProps {
   tastePrefs: TasteAxes;
@@ -28,55 +29,20 @@ const FlavorDials: React.FC<FlavorDialsProps> = ({ tastePrefs, onChangeTaste }) 
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-md space-y-6">
-        <FlavorAxisSlider
-          label="Teekha (Heat)"
-          labelHi="तीखा"
-          emoji="🌶️"
-          value={tastePrefs.heat}
-          onChange={(v) => onChangeTaste({ ...tastePrefs, heat: v })}
-          min={0}
-          max={3}
-          help="Chili heat level"
-        />
-
-        <div className="border-t border-gray-200 pt-6">
-          <FlavorAxisSlider
-            label="Masaledar (Spice-rich)"
-            labelHi="मसालेदार"
-            emoji="🧄🧅🫚"
-            value={tastePrefs.masala}
-            onChange={(v) => onChangeTaste({ ...tastePrefs, masala: v })}
-            min={0}
-            max={3}
-            help="Aroma & warmth from spices (not just heat)"
-          />
-        </div>
-
-        <div className="border-t border-gray-200 pt-6">
-          <FlavorAxisSlider
-            label="Khata (Tangy)"
-            labelHi="खट्टा"
-            emoji="🍋"
-            value={tastePrefs.tangy}
-            onChange={(v) => onChangeTaste({ ...tastePrefs, tangy: v })}
-            min={0}
-            max={3}
-            help="Sourness from tamarind, kokum, amchur"
-          />
-        </div>
-
-        <div className="border-t border-gray-200 pt-6">
-          <FlavorAxisSlider
-            label="Meetha (Sweet)"
-            labelHi="मीठा"
-            emoji="🍯"
-            value={tastePrefs.sweet}
-            onChange={(v) => onChangeTaste({ ...tastePrefs, sweet: v })}
-            min={0}
-            max={3}
-            help="Sweetness or caramelization"
-          />
-        </div>
+        {TASTE_AXES.map((axis, idx) => (
+          <div key={axis.key} className={idx > 0 ? 'border-t border-gray-200 pt-6' : ''}>
+            <FlavorAxisSlider
+              label={`${axis.roman} (${axis.en})`}
+              labelHi={axis.hi}
+              emoji={axis.emoji}
+              value={tastePrefs[axis.key]}
+              onChange={(v) => onChangeTaste({ ...tastePrefs, [axis.key]: v })}
+              min={0}
+              max={3}
+              help={axis.help}
+            />
+          </div>
+        ))}
       </div>
 
       {/* Taste Summary */}

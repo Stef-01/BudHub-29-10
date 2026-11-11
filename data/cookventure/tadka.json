@@ -6,6 +6,7 @@
     "aromatics": ["asafoetida"],
     "oil": "any",
     "aroma": "clean, light, aromatic",
+    "method": "Heat 1 tsp oil or ghee. Add 1 tsp cumin seeds; when they sizzle and darken slightly, add a pinch of hing. Pour over the dish straight away.",
     "heat": 1,
     "region_fit": ["north", "west"],
     "emoji": "🌾"
@@ -17,6 +18,7 @@
     "aromatics": ["garlic", "dry_red_chili"],
     "oil": "any",
     "aroma": "garlicky, smoky, robust",
+    "method": "Heat 1 tsp oil. Add 3 sliced garlic cloves and 2 dry red chillies; stir until the garlic turns golden, not brown. Pour over the dish straight away.",
     "heat": 2,
     "region_fit": ["north", "deccan"],
     "emoji": "🧄🌶️"
@@ -28,6 +30,7 @@
     "aromatics": ["curry_leaves"],
     "oil": "any",
     "aroma": "nutty, crackly, South Indian",
+    "method": "Heat 1 tsp oil. Add 1 tsp mustard seeds; when they pop, add a sprig of curry leaves (stand back, they splutter). Pour over the dish straight away.",
     "heat": 2,
     "region_fit": ["south", "deccan"],
     "emoji": "🍃"
@@ -39,6 +42,7 @@
     "aromatics": [],
     "oil": "mustard",
     "aroma": "complex, Bengali, toasty",
+    "method": "Heat 1 tsp mustard oil until it just starts to smoke, then lower the heat. Add 1 tsp panch phoron; when the seeds crackle, pour over the dish straight away.",
     "heat": 1,
     "region_fit": ["east"],
     "emoji": "⭐"

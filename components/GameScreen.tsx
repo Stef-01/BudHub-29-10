@@ -25,6 +25,7 @@ const gameTitles: Record<GameMode, string> = {
     low_carb: 'Carb Counter',
     nutriserve: 'NutriServe Chef',
     unified_nutrient: 'Nutrient Challenge',
+    cookventure: 'Cookventure India',
 };
 
 

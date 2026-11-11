@@ -36,6 +36,8 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
             <motion.button
               key={regionId}
               onClick={() => onToggleRegion(regionId)}
+              aria-pressed={isSelected}
+              title={region.notes}
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.95 }}
               className={`group relative p-4 rounded-xl border-2 transition-all ${
@@ -58,6 +60,9 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
               <h3 className="font-bold text-sm text-gray-800 text-center">
                 {region.name}
               </h3>
+              {region.name_hi && (
+                <p className="text-[11px] text-gray-500 text-center mt-0.5">{region.name_hi}</p>
+              )}
 
               {/* Hover Tooltip - Flavor Notes Only */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/90 via-black/80 to-transparent rounded-xl p-3 flex flex-col justify-end pointer-events-none">

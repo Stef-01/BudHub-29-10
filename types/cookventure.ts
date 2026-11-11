@@ -22,6 +22,7 @@ export interface Masala {
   spices: string[];
   aroma: string[];
   description: string;
+  use_in?: string[];
   refs: string[];
 }
 
@@ -33,6 +34,8 @@ export interface Tadka {
   aromatics: string[];
   oil: string;
   aroma: string;
+  /** Short, step-by-step tempering instructions */
+  method?: string;
   heat: number; // 0-3
   region_fit: string[];
   emoji: string;
@@ -77,13 +80,54 @@ export interface UserPreferences {
   diabetic_friendly?: boolean;
 }
 
+/** Which part of the scoring algorithm a reason or score component came from */
+export type MatchReasonKind =
+  | 'pantry'
+  | 'region'
+  | 'masala'
+  | 'tadka'
+  | 'flavor'
+  | 'health'
+  | 'diet'
+  | 'quick'
+  | 'course';
+
+/** A human-readable reason a recipe matched, rendered as an icon chip */
+export interface MatchReason {
+  kind: MatchReasonKind;
+  label: string;
+}
+
+/** Points earned by one part of the scoring algorithm */
+export interface ScoreComponent {
+  kind: MatchReasonKind;
+  label: string;
+  points: number;
+  maxPoints: number;
+  detail?: string;
+}
+
 export interface ScoredRecipe {
   recipe: any & RecipeCookventureData; // Will be typed with full Recipe interface later
   score: number;
+  /** Highest score this recipe could have reached with the user's current preferences */
+  maxScore: number;
+  /** score / maxScore as a whole-number percentage (0-100) */
+  matchPercent: number;
+  /** Plain-text reasons, kept for callers that only need strings */
   explanation: string[];
+  reasons: MatchReason[];
+  breakdown: ScoreComponent[];
+  matched_ingredients: string[];
   missing_ingredients: string[];
   can_swap_tadka: boolean;
   can_swap_masala: boolean;
+  /** Set when the user swapped the recipe's tadka on the results screen */
+  swapped_tadka?: {
+    from?: string;
+    to: string;
+    tempering_note: string;
+  };
 }
 
 // Type for region data map

@@ -1,5 +1,6 @@
 // components/cookventure/shared/FlavorAxisSlider.tsx
 import React from 'react';
+import { TASTE_LEVEL_LABELS } from '../../../services/cookventure/labels';
 
 interface FlavorAxisSliderProps {
   label: string;
@@ -22,7 +23,6 @@ const FlavorAxisSlider: React.FC<FlavorAxisSliderProps> = ({
   max = 3,
   help,
 }) => {
-  const labels = ['None', 'Mild', 'Medium', 'High'];
   const percentage = (value / max) * 100;
 
   return (
@@ -52,7 +52,9 @@ const FlavorAxisSlider: React.FC<FlavorAxisSliderProps> = ({
           max={max}
           step={1}
           value={value}
-          onChange={(e) => onChange(parseInt(e.target.value))}
+          onChange={(e) => onChange(parseInt(e.target.value, 10))}
+          aria-label={labelHi ? `${label} (${labelHi})` : label}
+          aria-valuetext={`${TASTE_LEVEL_LABELS[value] ?? value} (${value} of ${max})`}
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
           style={{
             background: `linear-gradient(to right, #10B981 0%, #10B981 ${percentage}%, #E5E7EB ${percentage}%, #E5E7EB 100%)`,
@@ -61,7 +63,7 @@ const FlavorAxisSlider: React.FC<FlavorAxisSliderProps> = ({
 
         {/* Value Labels */}
         <div className="flex justify-between mt-1 px-1">
-          {labels.map((label, idx) => (
+          {TASTE_LEVEL_LABELS.map((label, idx) => (
             <span
               key={idx}
               className={`text-[10px] font-medium ${
@@ -74,28 +76,6 @@ const FlavorAxisSlider: React.FC<FlavorAxisSliderProps> = ({
         </div>
       </div>
 
-      <style jsx>{`
-        .slider-thumb::-webkit-slider-thumb {
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          background: #10B981;
-          border: 3px solid white;
-          border-radius: 50%;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .slider-thumb::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          background: #10B981;
-          border: 3px solid white;
-          border-radius: 50%;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-      `}</style>
     </div>
   );
 };

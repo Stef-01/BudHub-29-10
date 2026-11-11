@@ -735,29 +735,38 @@ When user hovers over a masala:
 #### Sprint A: Foundation & Region Brain (Week 1-2)
 **Goal:** Core functionality working end-to-end
 
-- [ ] Create data files (regions, masalas, tadka, taste maps)
-- [ ] Build TypeScript types
-- [ ] Region picker UI
-- [ ] Flavor dials (4-axis system)
-- [ ] Masala & Tadka locker UI
-- [ ] Basic scoring algorithm (pantry + region + masala)
-- [ ] Results grid with explanation chips
-- [ ] Plug into existing recipes (add front-matter fields to 3-5 test recipes)
+- [x] Create data files (regions, masalas, tadka, taste maps)
+- [x] Build TypeScript types
+- [x] Region picker UI
+- [x] Flavor dials (4-axis system)
+- [x] Masala & Tadka locker UI
+- [x] Basic scoring algorithm (pantry + region + masala)
+- [x] Results grid with explanation chips
+- [x] Plug into existing recipes (add front-matter fields to 3-5 test recipes)
 
 **Output:** Functional prototype with 5-10 recipes, basic matching works
 
 #### Sprint B: Delight & Polish (Week 3)
 **Goal:** Make it feel magical
 
-- [ ] Tadka switcher with sizzle animation
-- [ ] Regional starter kits (quick presets)
-- [ ] Masala learn cards (hover tooltips)
-- [ ] Bilingual labels (Hindi + English)
-- [ ] Match explanation chips with icons
-- [ ] Flavor axes distance visualization
-- [ ] "Why this matched" detailed view
+- [x] Tadka switcher with sizzle animation
+- [x] Regional starter kits (quick presets)
+- [x] Masala learn cards (hover tooltips)
+- [x] Bilingual labels (Hindi + English)
+- [x] Match explanation chips with icons
+- [x] Flavor axes distance visualization
+- [x] "Why this matched" detailed view
 
 **Output:** Polished UX, users understand matches intuitively
+
+**Status:** Done. Where it lives:
+- Tadka switcher: `components/cookventure/results/TadkaSwitcher.tsx` + `services/cookventure/tadkaSwap.ts` (re-scores in place; per-tadka `method` in `tadka.json`)
+- Starter kits: `components/cookventure/survey/RegionalStarterKits.tsx` (one tap fills pantry/masala/tadka/taste and jumps to results)
+- Learn cards: `components/cookventure/shared/LearnCards.tsx` (hover, focus or tap; `use_in` in `masalas.json`)
+- Bilingual labels: `services/cookventure/labels.ts` (steps, taste axes) + `name_hi` in `regions.json`
+- Icon chips: `components/cookventure/results/MatchExplanationChip.tsx`, fed by structured `reasons` from scoring
+- Flavor distance: `components/cookventure/results/FlavorMatchChart.tsx` (you vs dish, per axis)
+- Detailed view: `components/cookventure/results/WhyThisMatchedModal.tsx` (match %, per-component score breakdown, pantry check)
 
 #### Sprint C: Depth & Scale (Week 4)
 **Goal:** Production-ready with state-specific features

@@ -1,222 +1,213 @@
 // components/cookventure/results/FlippableRecipeCard.tsx
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import type { ScoredRecipe } from '../../../types/cookventure';
+import type { ScoredRecipe, UserPreferences } from '../../../types/cookventure';
 import { useRecipeImage } from '../../../hooks/useRecipeImage';
+import { getMasalaName, getRegionName, getTadkaName } from '../../../services/cookventure/labels';
+import MatchExplanationChip from './MatchExplanationChip';
+import WhyThisMatchedModal from './WhyThisMatchedModal';
 
 interface FlippableRecipeCardProps {
+  /** The recipe as currently shown (after any tadka swap) */
   scoredRecipe: ScoredRecipe;
+  /** The recipe as originally matched; defaults to scoredRecipe */
+  original?: ScoredRecipe;
+  userPrefs: UserPreferences;
   index: number;
+  onSwapTadka?: (tadkaId: string) => void;
 }
 
-const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({ scoredRecipe, index }) => {
+const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({
+  scoredRecipe,
+  original = scoredRecipe,
+  userPrefs,
+  index,
+  onSwapTadka,
+}) => {
   const [isFlipped, setIsFlipped] = useState(false);
-  const { recipe, explanation, missing_ingredients } = scoredRecipe;
-  const { imageUrl } = useRecipeImage(recipe);
+  const [showDetails, setShowDetails] = useState(false);
+  const { recipe, reasons, missing_ingredients, matchPercent, swapped_tadka } = scoredRecipe;
+  // Image is looked up from the original recipe so a tadka swap doesn't trigger a reload
+  const { imageUrl } = useRecipeImage(original.recipe);
 
-  const isRenderableImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
+  const isRenderableImage =
+    imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
+  const totalMinutes = (recipe.prep_minutes || 0) + (recipe.cook_minutes || 0);
+
+  const openDetails = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDetails(true);
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className="h-80 perspective-1000"
-      onClick={() => setIsFlipped(!isFlipped)}
-    >
+    <>
       <motion.div
-        className="relative w-full h-full cursor-pointer"
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ duration: 0.6, type: "spring", stiffness: 120 }}
-        style={{ transformStyle: 'preserve-3d' }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: Math.min(index, 12) * 0.05 }}
+        className="h-80 perspective-1000"
+        onClick={() => setIsFlipped(!isFlipped)}
       >
-        {/* Front of Card - Recipe Image Only */}
-        <div
-          className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg border-2 border-gray-200 hover:border-green-400 transition-all group"
-          style={{ backfaceVisibility: 'hidden' }}
+        <motion.div
+          className="relative w-full h-full cursor-pointer"
+          animate={{ rotateY: isFlipped ? 180 : 0 }}
+          transition={{ duration: 0.6, type: 'spring', stiffness: 120 }}
+          style={{ transformStyle: 'preserve-3d' }}
         >
-          {/* Full Card Image */}
-          <div className="relative h-full w-full bg-gradient-to-br from-orange-50 to-green-50">
-            {isRenderableImage ? (
-              <img
-                src={imageUrl}
-                alt={recipe.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-8xl">
-                {imageUrl}
-              </div>
-            )}
-
-            {/* Hover Overlay with Recipe Name and Save Button */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-4">
-              <h4 className="text-white font-bold text-lg mb-2 leading-tight">
-                {recipe.name}
-              </h4>
-              <div className="flex gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Save to cookbook logic will be handled by parent
-                    console.log('Save to cookbook:', recipe.name);
-                  }}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all hover:scale-105"
-                >
-                  📚 Save to Cookbook
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsFlipped(!isFlipped);
-                  }}
-                  className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-3 rounded-lg backdrop-blur-sm transition-all"
-                >
-                  ℹ️ Details
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Back of Card - Recipe Details & Match Explanation */}
-        <div
-          className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg bg-white border-2 border-green-400"
-          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-        >
-          <div className="h-full flex flex-col p-5 bg-gradient-to-br from-green-50 to-emerald-50 overflow-y-auto">
-            {/* Recipe Name */}
-            <h3 className="font-bold text-xl text-gray-800 mb-2 text-center leading-tight">
-              {recipe.name}
-            </h3>
-
-            {/* Recipe Course & Basic Info */}
-            <p className="text-xs text-gray-600 text-center mb-3 capitalize">{recipe.course}</p>
-
-            {/* Region & Dietary Tags */}
-            <div className="flex flex-wrap gap-1 mb-3 justify-center">
-              {recipe.region_tags?.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-              {recipe.diabetic_friendly && (
-                <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
-                  Diabetic-friendly
-                </span>
-              )}
-            </div>
-
-            {/* Taste Indicators */}
-            {recipe.taste_axes && (
-              <div className="flex gap-2 mb-3 text-xs justify-center flex-wrap">
-                {recipe.taste_axes.heat > 0 && (
-                  <span className="text-red-600 font-medium">🌶️×{recipe.taste_axes.heat}</span>
-                )}
-                {recipe.taste_axes.masala > 0 && (
-                  <span className="text-orange-600 font-medium">🧄×{recipe.taste_axes.masala}</span>
-                )}
-                {recipe.taste_axes.tangy > 0 && (
-                  <span className="text-yellow-600 font-medium">🍋×{recipe.taste_axes.tangy}</span>
-                )}
-                {recipe.taste_axes.sweet > 0 && (
-                  <span className="text-amber-600 font-medium">🍯×{recipe.taste_axes.sweet}</span>
-                )}
-              </div>
-            )}
-
-            {/* Cooking Time & Servings */}
-            <div className="flex items-center gap-3 text-xs text-gray-600 justify-center mb-3">
-              {recipe.prep_minutes && (
-                <span>⏱️ {recipe.prep_minutes + (recipe.cook_minutes || 0)} min</span>
-              )}
-              {recipe.servings && (
-                <span>🍽️ {recipe.servings} servings</span>
-              )}
-            </div>
-
-            <div className="border-t border-green-200 pt-3 mb-3"></div>
-
-            {/* Why It Matched Section */}
-            <h4 className="font-bold text-sm text-gray-700 mb-2 text-center">
-              Why This Matched
-            </h4>
-
-            {/* Match Explanations */}
-            <div className="flex-1 space-y-2 mb-3">
-              {explanation.length > 0 ? (
-                explanation.map((exp, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-2 text-xs text-gray-700 bg-white rounded-lg p-2 shadow-sm"
-                  >
-                    <span className="text-green-600 font-bold flex-shrink-0">✓</span>
-                    <span className="leading-tight">{exp.replace('✓ ', '')}</span>
-                  </div>
-                ))
+          {/* Front of Card - Recipe Image */}
+          <div
+            className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg border-2 border-gray-200 hover:border-green-400 transition-all group"
+            inert={isFlipped}
+          >
+            <div className="relative h-full w-full bg-gradient-to-br from-orange-50 to-green-50">
+              {isRenderableImage ? (
+                <img src={imageUrl} alt={recipe.name} className="w-full h-full object-cover" />
               ) : (
-                <p className="text-xs text-gray-600 italic text-center">
-                  This recipe matches your preferences!
-                </p>
+                <div className="w-full h-full flex items-center justify-center text-8xl">{imageUrl}</div>
               )}
-            </div>
 
-            {/* Missing Ingredients */}
-            {missing_ingredients.length > 0 && (
-              <div className="p-2 bg-yellow-50 rounded-lg border border-yellow-200 mb-3">
-                <p className="text-xs font-semibold text-yellow-800 mb-1">
-                  You'll need ({missing_ingredients.length}):
-                </p>
-                <p className="text-xs text-yellow-700">
-                  {missing_ingredients.slice(0, 4).join(', ')}
-                  {missing_ingredients.length > 4 && ` +${missing_ingredients.length - 4} more`}
-                </p>
-              </div>
-            )}
-
-            {/* Masala & Tadka Info */}
-            {(recipe.masala_profiles || recipe.tadka_profiles) && (
-              <div className="space-y-1 mb-3">
-                {recipe.masala_profiles && recipe.masala_profiles.length > 0 && (
-                  <div className="text-xs">
-                    <span className="font-semibold text-gray-700">Masala: </span>
-                    <span className="text-orange-700">
-                      {recipe.masala_profiles.map(m => m.replace('_', ' ')).join(', ')}
-                    </span>
-                  </div>
-                )}
-                {recipe.tadka_profiles && recipe.tadka_profiles.length > 0 && (
-                  <div className="text-xs">
-                    <span className="font-semibold text-gray-700">Tadka: </span>
-                    <span className="text-amber-700">
-                      {recipe.tadka_profiles.map(t => t.replace('_', ' ')).join(', ')}
-                    </span>
-                  </div>
+              {/* Match badge */}
+              <div className="absolute top-3 left-3 flex flex-col items-start gap-1">
+                <span className="px-2.5 py-1 rounded-full bg-white/95 shadow text-xs font-bold text-gray-900 tabular-nums">
+                  {matchPercent}% match
+                </span>
+                {swapped_tadka && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white shadow text-[10px] font-semibold">
+                    🔥 {getTadkaName(swapped_tadka.to)} tadka
+                  </span>
                 )}
               </div>
-            )}
 
-            {/* Tap to Flip Back */}
-            <div className="text-center border-t border-green-200 pt-2 mt-auto">
-              <p className="text-xs text-gray-500 italic">👆 Tap to see image</p>
+              {/* Hover / focus overlay with recipe name and actions */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-4">
+                <h4 className="text-white font-bold text-lg mb-2 leading-tight">{recipe.name}</h4>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={openDetails}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-lg transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  >
+                    🔍 Why this matched
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsFlipped(true);
+                    }}
+                    className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-3 rounded-lg backdrop-blur-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  >
+                    ℹ️ Details
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Back of Card - Summary & Match Explanation */}
+          <div
+            className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden shadow-lg bg-white border-2 border-green-400"
+            style={{ transform: 'rotateY(180deg)' }}
+            inert={!isFlipped}
+          >
+            <div className="h-full flex flex-col p-4 bg-gradient-to-br from-green-50 to-emerald-50">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <h3 className="font-bold text-lg text-gray-800 leading-tight">{recipe.name}</h3>
+                <span className="flex-shrink-0 text-sm font-bold text-gray-900 tabular-nums">{matchPercent}%</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600 mb-2">
+                {recipe.course && <span className="capitalize">{recipe.course}</span>}
+                {totalMinutes > 0 && <span>⏱️ {totalMinutes} min</span>}
+                {recipe.servings && <span>🍽️ {recipe.servings}</span>}
+                {recipe.region_tags?.map((tag: string) => <span key={tag}>📍 {getRegionName(tag)}</span>)}
+              </div>
+
+              {/* Taste Indicators */}
+              {recipe.taste_axes && (
+                <div className="flex gap-2 mb-2 text-xs flex-wrap" aria-label="Flavor profile">
+                  {recipe.taste_axes.heat > 0 && <span className="text-red-700 font-medium">🌶️×{recipe.taste_axes.heat}</span>}
+                  {recipe.taste_axes.masala > 0 && <span className="text-orange-700 font-medium">🧄×{recipe.taste_axes.masala}</span>}
+                  {recipe.taste_axes.tangy > 0 && <span className="text-yellow-700 font-medium">🍋×{recipe.taste_axes.tangy}</span>}
+                  {recipe.taste_axes.sweet > 0 && <span className="text-amber-700 font-medium">🍯×{recipe.taste_axes.sweet}</span>}
+                </div>
+              )}
+
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-2">
+                {reasons.length > 0 ? (
+                  <MatchExplanationChip reasons={reasons} limit={3} size="sm" />
+                ) : (
+                  <p className="text-xs text-gray-600 italic">A wildcard from your cookbook</p>
+                )}
+
+                {missing_ingredients.length > 0 && (
+                  <div className="p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <p className="text-[11px] font-semibold text-yellow-800">
+                      You'll need ({missing_ingredients.length}):
+                    </p>
+                    <p className="text-[11px] text-yellow-800">
+                      {missing_ingredients.slice(0, 3).join(', ')}
+                      {missing_ingredients.length > 3 && ` +${missing_ingredients.length - 3} more`}
+                    </p>
+                  </div>
+                )}
+
+                {(recipe.masala_profiles?.length > 0 || recipe.tadka_profiles?.length > 0) && (
+                  <div className="space-y-0.5 text-[11px]">
+                    {recipe.masala_profiles?.length > 0 && (
+                      <p>
+                        <span className="font-semibold text-gray-700">Masala: </span>
+                        <span className="text-gray-800">{recipe.masala_profiles.map(getMasalaName).join(', ')}</span>
+                      </p>
+                    )}
+                    {recipe.tadka_profiles?.length > 0 && (
+                      <p>
+                        <span className="font-semibold text-gray-700">Tadka: </span>
+                        <span className="text-gray-800">{recipe.tadka_profiles.map(getTadkaName).join(', ')}</span>
+                        {swapped_tadka && <span className="text-amber-700 font-semibold"> (swapped)</span>}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-3 mt-2 border-t border-green-200">
+                <button
+                  type="button"
+                  onClick={openDetails}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300"
+                >
+                  🔍 Why this matched
+                  {original.can_swap_tadka && <span className="font-normal opacity-90"> · swap tadka</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFlipped(false);
+                  }}
+                  aria-label="Show recipe image"
+                  className="px-3 py-2 rounded-lg text-xs font-semibold text-gray-700 bg-white border border-green-200 hover:bg-green-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300"
+                >
+                  ↩
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </motion.div>
 
-      <style jsx>{`
-        .perspective-1000 {
-          perspective: 1000px;
-        }
-        .backface-hidden {
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
-        }
-      `}</style>
-    </motion.div>
+      {showDetails && (
+        <WhyThisMatchedModal
+          scored={scoredRecipe}
+          original={original}
+          userPrefs={userPrefs}
+          imageUrl={imageUrl}
+          onSwapTadka={(tadkaId) => onSwapTadka?.(tadkaId)}
+          onClose={() => setShowDetails(false)}
+        />
+      )}
+    </>
   );
 };
 

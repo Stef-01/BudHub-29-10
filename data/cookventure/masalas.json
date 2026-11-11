@@ -6,6 +6,7 @@
     "spices": ["coriander", "cumin", "cardamom", "cinnamon", "cloves", "black_pepper"],
     "aroma": ["warm", "sweet-spice"],
     "description": "Warming blend for North Indian curries",
+    "use_in": ["Chana masala", "Rajma", "Dal makhani"],
     "refs": ["https://en.wikipedia.org/wiki/Garam_masala"]
   },
   "goda_masala": {
@@ -15,6 +16,7 @@
     "spices": ["coriander", "cumin", "sesame", "coconut", "cinnamon", "cloves"],
     "aroma": ["sweet-aromatic", "toasty"],
     "description": "Sweet, aromatic Maharashtrian blend",
+    "use_in": ["Bhaaji", "Varan", "Amti"],
     "refs": ["https://www.vegrecipesofindia.com/goda-masala/", "https://twosleevers.com/goda-masala/"]
   },
   "panch_phoron": {
@@ -24,6 +26,7 @@
     "spices": ["cumin", "fennel", "mustard", "fenugreek", "nigella"],
     "aroma": ["toasty", "seeded", "complex"],
     "description": "Five-spice Bengali blend",
+    "use_in": ["Shukto", "Chorchori", "Tomato chutney"],
     "refs": ["https://www.daringgourmet.com/panch-phoron/"]
   },
   "sambar_powder": {
@@ -33,6 +36,7 @@
     "spices": ["coriander", "cumin", "red_chili", "fenugreek", "curry_leaves"],
     "aroma": ["curry-leaf", "lentil-toasty"],
     "description": "South Indian lentil stew spice",
+    "use_in": ["Sambar", "Kootu", "Vegetable poriyal"],
     "refs": []
   },
   "rasam_powder": {
@@ -42,6 +46,7 @@
     "spices": ["black_pepper", "coriander", "cumin", "red_chili", "curry_leaves"],
     "aroma": ["pepper", "sour-tomato"],
     "description": "Tangy South Indian soup spice",
+    "use_in": ["Rasam", "Pepper rasam", "Rasam rice"],
     "refs": []
   },
   "chaat_masala": {
@@ -51,6 +56,7 @@
     "spices": ["amchur", "black_salt", "cumin", "coriander", "ginger"],
     "aroma": ["tangy", "salty", "fruity"],
     "description": "Tangy street food seasoning",
+    "use_in": ["Chaat", "Fruit chaat", "Raita"],
     "refs": []
   }
 }

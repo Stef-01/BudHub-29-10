@@ -1,6 +1,7 @@
 {
   "north": {
     "name": "North India",
+    "name_hi": "उत्तर भारत",
     "states": ["Punjab", "Delhi", "Haryana", "UP", "Rajasthan"],
     "staple_packs": ["wheat", "dairy", "chickpea", "onion", "tomato", "ginger", "garlic"],
     "default_masalas": ["garam_masala", "chaat_masala"],
@@ -11,6 +12,7 @@
   },
   "south": {
     "name": "South India",
+    "name_hi": "दक्षिण भारत",
     "states": ["Tamil Nadu", "Kerala", "Karnataka", "Andhra", "Telangana"],
     "staple_packs": ["rice", "coconut", "curry_leaves", "tamarind", "mustard_seeds", "urad_dal", "chana_dal"],
     "default_masalas": ["sambar_powder", "rasam_powder"],
@@ -21,6 +23,7 @@
   },
   "west": {
     "name": "West India",
+    "name_hi": "पश्चिम भारत",
     "states": ["Maharashtra", "Gujarat", "Goa"],
     "staple_packs": ["rice", "wheat", "coconut", "peanuts", "jaggery"],
     "default_masalas": ["goda_masala"],
@@ -31,6 +34,7 @@
   },
   "east": {
     "name": "East India",
+    "name_hi": "पूर्व भारत",
     "states": ["West Bengal", "Odisha", "Bihar", "Jharkhand"],
     "staple_packs": ["rice", "mustard_oil", "mustard_seeds", "poppy_seeds", "fish"],
     "default_masalas": ["panch_phoron"],
@@ -41,6 +45,7 @@
   },
   "northeast": {
     "name": "Northeast India",
+    "name_hi": "पूर्वोत्तर भारत",
     "states": ["Assam", "Meghalaya", "Manipur", "Nagaland", "Mizoram", "Tripura", "Arunachal", "Sikkim"],
     "staple_packs": ["rice", "bamboo_shoot", "fermented_fish", "herbs", "ginger", "chili"],
     "default_masalas": [],
@@ -51,6 +56,7 @@
   },
   "deccan": {
     "name": "Deccan/Hyderabadi",
+    "name_hi": "दक्कन / हैदराबादी",
     "states": ["Telangana", "parts of Karnataka & Maharashtra"],
     "staple_packs": ["rice", "peanuts", "coconut", "tamarind", "curry_leaves"],
     "default_masalas": ["garam_masala"],

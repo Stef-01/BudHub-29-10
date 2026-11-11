@@ -1,9 +1,14 @@
 // components/cookventure/CookventureIndiaTab.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { UserPreferences, TasteAxes, ScoredRecipe } from '../../types/cookventure';
-import { loadCookventureData } from '../../services/cookventure/regionalPresets';
+import type { UserPreferences, TasteAxes, ScoredRecipe, RegionsMap } from '../../types/cookventure';
+import {
+  loadCookventureData,
+  applyRegionalPreset,
+  type RegionalPreset,
+} from '../../services/cookventure/regionalPresets';
 import { calculateCookventureScore, sortScoredRecipes } from '../../services/cookventure/cookventureScoring';
+import { STEP_ORDER, STEP_LABELS, type CookventureStep } from '../../services/cookventure/labels';
 
 // Survey components
 import CravingPicker from './survey/CravingPicker';
@@ -11,11 +16,12 @@ import RegionPicker from './survey/RegionPicker';
 import PantryBingo from './survey/PantryBingo';
 import FlavorDials from './survey/FlavorDials';
 import MasalaTadkaLocker from './survey/MasalaTadkaLocker';
+import RegionalStarterKits from './survey/RegionalStarterKits';
 
 // Results components
 import RecipeResultsGrid from './results/RecipeResultsGrid';
 
-type SurveyStep = 'craving' | 'region' | 'pantry' | 'flavor' | 'masala_tadka' | 'results';
+type SurveyStep = CookventureStep;
 
 interface CookventureIndiaTabProps {
   recipes?: any[]; // Will be typed with full Recipe interface later
@@ -34,7 +40,6 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
     favouriteTadkas: [],
     diabetic_friendly: false,
   });
-  const [scoredRecipes, setScoredRecipes] = useState<ScoredRecipe[]>([]);
 
   // Load taxonomy data
   const { regions, masalas, tadkas } = loadCookventureData();
@@ -102,22 +107,18 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
     }));
   };
 
-  // Calculate and sort recipes when reaching results
-  useEffect(() => {
-    if (currentStep === 'results') {
-      // Score ALL recipes (not just those with cookventure data)
-      // Recipes without cookventure metadata will still get base scores
-      const scored = recipes.map((recipe) =>
-        calculateCookventureScore(recipe, userPrefs)
-      );
-
-      // Sort recipes - show ALL recipes, even with low scores
-      // This ensures every recipe from the cookbook appears
-      const sorted = sortScoredRecipes(scored);
-
-      setScoredRecipes(sorted);
-    }
+  // Score and sort ALL recipes once results are shown (untagged recipes still get base scores,
+  // so every recipe from the cookbook appears)
+  const scoredRecipes = useMemo<ScoredRecipe[]>(() => {
+    if (currentStep !== 'results') return [];
+    return sortScoredRecipes(recipes.map((recipe) => calculateCookventureScore(recipe, userPrefs)));
   }, [currentStep, recipes, userPrefs]);
+
+  // Starter kit: fill pantry, masalas, tadka and taste from a classic dish, then jump to results
+  const handleApplyKit = (preset: RegionalPreset) => {
+    setUserPrefs((prev) => applyRegionalPreset(preset, prev));
+    setCurrentStep('results');
+  };
 
   // Check if can proceed to next step
   const canProceed = () => {
@@ -126,22 +127,16 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
   };
 
   // Navigation with preserved state
-  const handleNext = () => {
-    if (!canProceed()) return;
+  const currentIndex = STEP_ORDER.indexOf(currentStep);
 
-    if (currentStep === 'craving') setCurrentStep('region');
-    else if (currentStep === 'region') setCurrentStep('pantry');
-    else if (currentStep === 'pantry') setCurrentStep('flavor');
-    else if (currentStep === 'flavor') setCurrentStep('masala_tadka');
-    else if (currentStep === 'masala_tadka') setCurrentStep('results');
+  const handleNext = () => {
+    if (!canProceed() || currentIndex >= STEP_ORDER.length - 1) return;
+    setCurrentStep(STEP_ORDER[currentIndex + 1]);
   };
 
   const handleBack = () => {
-    if (currentStep === 'region') setCurrentStep('craving');
-    else if (currentStep === 'pantry') setCurrentStep('region');
-    else if (currentStep === 'flavor') setCurrentStep('pantry');
-    else if (currentStep === 'masala_tadka') setCurrentStep('flavor');
-    else if (currentStep === 'results') setCurrentStep('masala_tadka');
+    if (currentIndex <= 0) return;
+    setCurrentStep(STEP_ORDER[currentIndex - 1]);
   };
 
   // Allow jumping to any completed step from results
@@ -164,7 +159,6 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
       favouriteTadkas: [],
       diabetic_friendly: false,
     });
-    setScoredRecipes([]);
   };
 
   return (
@@ -190,62 +184,56 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
         </div>
 
         {/* Progress Bar - Clickable from results page */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            {['craving', 'region', 'pantry', 'flavor', 'masala_tadka', 'results'].map((step, idx) => {
-              const stepIndex = ['craving', 'region', 'pantry', 'flavor', 'masala_tadka', 'results'].indexOf(currentStep);
-              const isActive = idx <= stepIndex;
+        <nav className="mb-8" aria-label="Cookventure steps">
+          <ol className="flex items-start justify-center">
+            {STEP_ORDER.map((step, idx) => {
+              const isActive = idx <= currentIndex;
               const isCurrent = step === currentStep;
-              const isClickable = currentStep === 'results' && step !== 'results' && isActive;
+              const isClickable = currentStep === 'results' && step !== 'results';
+              const label = STEP_LABELS[step];
 
               return (
-                <React.Fragment key={step}>
-                  <motion.button
-                    whileHover={isClickable ? { scale: 1.15 } : {}}
-                    whileTap={isClickable ? { scale: 0.95 } : {}}
-                    onClick={() => isClickable && handleJumpToStep(step as SurveyStep)}
-                    disabled={!isClickable}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                      isActive
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-200 text-gray-400'
-                    } ${isCurrent ? 'ring-4 ring-orange-200' : ''} ${
-                      isClickable ? 'cursor-pointer hover:ring-2 hover:ring-orange-300' : 'cursor-default'
-                    }`}
-                  >
-                    {idx + 1}
-                  </motion.button>
-                  {idx < 5 && (
+                <li key={step} className="flex items-start">
+                  <div className="flex flex-col items-center w-12 sm:w-16">
+                    <motion.button
+                      type="button"
+                      whileHover={isClickable ? { scale: 1.15 } : {}}
+                      whileTap={isClickable ? { scale: 0.95 } : {}}
+                      onClick={() => isClickable && handleJumpToStep(step)}
+                      disabled={!isClickable}
+                      aria-current={isCurrent ? 'step' : undefined}
+                      aria-label={`Step ${idx + 1}: ${label.en}${isClickable ? ' (edit)' : ''}`}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                        isActive ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-400'
+                      } ${isCurrent ? 'ring-4 ring-orange-200' : ''} ${
+                        isClickable ? 'cursor-pointer hover:ring-2 hover:ring-orange-300' : 'cursor-default'
+                      }`}
+                    >
+                      {idx + 1}
+                    </motion.button>
+                    <span
+                      className={`mt-1 text-[10px] leading-tight text-center ${
+                        isCurrent ? 'font-bold text-orange-600' : 'text-gray-500'
+                      }`}
+                    >
+                      {label.en}
+                    </span>
+                    <span className="text-[10px] leading-tight text-gray-500" lang="hi">
+                      {label.hi}
+                    </span>
+                  </div>
+                  {idx < STEP_ORDER.length - 1 && (
                     <div
-                      className={`w-8 h-1 rounded transition-all ${
-                        isActive ? 'bg-orange-500' : 'bg-gray-200'
+                      aria-hidden="true"
+                      className={`mt-3 w-3 sm:w-6 h-1 rounded transition-all ${
+                        idx < currentIndex ? 'bg-orange-500' : 'bg-gray-200'
                       }`}
                     ></div>
                   )}
-                </React.Fragment>
+                </li>
               );
             })}
-          </div>
-          <div className="flex justify-center text-[10px] text-gray-500 gap-3">
-            <span className={currentStep === 'craving' ? 'font-bold text-orange-600' : ''}>
-              Cravings
-            </span>
-            <span className={currentStep === 'region' ? 'font-bold text-orange-600' : ''}>
-              Region
-            </span>
-            <span className={currentStep === 'pantry' ? 'font-bold text-orange-600' : ''}>
-              Pantry
-            </span>
-            <span className={currentStep === 'flavor' ? 'font-bold text-orange-600' : ''}>
-              Flavor
-            </span>
-            <span className={currentStep === 'masala_tadka' ? 'font-bold text-orange-600' : ''}>
-              Masala
-            </span>
-            <span className={currentStep === 'results' ? 'font-bold text-orange-600' : ''}>
-              Results
-            </span>
-          </div>
+          </ol>
           {currentStep === 'results' && (
             <motion.p
               initial={{ opacity: 0, y: -10 }}
@@ -255,7 +243,7 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
               💡 Click any step above to adjust your preferences
             </motion.p>
           )}
-        </div>
+        </nav>
 
         {/* Survey Steps */}
         <AnimatePresence mode="wait">
@@ -275,11 +263,18 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
             )}
 
             {currentStep === 'region' && (
-              <RegionPicker
-                regions={regions as any}
-                selectedRegions={userPrefs.selectedRegions}
-                onToggleRegion={handleToggleRegion}
-              />
+              <>
+                <RegionPicker
+                  regions={regions as any}
+                  selectedRegions={userPrefs.selectedRegions}
+                  onToggleRegion={handleToggleRegion}
+                />
+                <RegionalStarterKits
+                  regions={regions as RegionsMap}
+                  selectedRegions={userPrefs.selectedRegions}
+                  onApplyKit={handleApplyKit}
+                />
+              </>
             )}
 
             {currentStep === 'pantry' && (
@@ -310,7 +305,7 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
             )}
 
             {currentStep === 'results' && (
-              <RecipeResultsGrid scoredRecipes={scoredRecipes} />
+              <RecipeResultsGrid scoredRecipes={scoredRecipes} userPrefs={userPrefs} />
             )}
           </motion.div>
         </AnimatePresence>
