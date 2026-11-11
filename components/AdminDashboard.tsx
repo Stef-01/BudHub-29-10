@@ -9,6 +9,7 @@ import {
   getNutrientChallengeMastery,
   getNutriServeProblemNutrients,
 } from '../services/supabaseLogger';
+import CookventureAnalyticsTab from './admin/CookventureAnalyticsTab';
 import { trackAdminAccess, trackAdminTabChange } from '../lib/analytics';
 
 interface AdminDashboardProps {
@@ -17,7 +18,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit, userId = 'dad' }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'nutrient-challenge' | 'nutriserve'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'nutrient-challenge' | 'nutriserve' | 'cookventure'>('overview');
   const [loading, setLoading] = useState(true);
 
   // Nutrient Challenge Data
@@ -134,7 +135,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit, userId = 'dad' 
 
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-lg mb-6">
-          <div className="flex border-b border-gray-200">
+          <div className="flex border-b border-gray-200 overflow-x-auto whitespace-nowrap">
             <button
               onClick={() => {
                 setActiveTab('overview');
@@ -174,6 +175,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit, userId = 'dad' 
             >
               NutriServe Analysis
             </button>
+            <button
+              onClick={() => {
+                setActiveTab('cookventure');
+                trackAdminTabChange('cookventure', userId);
+              }}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'cookventure'
+                  ? 'text-emerald-700 border-b-2 border-emerald-700'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Cookventure India
+            </button>
           </div>
 
           <div className="p-6">
@@ -193,6 +207,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit, userId = 'dad' 
                 mastery={ncMastery}
               />
             )}
+
+            {activeTab === 'cookventure' && <CookventureAnalyticsTab />}
 
             {activeTab === 'nutriserve' && (
               <NutriServeTab

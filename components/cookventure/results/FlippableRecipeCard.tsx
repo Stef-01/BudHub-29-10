@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import type { ScoredRecipe, UserPreferences } from '../../../types/cookventure';
 import { useRecipeImage } from '../../../hooks/useRecipeImage';
 import { getMasalaName, getRegionName, getTadkaName } from '../../../services/cookventure/labels';
+import { canLowerSugar, type RecipeSwaps } from '../../../services/cookventure/swaps';
 import MatchExplanationChip from './MatchExplanationChip';
 import WhyThisMatchedModal from './WhyThisMatchedModal';
 
@@ -14,7 +15,16 @@ interface FlippableRecipeCardProps {
   original?: ScoredRecipe;
   userPrefs: UserPreferences;
   index: number;
-  onSwapTadka?: (tadkaId: string) => void;
+  /** 1-based position in the results, for analytics */
+  rank?: number;
+  swaps?: RecipeSwaps;
+  onChangeSwaps?: (swaps: RecipeSwaps) => void;
+  isSaved?: boolean;
+  onSave?: () => void | Promise<void>;
+  onOpenDetails?: () => void;
+  onCook?: () => void;
+  rating?: number;
+  onRate?: (stars: number) => void;
 }
 
 const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({
@@ -22,7 +32,14 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({
   original = scoredRecipe,
   userPrefs,
   index,
-  onSwapTadka,
+  swaps = {},
+  onChangeSwaps,
+  isSaved,
+  onSave,
+  onOpenDetails,
+  onCook,
+  rating,
+  onRate,
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -34,8 +51,12 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({
     imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:') || imageUrl.startsWith('/'));
   const totalMinutes = (recipe.prep_minutes || 0) + (recipe.cook_minutes || 0);
 
+  const wantsLowerSugar =
+    (!!userPrefs.diabetic_friendly || userPrefs.diet.includes('diabetic_friendly')) && canLowerSugar(original.recipe);
+
   const openDetails = (e: React.MouseEvent) => {
     e.stopPropagation();
+    onOpenDetails?.();
     setShowDetails(true);
   };
 
@@ -76,7 +97,22 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({
                     🔥 {getTadkaName(swapped_tadka.to)} tadka
                   </span>
                 )}
+                {scoredRecipe.swapped_masala && (
+                  <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white shadow text-[10px] font-semibold">
+                    🫙 {getMasalaName(scoredRecipe.swapped_masala.to)}
+                  </span>
+                )}
+                {scoredRecipe.sugar_swaps && scoredRecipe.sugar_swaps.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-sky-600 text-white shadow text-[10px] font-semibold">
+                    🩺 Lower sugar
+                  </span>
+                )}
               </div>
+              {isSaved && (
+                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-white/95 shadow text-[10px] font-semibold text-green-800">
+                  📚 In cookbook
+                </span>
+              )}
 
               {/* Hover / focus overlay with recipe name and actions */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-4">
@@ -137,7 +173,13 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({
                 {reasons.length > 0 ? (
                   <MatchExplanationChip reasons={reasons} limit={3} size="sm" />
                 ) : (
-                  <p className="text-xs text-gray-600 italic">A wildcard from your cookbook</p>
+                  <p className="text-xs text-gray-600 italic">A wildcard from the recipe collection</p>
+                )}
+
+                {wantsLowerSugar && !scoredRecipe.sugar_swaps && (
+                  <p className="text-[11px] text-sky-800 bg-sky-50 border border-sky-200 rounded-lg px-2 py-1">
+                    🩺 Lower-sugar swap available
+                  </p>
                 )}
 
                 {missing_ingredients.length > 0 && (
@@ -178,7 +220,9 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300"
                 >
                   🔍 Why this matched
-                  {original.can_swap_tadka && <span className="font-normal opacity-90"> · swap tadka</span>}
+                  {(original.can_swap_tadka || original.can_swap_masala) && (
+                    <span className="font-normal opacity-90"> · swaps</span>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -203,7 +247,13 @@ const FlippableRecipeCard: React.FC<FlippableRecipeCardProps> = ({
           original={original}
           userPrefs={userPrefs}
           imageUrl={imageUrl}
-          onSwapTadka={(tadkaId) => onSwapTadka?.(tadkaId)}
+          swaps={swaps}
+          onChangeSwaps={(next) => onChangeSwaps?.(next)}
+          isSaved={isSaved}
+          onSave={onSave ? () => void onSave() : undefined}
+          onCook={onCook}
+          rating={rating}
+          onRate={onRate}
           onClose={() => setShowDetails(false)}
         />
       )}

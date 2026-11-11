@@ -1,0 +1,22 @@
+{
+  "_comment": "Lower-sugar swaps. 'savory' applies to mains, sides, soups and breakfasts; 'sweet' to desserts and drinks.",
+  "savory": {
+    "jaggery": "a little caramelised onion (or leave the jaggery out)",
+    "sugar": "leave it out; tomato and onion carry the sweetness",
+    "dates": "roasted pumpkin",
+    "honey": "leave it out",
+    "raisins": "leave them out"
+  },
+  "sweet": {
+    "jaggery": "half the jaggery, topped up to taste with a stevia or monk-fruit sweetener",
+    "sugar": "half the sugar, topped up to taste with a stevia or monk-fruit sweetener",
+    "honey": "half the honey",
+    "maple syrup": "half the maple syrup",
+    "dates": "half the dates",
+    "raisins": "half the raisins"
+  },
+  "tips": {
+    "savory": "Gentle sweetness can come from caramelised onion or roasted pumpkin.",
+    "sweet": "Add a pinch of cinnamon and extra cardamom: warm spices taste sweet. Rice, milk and coconut still carry carbs, so keep portions small."
+  }
+}

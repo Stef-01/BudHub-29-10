@@ -4,28 +4,41 @@ import type { TasteAxes } from '../../types/cookventure';
 import regionsData from '../../data/cookventure/regions.json';
 import masalasData from '../../data/cookventure/masalas.json';
 import tadkaData from '../../data/cookventure/tadka.json';
+import subregionsData from '../../data/cookventure/subregions.json';
 
 export interface BilingualLabel {
   en: string;
   hi: string;
 }
 
-export type CookventureStep = 'craving' | 'region' | 'pantry' | 'flavor' | 'masala_tadka' | 'results';
+export type CookventureStep =
+  | 'craving'
+  | 'region'
+  | 'time_course'
+  | 'pantry'
+  | 'flavor'
+  | 'diet'
+  | 'masala_tadka'
+  | 'results';
 
 export const STEP_ORDER: CookventureStep[] = [
   'craving',
   'region',
+  'time_course',
   'pantry',
   'flavor',
+  'diet',
   'masala_tadka',
   'results',
 ];
 
 export const STEP_LABELS: Record<CookventureStep, BilingualLabel> = {
-  craving: { en: 'Cravings', hi: 'इच्छा' },
+  craving: { en: 'Craving', hi: 'इच्छा' },
   region: { en: 'Region', hi: 'क्षेत्र' },
+  time_course: { en: 'Time', hi: 'समय' },
   pantry: { en: 'Pantry', hi: 'भंडार' },
   flavor: { en: 'Flavor', hi: 'स्वाद' },
+  diet: { en: 'Diet', hi: 'आहार' },
   masala_tadka: { en: 'Masala', hi: 'मसाला' },
   results: { en: 'Results', hi: 'नतीजे' },
 };
@@ -69,4 +82,8 @@ export function getMasalaName(masalaId: string): string {
 
 export function getTadkaName(tadkaId: string): string {
   return (tadkaData as Record<string, { name: string }>)[tadkaId]?.name ?? humanizeId(tadkaId);
+}
+
+export function getSubregionName(subregionId: string): string {
+  return (subregionsData as Record<string, { name: string }>)[subregionId]?.name ?? humanizeId(subregionId);
 }

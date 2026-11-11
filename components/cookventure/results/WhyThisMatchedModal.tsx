@@ -1,17 +1,20 @@
 // components/cookventure/results/WhyThisMatchedModal.tsx
-// Detailed "Why this matched" view: score breakdown, flavor match, pantry check, spices and tadka switcher.
-import React, { useEffect, useId, useRef } from 'react';
+// Detailed "Why this matched" view: score breakdown, flavor match, swaps (tadka, masala, lower sugar),
+// pantry check, spices, and the "Make this" cooking view with a rating.
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import type { MasalasMap, ScoredRecipe, TadkaMap, UserPreferences } from '../../../types/cookventure';
 import masalasData from '../../../data/cookventure/masalas.json';
 import tadkaData from '../../../data/cookventure/tadka.json';
 import { getRegionName } from '../../../services/cookventure/labels';
-import { getTadkaOptions } from '../../../services/cookventure/tadkaSwap';
+import { canLowerSugar, getTadkaOptions, type RecipeSwaps } from '../../../services/cookventure/swaps';
 import MatchExplanationChip from './MatchExplanationChip';
 import ScoreBreakdown from './ScoreBreakdown';
 import FlavorMatchChart from './FlavorMatchChart';
 import TadkaSwitcher from './TadkaSwitcher';
+import MasalaSwapper from './MasalaSwapper';
+import LowerSugarPanel from './LowerSugarPanel';
 import { SpiceLearnRow } from '../shared/LearnCards';
 
 const MASALAS = masalasData as MasalasMap;
@@ -24,7 +27,14 @@ interface WhyThisMatchedModalProps {
   original: ScoredRecipe;
   userPrefs: UserPreferences;
   imageUrl?: string;
-  onSwapTadka: (tadkaId: string) => void;
+  swaps: RecipeSwaps;
+  onChangeSwaps: (swaps: RecipeSwaps) => void;
+  isSaved?: boolean;
+  onSave?: () => void;
+  /** Called the first time the user opens the cooking view */
+  onCook?: () => void;
+  rating?: number;
+  onRate?: (stars: number) => void;
   onClose: () => void;
 }
 
@@ -51,10 +61,18 @@ const WhyThisMatchedModal: React.FC<WhyThisMatchedModalProps> = ({
   original,
   userPrefs,
   imageUrl,
-  onSwapTadka,
+  swaps,
+  onChangeSwaps,
+  isSaved,
+  onSave,
+  onCook,
+  rating,
+  onRate,
   onClose,
 }) => {
   const titleId = useId();
+  const [cooking, setCooking] = useState(false);
+  const cookRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const { recipe } = scored;
   const isRenderableImage =
@@ -92,6 +110,16 @@ const WhyThisMatchedModal: React.FC<WhyThisMatchedModalProps> = ({
   const originalHeat = original.recipe.taste_axes?.heat;
   const currentHeat = recipe.taste_axes?.heat;
   const scoreDelta = scored.score - original.score;
+  const swapped = !!(scored.swapped_tadka || scored.swapped_masala || scored.sugar_swaps);
+  const tasteEstimated = recipe.cookventure_source?.taste_axes === 'inferred';
+  const offerLowerSugar = canLowerSugar(original.recipe);
+
+  const startCooking = () => {
+    if (!cooking) onCook?.();
+    setCooking(true);
+    // Wait a frame so the section exists before scrolling to it
+    requestAnimationFrame(() => cookRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
 
   const unsetInputs = [
     userPrefs.selectedRegions.length === 0 && 'regions',
@@ -166,13 +194,40 @@ const WhyThisMatchedModal: React.FC<WhyThisMatchedModalProps> = ({
               <MatchExplanationChip reasons={scored.reasons} />
             </div>
           )}
+          {scored.cautions && scored.cautions.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {scored.cautions.map((caution) => (
+                <li key={caution} className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                  ⚠️ {caution}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={startCooking}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+            >
+              🍳 Make this
+            </button>
+            {onSave && (
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSaved}
+                className={`inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold px-4 py-2 border focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300 ${
+                  isSaved ? 'bg-green-50 border-green-200 text-green-800 cursor-default' : 'bg-white border-gray-200 text-gray-800 hover:border-green-400'
+                }`}
+              >
+                {isSaved ? '✓ In your cookbook' : '📚 Save to cookbook'}
+              </button>
+            )}
+          </div>
         </div>
 
         <Section title="Score breakdown" subtitle="Every recipe starts with 10 points; here's where the rest came from">
-          <ScoreBreakdown
-            breakdown={scored.breakdown}
-            previous={scored.swapped_tadka ? original.breakdown : undefined}
-          />
+          <ScoreBreakdown breakdown={scored.breakdown} previous={swapped ? original.breakdown : undefined} />
           {unsetInputs.length > 0 && (
             <p className="mt-4 text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
               💡 Add {unsetInputs.join(', ')} to sharpen your matches.
@@ -182,11 +237,18 @@ const WhyThisMatchedModal: React.FC<WhyThisMatchedModalProps> = ({
 
         <Section title="Flavor match" subtitle="Teekha · Masaledar · Khata · Meetha, from 0 (none) to 3 (high)">
           {recipe.taste_axes ? (
-            <FlavorMatchChart
-              userTaste={userPrefs.tastePrefs}
-              dishTaste={recipe.taste_axes}
-              previousDishTaste={scored.swapped_tadka ? original.recipe.taste_axes : undefined}
-            />
+            <>
+              <FlavorMatchChart
+                userTaste={userPrefs.tastePrefs}
+                dishTaste={recipe.taste_axes}
+                previousDishTaste={swapped ? original.recipe.taste_axes : undefined}
+              />
+              {tasteEstimated && (
+                <p className="mt-2 text-[11px] text-gray-500">
+                  This dish's flavor profile is estimated from its ingredients.
+                </p>
+              )}
+            </>
           ) : (
             <p className="text-xs text-gray-500 italic">
               This recipe's flavor profile hasn't been tagged yet, so it can't be compared with your taste.
@@ -200,13 +262,42 @@ const WhyThisMatchedModal: React.FC<WhyThisMatchedModalProps> = ({
               options={getTadkaOptions(original.recipe)}
               originalTadka={original.recipe.tadka_profiles?.[0]}
               currentTadka={recipe.tadka_profiles?.[0]}
-              onSwitch={onSwapTadka}
+              onSwitch={(tadkaId) =>
+                onChangeSwaps({
+                  ...swaps,
+                  tadka: tadkaId === original.recipe.tadka_profiles?.[0] ? undefined : tadkaId,
+                })
+              }
               heatChange={
                 typeof originalHeat === 'number' && typeof currentHeat === 'number'
                   ? { from: originalHeat, to: currentHeat }
                   : undefined
               }
-              scoreDelta={scored.swapped_tadka ? scoreDelta : undefined}
+              scoreDelta={swaps.tadka ? scoreDelta : undefined}
+            />
+          </Section>
+        )}
+
+        {original.can_swap_masala && (
+          <Section title="Swap the masala" subtitle="Out of one blend? Try a neighbour">
+            <MasalaSwapper
+              originalMasalas={original.recipe.masala_profiles || []}
+              swap={swaps.masala}
+              onSwap={(masala) => onChangeSwaps({ ...swaps, masala })}
+              tasteBefore={original.recipe.taste_axes}
+              tasteAfter={recipe.taste_axes}
+              scoreDelta={swaps.masala ? scoreDelta : undefined}
+            />
+          </Section>
+        )}
+
+        {offerLowerSugar && (
+          <Section title="Lower sugar" subtitle="Sweetened with jaggery, sugar, dates or honey">
+            <LowerSugarPanel
+              enabled={!!swaps.lowerSugar}
+              onToggle={(lowerSugar) => onChangeSwaps({ ...swaps, lowerSugar })}
+              swaps={scored.sugar_swaps}
+              tip={scored.sugar_tip}
             />
           </Section>
         )}
@@ -248,6 +339,70 @@ const WhyThisMatchedModal: React.FC<WhyThisMatchedModalProps> = ({
           <Section title="Spices in this dish">
             <SpiceLearnRow masalas={masalas} tadkas={tadkas} />
           </Section>
+        )}
+
+        {cooking && (
+          <div ref={cookRef} className="scroll-mt-20">
+            <Section title="🍳 Let's cook" subtitle={swapped ? 'With your swaps applied' : undefined}>
+              <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Ingredients</h4>
+              <ul className="space-y-1 text-sm text-gray-800 mb-4">
+                {(recipe.ingredients || '')
+                  .split('\n')
+                  .map((line: string) => line.trim())
+                  .filter(Boolean)
+                  .map((line: string, idx: number) =>
+                    line.endsWith(':') ? (
+                      <li key={idx} className="pt-1 text-xs font-semibold text-gray-600">
+                        {line}
+                      </li>
+                    ) : (
+                      <li key={idx}>• {line}</li>
+                    )
+                  )}
+              </ul>
+              {scored.swapped_tadka && (
+                <p className="mb-4 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <strong>Tempering swap:</strong> {scored.swapped_tadka.tempering_note}
+                </p>
+              )}
+              {recipe.instructions && (
+                <>
+                  <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Method</h4>
+                  <ol className="space-y-2 text-sm text-gray-800 list-none">
+                    {String(recipe.instructions)
+                      .split('\n')
+                      .map((step: string) => step.trim())
+                      .filter(Boolean)
+                      .map((step: string, idx: number) => (
+                        <li key={idx}>{step}</li>
+                      ))}
+                  </ol>
+                </>
+              )}
+              {onRate && (
+                <div className="mt-5 pt-4 border-t border-gray-100">
+                  <p className="text-sm font-semibold text-gray-900 mb-2">How was it?</p>
+                  <div className="flex gap-1" role="group" aria-label="Rate this recipe">
+                    {[1, 2, 3, 4, 5].map((stars) => (
+                      <button
+                        key={stars}
+                        type="button"
+                        onClick={() => onRate(stars)}
+                        aria-pressed={rating === stars}
+                        aria-label={`${stars} star${stars > 1 ? 's' : ''}`}
+                        className={`text-2xl leading-none px-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
+                          rating && stars <= rating ? 'text-amber-500' : 'text-gray-300 hover:text-amber-300'
+                        }`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  {rating ? <p className="mt-1 text-xs text-gray-600">Thanks! You rated it {rating}/5.</p> : null}
+                </div>
+              )}
+            </Section>
+          </div>
         )}
       </motion.div>
     </motion.div>,

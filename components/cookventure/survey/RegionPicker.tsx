@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import type { Region } from '../../../types/cookventure';
+import CvAsset from '../shared/CvAsset';
 
 interface RegionPickerProps {
   regions: Record<string, Region>;
@@ -54,7 +55,9 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
               )}
 
               {/* Region Emoji */}
-              <div className="text-4xl mb-2 text-center">{region.emoji}</div>
+              <div className="text-4xl mb-2 flex justify-center">
+                <CvAsset category="regions" id={regionId} fallback={region.emoji} className="w-12 h-12" />
+              </div>
 
               {/* Region Name */}
               <h3 className="font-bold text-sm text-gray-800 text-center">

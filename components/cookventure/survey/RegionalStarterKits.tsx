@@ -3,21 +3,39 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { RegionsMap } from '../../../types/cookventure';
-import { getRegionalStarterKits, type RegionalPreset } from '../../../services/cookventure/regionalPresets';
-import { TASTE_AXES } from '../../../services/cookventure/labels';
+import {
+  getRegionalStarterKits,
+  getSubregionKit,
+  getSubregions,
+  type RegionalPreset,
+} from '../../../services/cookventure/regionalPresets';
+import { getSubregionName, TASTE_AXES } from '../../../services/cookventure/labels';
+import CvAsset from '../shared/CvAsset';
 
 interface RegionalStarterKitsProps {
   regions: RegionsMap;
   selectedRegions: string[];
+  selectedSubregions?: string[];
   onApplyKit: (preset: RegionalPreset) => void;
 }
 
-const RegionalStarterKits: React.FC<RegionalStarterKitsProps> = ({ regions, selectedRegions, onApplyKit }) => {
-  // Kits for the picked regions, or every region's kits when nothing is picked yet
+const RegionalStarterKits: React.FC<RegionalStarterKitsProps> = ({
+  regions,
+  selectedRegions,
+  selectedSubregions = [],
+  onApplyKit,
+}) => {
+  // Every region's classic when nothing is picked; otherwise the picked regions' classics plus
+  // their sub-regional kits, with the kitchens you narrowed down to first
   const kits = useMemo(() => {
-    const regionIds = selectedRegions.length > 0 ? selectedRegions : Object.keys(regions);
-    return regionIds.flatMap((id) => getRegionalStarterKits(id));
-  }, [regions, selectedRegions]);
+    if (selectedRegions.length === 0) return Object.keys(regions).flatMap((id) => getRegionalStarterKits(id));
+    const subKits = selectedRegions
+      .flatMap((id) => getSubregions(id))
+      .map((sub) => getSubregionKit(sub.id)!);
+    const picked = subKits.filter((k) => selectedSubregions.includes(k.subregionId!));
+    const rest = subKits.filter((k) => !selectedSubregions.includes(k.subregionId!));
+    return [...picked, ...selectedRegions.flatMap((id) => getRegionalStarterKits(id)), ...rest];
+  }, [regions, selectedRegions, selectedSubregions]);
 
   if (kits.length === 0) return null;
 
@@ -49,15 +67,16 @@ const RegionalStarterKits: React.FC<RegionalStarterKitsProps> = ({ regions, sele
               className="group text-left p-4 rounded-xl border-2 border-gray-200 bg-gradient-to-br from-white to-orange-50 hover:border-orange-400 hover:shadow-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
             >
               <div className="flex items-start gap-3">
-                <span className="text-3xl leading-none" aria-hidden="true">
-                  {kit.emoji}
+                <span className="text-3xl leading-none flex-shrink-0">
+                  <CvAsset category="kits" id={kit.id} fallback={kit.emoji} className="w-12 h-12 rounded-lg" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-sm text-gray-900">{kit.title}</p>
                   <p className="text-xs text-gray-600">{kit.description}</p>
                   {region && (
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      {region.emoji} {region.name}
+                      {region.emoji} {kit.subregionId ? `${getSubregionName(kit.subregionId)} · ` : ''}
+                      {region.name}
                     </p>
                   )}
                 </div>

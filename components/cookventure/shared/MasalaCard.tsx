@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Masala } from '../../../types/cookventure';
 import { MasalaLearnCard } from './LearnCards';
+import CvAsset from './CvAsset';
 
 interface MasalaCardProps {
   masala: Masala & { id: string };
@@ -50,7 +51,8 @@ const MasalaCard: React.FC<MasalaCardProps> = ({ masala, isSelected, onToggle })
         )}
 
         {/* Masala Name */}
-        <h4 className="font-bold text-sm text-gray-800 mb-1">
+        <h4 className="font-bold text-sm text-gray-800 mb-1 flex items-center gap-2">
+          <CvAsset category="masalas" id={masala.id} fallback="🫙" className="w-8 h-8" fallbackClassName="text-lg" />
           {masala.name}
         </h4>
         {masala.name_hi && (

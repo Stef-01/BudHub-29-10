@@ -1,6 +1,7 @@
 // components/cookventure/survey/PantryBingo.tsx
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import PantrySearch from './PantrySearch';
 
 interface IngredientPack {
   id: string;
@@ -119,9 +120,15 @@ const PantryBingo: React.FC<PantryBingoProps> = ({
           What's in your kitchen?
         </h2>
         <p className="text-xs text-gray-500">
-          Quick packs or pick by category
+          Search, use a quick pack, or pick by category
         </p>
       </div>
+
+      <PantrySearch
+        vocabulary={[...spices, ...vegetables, ...herbs, ...staples]}
+        selectedIngredients={selectedIngredients}
+        onToggleIngredient={onToggleIngredient}
+      />
 
       {/* Quick Packs */}
       <div>
@@ -295,22 +302,20 @@ const PantryBingo: React.FC<PantryBingoProps> = ({
           className="p-4 bg-green-50 rounded-lg border border-green-200"
         >
           <p className="text-sm text-green-800 font-medium mb-2">
-            ✓ {selectedIngredients.length} ingredients selected
+            ✓ {selectedIngredients.length} ingredients selected <span className="font-normal text-green-700">· tap one to remove it</span>
           </p>
           <div className="flex flex-wrap gap-1">
-            {selectedIngredients.slice(0, 15).map((ing) => (
-              <span
+            {selectedIngredients.map((ing) => (
+              <button
                 key={ing}
-                className="inline-block px-2 py-0.5 bg-green-200 text-green-800 rounded text-xs font-medium"
+                type="button"
+                onClick={() => onToggleIngredient(ing)}
+                aria-label={`Remove ${ing.replace(/_/g, ' ')}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-200 hover:bg-green-300 text-green-900 rounded text-xs font-medium"
               >
-                {ing.replace('_', ' ')}
-              </span>
+                {ing.replace(/_/g, ' ')} <span aria-hidden="true">×</span>
+              </button>
             ))}
-            {selectedIngredients.length > 15 && (
-              <span className="text-xs text-green-600 px-2 py-0.5">
-                +{selectedIngredients.length - 15} more
-              </span>
-            )}
           </div>
         </motion.div>
       )}

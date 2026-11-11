@@ -4,6 +4,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Masala, Tadka } from '../../../types/cookventure';
 import { humanizeId } from '../../../services/cookventure/labels';
+import CvAsset from './CvAsset';
 
 export const MasalaLearnCard: React.FC<{ masala: Masala }> = ({ masala }) => (
   <div>
@@ -111,7 +112,9 @@ export const SpiceLearnRow: React.FC<SpiceLearnRowProps> = ({ masalas, tadkas })
         {masalas.map((m) =>
           chip(
             `masala:${m.id}`,
-            <>🫙 {m.name}</>,
+            <>
+              <CvAsset category="masalas" id={m.id} fallback="🫙" className="w-4 h-4" /> {m.name}
+            </>,
             `Learn about ${m.name}`,
             'bg-orange-50 text-orange-900 border-orange-200 hover:border-orange-400'
           )
@@ -120,7 +123,7 @@ export const SpiceLearnRow: React.FC<SpiceLearnRowProps> = ({ masalas, tadkas })
           chip(
             `tadka:${t.id}`,
             <>
-              {t.emoji} {t.name}
+              <CvAsset category="tadkas" id={t.id} fallback={t.emoji} className="w-4 h-4" /> {t.name}
             </>,
             `Learn about the ${t.name} tadka`,
             'bg-amber-50 text-amber-900 border-amber-200 hover:border-amber-400'

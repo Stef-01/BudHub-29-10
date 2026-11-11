@@ -771,15 +771,28 @@ When user hovers over a masala:
 #### Sprint C: Depth & Scale (Week 4)
 **Goal:** Production-ready with state-specific features
 
-- [ ] Sub-regional presets (Kerala coconut-pepper, Andhra gongura, etc.)
-- [ ] Seasonal playlists (monsoon comfort foods, summer coolers)
-- [ ] Masala swapper backend + UI
-- [ ] Diabetic-friendly sweetness adapter
-- [ ] Batch-tag existing recipes with region/masala/tadka fields
-- [ ] A/B test scoring weights
-- [ ] Analytics: track which regions/masalas users prefer
+- [x] Sub-regional presets (Kerala coconut-pepper, Andhra gongura, etc.)
+- [x] Seasonal playlists (monsoon comfort foods, summer coolers)
+- [x] Masala swapper backend + UI
+- [x] Diabetic-friendly sweetness adapter
+- [x] Batch-tag existing recipes with region/masala/tadka fields
+- [x] A/B test scoring weights
+- [x] Analytics: track which regions/masalas users prefer
 
 **Output:** 50+ recipes tagged, regional depth, ready for user testing
+
+**Status:** Done, plus the survey steps the earlier sprints skipped (Step 2 Time & Course, Step 5 Diet & Avoids, Step 3 synonym search) and the "Recipe inferencer" from the architecture.
+- Batch tags: all 68 catalog recipes in `data/cookventure/recipe_tags.json`, a runtime overlay keyed by recipe id (cookbooks live in IndexedDB, so editing `constants.ts` wouldn't reach existing users). Results search the cookbook plus the full catalog; "Save to cookbook" works.
+- Inferencer: `services/cookventure/recipeInferencer.ts` fills region, masala, tadka and taste from ingredients for user-added recipes, using `souring_map.json` and `sweeteners_map.json` (mean error against the curated tags: about 0.2 levels per taste axis).
+- Sub-regions: 12 kitchens with starter kits in `data/cookventure/subregions.json`; a picked kitchen's dishes score full region points, the rest of its region two-thirds.
+- Diet & avoids: `services/cookventure/dietRules.ts`. Strict diets (vegetarian, vegan, Jain, no onion-garlic, gluten-free) and allergens (nut, dairy, soy) hide recipes with the reason; goals (diabetes-friendly, high fiber) boost them.
+- Synonyms: `data/cookventure/ingredient_synonyms.json` + `services/cookventure/ingredients.ts` ("tamatar" finds tomato, "kariveppila" curry leaves) for search and matching.
+- Playlists: `data/cookventure/playlists.json` (monsoon comfort, summer coolers, winter warmers, Onam sadya), curated lists plus rules, with an "in season in India" tag.
+- Swaps: `services/cookventure/swaps.ts`. Masala swaps use per-blend `taste_effect` and `swaps_well_with` (`masalas.json`); the lower-sugar adapter is course-aware (`diabetic_swaps.json`); tadka, masala and sugar swaps stack and re-score in place.
+- A/B test: `services/cookventure/experiments.ts` assigns a weight variant per user (or device) by hash; `?cv_variant=` previews one.
+- Analytics: `services/cookventure/analytics.ts` logs events to Vercel, Supabase (`supabase/migrations/006_create_cookventure_events.sql`, insert-only with an aggregate read function) and a local log; the admin dashboard's Cookventure tab shows the section 10 success metrics, variant outcomes and preferences.
+- Game Center: XP for finishing, the first swap and each "Make this"; best match % is saved as the Cookventure score.
+- Artwork slots: `services/cookventure/assets.ts` picks up files dropped into `assets/cookventure/`; the list is in `docs/COOKVENTURE_ASSET_BRIEF.md`.
 
 ---
 

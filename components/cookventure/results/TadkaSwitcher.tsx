@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import type { TadkaMap } from '../../../types/cookventure';
 import tadkaData from '../../../data/cookventure/tadka.json';
 import { TASTE_LEVEL_LABELS } from '../../../services/cookventure/labels';
+import CvAsset from '../shared/CvAsset';
 
 const TADKAS = tadkaData as TadkaMap;
 
@@ -63,7 +64,11 @@ const TadkaSwitcher: React.FC<TadkaSwitcherProps> = ({
             animate={{ rotate: 0 }}
             transition={{ type: 'spring', stiffness: 600, damping: 8 }}
           >
-            {current?.emoji ?? '🍳'}
+            {current && currentTadka ? (
+              <CvAsset category="tadkas" id={currentTadka} fallback={current.emoji} className="w-11 h-11" />
+            ) : (
+              '🍳'
+            )}
           </motion.div>
           <AnimatePresence>
             {!reduceMotion && sizzleKey > 0 && (
@@ -139,7 +144,7 @@ const TadkaSwitcher: React.FC<TadkaSwitcherProps> = ({
                   : 'bg-white border-gray-200 text-gray-800 hover:border-amber-400'
               }`}
             >
-              <span aria-hidden="true">{tadka.emoji}</span>
+              <CvAsset category="tadkas" id={id} fallback={tadka.emoji} className="w-4 h-4" />
               {tadka.name}
               {id === originalTadka && (
                 <span className={`text-[10px] ${selected ? 'text-amber-100' : 'text-gray-500'}`}>(original)</span>

@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import type { Tadka } from '../../../types/cookventure';
+import CvAsset from './CvAsset';
 
 interface TadkaCardProps {
   tadka: Tadka & { id: string };
@@ -39,7 +40,9 @@ const TadkaCard: React.FC<TadkaCardProps> = ({ tadka, isSelected, onToggle }) =>
 
       {/* Tadka Emoji & Name */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-2xl">{tadka.emoji}</span>
+        <span className="text-2xl">
+          <CvAsset category="tadkas" id={tadka.id} fallback={tadka.emoji} className="w-9 h-9" />
+        </span>
         <div>
           <h4 className="font-bold text-sm text-gray-800">
             {tadka.name}

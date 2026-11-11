@@ -10,13 +10,19 @@ import type {
 } from '../../types/cookventure';
 import { DEFAULT_SCORING_WEIGHTS } from '../../types/cookventure';
 import regionsData from '../../data/cookventure/regions.json';
-import { getMasalaName, getRegionName, getTadkaName, humanizeId } from './labels';
+import subregionsData from '../../data/cookventure/subregions.json';
+import { getMasalaName, getRegionName, getSubregionName, getTadkaName } from './labels';
+import { enrichRecipe } from './recipeInferencer';
+import { lineUsesItem } from './ingredients';
+import { checkDiet, meetsGoal, DIET_OPTIONS, getDietLabel } from './dietRules';
 
 interface Recipe extends RecipeCookventureData {
   id: string;
   name: string;
   ingredients: string;
   diabetic_friendly?: boolean;
+  diabetic_adapted?: boolean;
+  high_fiber?: boolean;
   fiber_grams?: number;
   sodium_mg?: number;
   prep_minutes?: number;
@@ -26,45 +32,59 @@ interface Recipe extends RecipeCookventureData {
 }
 
 /** Every recipe that passes the hard filters starts here, so all recipes still appear in results */
-const BASE_SCORE = 10;
+export const BASE_SCORE = 10;
 /** Part of the pantry weight reserved for using the selected regions' staples */
 const STAPLE_BONUS_MAX = 5;
-const DIET_BONUS = 10;
-const QUICK_BONUS = 5;
-const QUICK_MAX_MINUTES = 30;
-const COURSE_BONUS = 5;
+/** Time limit implied by the "quick" craving when no explicit limit was picked */
+const QUICK_CRAVING_MINUTES = 30;
+/** The survey's top time option is "60+": anything up to two hours fits it */
+const OPEN_ENDED_MINUTES = 60;
+const OPEN_ENDED_LIMIT = 120;
+/** Region points when the dish is from the right region but a different sub-region than the one picked */
+const PARENT_REGION_SHARE = 2 / 3;
 /** Largest possible Manhattan distance between two taste profiles (4 axes x 0-3) */
 const MAX_FLAVOR_DISTANCE = 12;
 /** Ingredients every kitchen is assumed to have, so they never count as missing */
 const ALWAYS_AVAILABLE = ['salt', 'water'];
 
+const SUBREGIONS = subregionsData as Record<string, { region: string }>;
+const STRICT_DIETS = DIET_OPTIONS.filter((d) => d.kind === 'strict').map((d) => d.id as string);
+
 /**
  * Calculate Cookventure score for a recipe based on user preferences
  */
 export function calculateCookventureScore(
-  recipe: Recipe,
+  rawRecipe: Recipe,
   userPrefs: UserPreferences,
   weights: ScoringWeights = DEFAULT_SCORING_WEIGHTS
 ): ScoredRecipe {
+  const recipe = enrichRecipe(rawRecipe);
   const ingredientLines = parseIngredientLines(recipe.ingredients || '');
   // Masalas in the locker are in the spice cabinet, so they count as pantry items too
   const ownedItems = [...userPrefs.pantry, ...userPrefs.masalaLocker];
   const { matched, missing } = splitByPantry(ingredientLines, ownedItems);
 
-  // 1. HARD FILTERS (binary pass/fail)
-  if (!passesHardFilters(recipe, userPrefs)) {
+  // 1. HARD FILTERS: strict diets and allergens
+  const dietCheck = checkDiet(recipe, userPrefs.diet, userPrefs.avoids);
+  const base = {
+    recipe,
+    matched_ingredients: matched,
+    missing_ingredients: missing,
+    cautions: dietCheck.cautions,
+    can_swap_tadka: recipe.tadka_profiles.length > 0,
+    can_swap_masala: recipe.masala_profiles.length > 0,
+  };
+  if (!dietCheck.passes) {
     return {
+      ...base,
       score: 0,
       maxScore: 0,
       matchPercent: 0,
-      recipe,
-      explanation: ['Contains ingredients you avoid'],
+      explanation: dietCheck.violations,
       reasons: [],
       breakdown: [],
-      matched_ingredients: matched,
-      missing_ingredients: missing,
-      can_swap_tadka: false,
-      can_swap_masala: false,
+      excluded: true,
+      exclusion_reasons: dietCheck.violations,
     };
   }
 
@@ -93,26 +113,16 @@ export function calculateCookventureScore(
     }
   }
 
-  // 3. REGION FIT
+  // 3. REGION FIT (sub-region aware)
   if (userPrefs.selectedRegions.length > 0) {
-    const matchedRegions = (recipe.region_tags || []).filter((tag) =>
-      userPrefs.selectedRegions.includes(tag)
-    );
-    const points = matchedRegions.length > 0 ? weights.region : 0;
-    const regionNames = matchedRegions.map(getRegionName).join(' & ');
-    breakdown.push({
-      kind: 'region',
-      label: 'Region',
-      points,
-      maxPoints: weights.region,
-      detail: points > 0 ? `${regionNames} dish` : describeRecipeRegions(recipe.region_tags),
-    });
-    if (points > 0) reasons.push({ kind: 'region', label: `${regionNames} dish` });
+    const region = calculateRegionFit(recipe, userPrefs, weights.region);
+    breakdown.push({ kind: 'region', label: 'Region', points: region.points, maxPoints: weights.region, detail: region.detail });
+    if (region.reason) reasons.push({ kind: 'region', label: region.reason });
   }
 
   // 4. MASALA LOCKER FIT
   if (userPrefs.masalaLocker.length > 0) {
-    const recipeMasalas = recipe.masala_profiles || [];
+    const recipeMasalas = recipe.masala_profiles;
     const matchedMasalas = recipeMasalas.filter((m) => userPrefs.masalaLocker.includes(m));
     const points =
       recipeMasalas.length > 0 ? (matchedMasalas.length / recipeMasalas.length) * weights.masala_locker : 0;
@@ -126,7 +136,7 @@ export function calculateCookventureScore(
           ? `Uses your ${matchedMasalas.map(getMasalaName).join(', ')}`
           : recipeMasalas.length > 0
             ? `Uses ${recipeMasalas.map(getMasalaName).join(', ')}`
-            : 'No spice blend tagged',
+            : 'No spice blend in this dish',
     });
     if (matchedMasalas.length > 0) {
       reasons.push({ kind: 'masala', label: `Uses your ${matchedMasalas.map(getMasalaName).join(', ')}` });
@@ -135,7 +145,7 @@ export function calculateCookventureScore(
 
   // 5. TADKA FIT
   if (userPrefs.favouriteTadkas.length > 0) {
-    const recipeTadkas = recipe.tadka_profiles || [];
+    const recipeTadkas = recipe.tadka_profiles;
     const favourite = recipeTadkas.find((t) => userPrefs.favouriteTadkas.includes(t));
     const points = favourite ? weights.tadka : 0;
     breakdown.push({
@@ -147,114 +157,114 @@ export function calculateCookventureScore(
         ? `Your favourite: ${getTadkaName(favourite)}`
         : recipeTadkas.length > 0
           ? `Tempered with ${recipeTadkas.map(getTadkaName).join(', ')}`
-          : 'No tempering tagged',
+          : 'No tempering in this dish',
     });
     if (favourite) reasons.push({ kind: 'tadka', label: `${getTadkaName(favourite)} tadka` });
   }
 
   // 6. FLAVOR AXES FIT (always applies: the user always has a taste profile)
   {
-    const points = recipe.taste_axes
-      ? calculateFlavorAxesFit(recipe.taste_axes, userPrefs.tastePrefs, weights.flavor_axes)
-      : 0;
+    const points = calculateFlavorAxesFit(recipe.taste_axes, userPrefs.tastePrefs, weights.flavor_axes);
+    const estimated = recipe.cookventure_source.taste_axes === 'inferred';
     breakdown.push({
       kind: 'flavor',
       label: 'Flavor',
       points,
       maxPoints: weights.flavor_axes,
-      detail: recipe.taste_axes
-        ? `${Math.round((points / weights.flavor_axes) * 100)}% close to your taste`
-        : 'Flavor profile not tagged yet',
+      detail: `${Math.round((points / weights.flavor_axes) * 100)}% close to your taste${estimated ? ' (estimated from ingredients)' : ''}`,
     });
-    if (recipe.taste_axes && points > weights.flavor_axes * 0.7) {
-      reasons.push({ kind: 'flavor', label: 'Close to your taste' });
-    }
+    if (points > weights.flavor_axes * 0.7) reasons.push({ kind: 'flavor', label: 'Close to your taste' });
   }
 
-  // 7. HEALTH BONUS
+  // 7. HEALTH GOALS
   {
-    const { points, maxPoints, notes } = calculateHealthBonus(recipe, userPrefs, weights.health);
+    const health = calculateHealthBonus(recipe, userPrefs, weights.health);
     breakdown.push({
       kind: 'health',
       label: 'Health',
-      points,
-      maxPoints,
-      detail: notes.length > 0 ? notes.join(' · ') : 'No health bonus',
+      points: health.points,
+      maxPoints: health.maxPoints,
+      detail: health.notes.length > 0 ? health.notes.join(' · ') : 'No health bonus',
     });
-    if (recipe.diabetic_friendly && userPrefs.diabetic_friendly) {
-      reasons.push({ kind: 'health', label: 'Diabetic-friendly' });
-    }
+    health.reasons.forEach((label) => reasons.push({ kind: 'health', label }));
   }
 
-  // 8. DIET PREFERENCE BONUS
-  if (userPrefs.diet.length > 0) {
-    const dietMatches = userPrefs.diet.filter((d) => recipe.diet_tags?.includes(d));
-    const points = dietMatches.length > 0 ? DIET_BONUS : 0;
+  // 8. STRICT DIETS: full points when the recipe's own label confirms them
+  const strictDiets = userPrefs.diet.filter((d) => STRICT_DIETS.includes(d));
+  if (strictDiets.length > 0) {
+    const share = dietCheck.verified.length / strictDiets.length;
+    const points = weights.diet * (share + (1 - share) / 2);
+    const names = strictDiets.map(getDietLabel).join(', ');
     breakdown.push({
       kind: 'diet',
       label: 'Diet',
       points,
-      maxPoints: DIET_BONUS,
-      detail: points > 0 ? `Fits ${dietMatches.join(', ')}` : `Not tagged ${userPrefs.diet.join(', ')}`,
+      maxPoints: weights.diet,
+      detail:
+        dietCheck.unverified.length === 0
+          ? `Labelled ${names}`
+          : `Ingredients fit ${dietCheck.unverified.map(getDietLabel).join(', ')}, but it isn't labelled that way`,
     });
-    if (points > 0) {
-      reasons.push({ kind: 'diet', label: capitalize(dietMatches.map(humanizeId).join(', ')) });
-    }
+    reasons.push({ kind: 'diet', label: names });
   }
 
-  // 9. QUICK PREP BONUS - for "quick" craving
-  if (userPrefs.cravings.includes('quick')) {
-    const totalTime = (recipe.prep_minutes || 0) + (recipe.cook_minutes || 0);
-    const isQuick = totalTime > 0 && totalTime <= QUICK_MAX_MINUTES;
+  // 9. TIME FIT: an explicit limit, or the "quick" craving
+  const timeLimit = userPrefs.timeLimit ?? (userPrefs.cravings.includes('quick') ? QUICK_CRAVING_MINUTES : undefined);
+  if (timeLimit) {
+    const prep = recipe.prep_minutes || 0;
+    const totalTime = prep + (recipe.cook_minutes || 0);
+    const limit = timeLimit >= OPEN_ENDED_MINUTES ? OPEN_ENDED_LIMIT : timeLimit;
+    const share = totalTime === 0 ? 0 : totalTime <= limit ? 1 : totalTime <= limit * 1.5 ? 0.4 : 0;
     breakdown.push({
       kind: 'quick',
-      label: 'Quick',
-      points: isQuick ? QUICK_BONUS : 0,
-      maxPoints: QUICK_BONUS,
-      detail: totalTime > 0 ? `${totalTime} min total` : 'Cooking time unknown',
+      label: 'Time',
+      points: weights.time * share,
+      maxPoints: weights.time,
+      detail:
+        totalTime === 0
+          ? 'Cooking time unknown'
+          : prep >= 240
+            ? `Needs about ${Math.round(prep / 60)} h soaking or fermenting first`
+            : `${totalTime} min total (you have ${timeLimit}${timeLimit >= OPEN_ENDED_MINUTES ? '+' : ''} min)`,
     });
-    if (isQuick) reasons.push({ kind: 'quick', label: `Ready in ${totalTime} min` });
+    if (share === 1) reasons.push({ kind: 'quick', label: `Ready in ${totalTime} min` });
   }
 
-  // 10. COURSE PREFERENCE BONUS
+  // 10. COURSE PREFERENCE
   if (userPrefs.course && userPrefs.course.length > 0) {
-    const fits = !!recipe.course && userPrefs.course.includes(recipe.course);
+    const course = normalizeCourse(recipe.course);
+    const fits = !!course && userPrefs.course.includes(course);
     breakdown.push({
       kind: 'course',
       label: 'Course',
-      points: fits ? COURSE_BONUS : 0,
-      maxPoints: COURSE_BONUS,
-      detail: recipe.course ? capitalize(recipe.course) : 'Course unknown',
+      points: fits ? weights.course : 0,
+      maxPoints: weights.course,
+      detail: course ? capitalize(course) : 'Course unknown',
     });
+    if (fits) reasons.push({ kind: 'course', label: capitalize(course!) });
   }
 
   const score = BASE_SCORE + breakdown.reduce((sum, c) => sum + c.points, 0);
   const maxScore = BASE_SCORE + breakdown.reduce((sum, c) => sum + c.maxPoints, 0);
 
   return {
+    ...base,
     score,
     maxScore,
     matchPercent: Math.round((score / maxScore) * 100),
-    recipe,
     explanation: reasons.map((r) => `✓ ${r.label}`),
     reasons,
     breakdown,
-    matched_ingredients: matched,
-    missing_ingredients: missing,
-    can_swap_tadka: (recipe.tadka_profiles?.length || 0) > 0,
-    can_swap_masala: (recipe.masala_profiles?.length || 0) > 0,
   };
 }
 
-/**
- * Check if recipe passes hard filters (avoids only - keep it lenient)
- */
-function passesHardFilters(recipe: Recipe, userPrefs: UserPreferences): boolean {
-  if (userPrefs.avoids.length > 0) {
-    const ingredients = normalize(recipe.ingredients || '');
-    return !userPrefs.avoids.some((avoid) => ingredients.includes(normalize(avoid)));
-  }
-  return true;
+/** Recipe courses as the survey offers them */
+export function normalizeCourse(course?: string): string | undefined {
+  if (!course) return undefined;
+  const c = course.toLowerCase();
+  if (c === 'drink' || c === 'drinks') return 'beverage';
+  if (c === 'sweet' || c === 'sweets') return 'dessert';
+  return c;
 }
 
 /**
@@ -268,18 +278,10 @@ export function parseIngredientLines(recipeIngredients: string): string[] {
     .filter((line) => line.length > 0 && !line.endsWith(':'));
 }
 
-/** Lowercase and treat taxonomy ids ("curry_leaves") like plain text ("curry leaves") */
-function normalize(text: string): string {
-  return text.toLowerCase().replace(/_/g, ' ');
-}
-
 function lineMatchesPantry(line: string, userPantry: string[]): boolean {
-  const normalizedLine = normalize(line);
-  if (ALWAYS_AVAILABLE.some((basic) => normalizedLine.includes(basic))) return true;
-  return userPantry.some((pantryItem) => {
-    const item = normalize(pantryItem);
-    return normalizedLine.includes(item) || item.includes(normalizedLine);
-  });
+  const lower = line.toLowerCase();
+  if (ALWAYS_AVAILABLE.some((basic) => lower.includes(basic))) return true;
+  return userPantry.some((pantryItem) => lineUsesItem(line, pantryItem));
 }
 
 function splitByPantry(lines: string[], userPantry: string[]): { matched: string[]; missing: string[] } {
@@ -306,17 +308,43 @@ function calculatePantryCoverage(
   const coverageMax = maxPoints - STAPLE_BONUS_MAX;
   let coverage = (matchedCount / ingredientLines.length) * coverageMax;
 
-  const regionStaples = getRegionStaples(selectedRegions).map(normalize);
-  const pantry = userPantry.map(normalize);
-  const stapleMatches = ingredientLines.filter((line) => {
-    const normalizedLine = normalize(line);
-    return regionStaples.some(
-      (staple) => normalizedLine.includes(staple) && pantry.some((item) => item.includes(staple))
-    );
-  }).length;
+  const ownedStaples = getRegionStaples(selectedRegions).filter((staple) =>
+    userPantry.some((item) => lineUsesItem(item, staple))
+  );
+  const stapleMatches = ingredientLines.filter((line) => ownedStaples.some((staple) => lineUsesItem(line, staple))).length;
 
   coverage += Math.min(STAPLE_BONUS_MAX, stapleMatches);
   return Math.min(maxPoints, coverage);
+}
+
+/**
+ * Region points: full for a dish from a picked sub-region, or from a picked region when no
+ * sub-region of it was narrowed down; two-thirds for the right region but another sub-region.
+ */
+function calculateRegionFit(
+  recipe: { region_tags: string[]; subregion_tags: string[] },
+  userPrefs: UserPreferences,
+  maxPoints: number
+): { points: number; detail: string; reason?: string } {
+  const pickedSubs = userPrefs.selectedSubregions || [];
+  const subMatch = recipe.subregion_tags.find((s) => pickedSubs.includes(s));
+  if (subMatch) {
+    return { points: maxPoints, detail: `${getSubregionName(subMatch)} dish`, reason: `${getSubregionName(subMatch)} dish` };
+  }
+
+  const regionMatches = recipe.region_tags.filter((tag) => userPrefs.selectedRegions.includes(tag));
+  if (regionMatches.length === 0) return { points: 0, detail: describeRecipeRegions(recipe) };
+
+  const regionNames = regionMatches.map(getRegionName).join(' & ');
+  const narrowed = regionMatches.every((r) => pickedSubs.some((s) => SUBREGIONS[s]?.region === r));
+  if (narrowed) {
+    return {
+      points: maxPoints * PARENT_REGION_SHARE,
+      detail: `${regionNames} dish, not from the ${pickedSubs.map(getSubregionName).join(' / ')} kitchen you picked`,
+      reason: `${regionNames} dish`,
+    };
+  }
+  return { points: maxPoints, detail: `${regionNames} dish`, reason: `${regionNames} dish` };
 }
 
 /**
@@ -339,34 +367,52 @@ function calculateFlavorAxesFit(recipeTaste: TasteAxes, userTaste: TasteAxes, ma
 }
 
 /**
- * Calculate health bonus. The diabetic-friendly part only counts when the user asked for it.
+ * Health points. Fiber and sodium always count; the diabetes part counts when the user asked
+ * for it (verified diabetes-friendly recipes earn more than lower-sugar adaptations).
  */
 function calculateHealthBonus(
   recipe: Recipe,
   userPrefs: UserPreferences,
   weight: number
-): { points: number; maxPoints: number; notes: string[] } {
+): { points: number; maxPoints: number; notes: string[]; reasons: string[] } {
   const notes: string[] = [];
+  const reasons: string[] = [];
   let points = 0;
   let maxPoints = 2; // fiber + sodium
 
-  if (userPrefs.diabetic_friendly) {
+  const wantsDiabetic = !!userPrefs.diabetic_friendly || userPrefs.diet.includes('diabetic_friendly');
+  const wantsFiber = userPrefs.diet.includes('high_fiber');
+
+  if (wantsDiabetic) {
     maxPoints += 3;
-    if (recipe.diabetic_friendly) {
+    if (meetsGoal(recipe, 'diabetic_friendly')) {
       points += 3;
-      notes.push('Diabetic-friendly');
+      notes.push('Diabetes-friendly');
+      reasons.push('Diabetes-friendly');
+    } else if (recipe.diabetic_adapted) {
+      points += 2;
+      notes.push('Lower-sugar swap applied');
+      reasons.push('Lower-sugar swap');
     }
   }
-  if (recipe.fiber_grams && recipe.fiber_grams >= 5) {
+  if (meetsGoal(recipe, 'high_fiber')) {
     points += 1;
-    notes.push(`${recipe.fiber_grams}g fiber`);
+    notes.push(recipe.fiber_grams ? `${recipe.fiber_grams}g fiber` : 'High fiber');
+    if (wantsFiber) reasons.push(recipe.fiber_grams ? `${recipe.fiber_grams}g fiber` : 'High fiber');
   }
   if (recipe.sodium_mg && recipe.sodium_mg <= 600) {
     points += 1;
     notes.push('Low sodium');
   }
 
-  return { points: Math.min(weight, points), maxPoints: Math.min(weight, maxPoints), notes };
+  // A high-fiber goal makes fiber worth more
+  if (wantsFiber) {
+    maxPoints += 2;
+    if (meetsGoal(recipe, 'high_fiber')) points += 2;
+  }
+
+  const cap = weight + (wantsFiber ? 2 : 0);
+  return { points: Math.min(cap, points), maxPoints: Math.min(cap, maxPoints), notes, reasons };
 }
 
 /**
@@ -385,9 +431,10 @@ function getRegionStaples(selectedRegions: string[]): string[] {
   return [...new Set(staples)];
 }
 
-function describeRecipeRegions(regionTags?: string[]): string {
-  if (!regionTags || regionTags.length === 0) return 'Region not tagged';
-  return `${regionTags.map(getRegionName).join(' & ')} dish`;
+function describeRecipeRegions(recipe: { region_tags: string[]; subregion_tags: string[] }): string {
+  if (recipe.region_tags.length === 0) return 'Region not tagged';
+  const sub = recipe.subregion_tags.length > 0 ? `${recipe.subregion_tags.map(getSubregionName).join(' & ')}, ` : '';
+  return `${sub}${recipe.region_tags.map(getRegionName).join(' & ')} dish`;
 }
 
 function capitalize(text: string): string {
@@ -396,8 +443,9 @@ function capitalize(text: string): string {
 
 /**
  * Sort scored recipes by score, with tie-breakers. Returns a new array.
+ * Pass the user's first-picked region to use it as the last tie-breaker.
  */
-export function sortScoredRecipes(recipes: ScoredRecipe[]): ScoredRecipe[] {
+export function sortScoredRecipes(recipes: ScoredRecipe[], firstRegion?: string): ScoredRecipe[] {
   return [...recipes].sort((a, b) => {
     // Primary: Score
     if (b.score !== a.score) return b.score - a.score;
@@ -415,6 +463,14 @@ export function sortScoredRecipes(recipes: ScoredRecipe[]): ScoredRecipe[] {
     // Tie-breaker 3: Higher fiber
     const aFiber = a.recipe.fiber_grams || 0;
     const bFiber = b.recipe.fiber_grams || 0;
-    return bFiber - aFiber;
+    if (aFiber !== bFiber) return bFiber - aFiber;
+
+    // Tie-breaker 4: Matches the user's first-selected region
+    if (firstRegion) {
+      const aFirst = a.recipe.region_tags?.includes(firstRegion) ? 1 : 0;
+      const bFirst = b.recipe.region_tags?.includes(firstRegion) ? 1 : 0;
+      return bFirst - aFirst;
+    }
+    return 0;
   });
 }

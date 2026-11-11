@@ -3,6 +3,7 @@ import type { UserPreferences, TasteAxes } from '../../types/cookventure';
 import regionsData from '../../data/cookventure/regions.json';
 import masalasData from '../../data/cookventure/masalas.json';
 import tadkaData from '../../data/cookventure/tadka.json';
+import subregionsData from '../../data/cookventure/subregions.json';
 
 export interface RegionalPreset {
   id: string;
@@ -10,6 +11,8 @@ export interface RegionalPreset {
   description: string;
   emoji: string;
   regionId: string;
+  /** Set for sub-regional kits (Kerala, Chettinad, ...) */
+  subregionId?: string;
   pantry: string[];
   masalas: string[];
   tadkas: string[];
@@ -139,6 +142,40 @@ export function getRegionalStarterKits(regionId: string): RegionalPreset[] {
   return presets;
 }
 
+export interface Subregion {
+  id: string;
+  region: string;
+  name: string;
+  name_hi: string;
+  emoji: string;
+  notes: string;
+  signature: string[];
+  default_masalas: string[];
+  default_tadka: string[];
+  default_taste: TasteAxes;
+  kit: Omit<RegionalPreset, 'id' | 'regionId' | 'subregionId'>;
+}
+
+const SUBREGIONS = Object.entries(subregionsData as Record<string, Omit<Subregion, 'id'>>).map(
+  ([id, sub]) => ({ ...sub, id }) as Subregion
+);
+
+/** Sub-regions of a region, in data order */
+export function getSubregions(regionId: string): Subregion[] {
+  return SUBREGIONS.filter((sub) => sub.region === regionId);
+}
+
+export function getSubregion(subregionId: string): Subregion | undefined {
+  return SUBREGIONS.find((sub) => sub.id === subregionId);
+}
+
+/** The starter kit for a sub-region (e.g. Kerala coconut-pepper, Andhra gongura) */
+export function getSubregionKit(subregionId: string): RegionalPreset | undefined {
+  const sub = getSubregion(subregionId);
+  if (!sub) return undefined;
+  return { ...sub.kit, id: `sub_${sub.id}`, regionId: sub.region, subregionId: sub.id };
+}
+
 /**
  * Apply a regional preset to user preferences
  */
@@ -149,6 +186,9 @@ export function applyRegionalPreset(
   return {
     ...currentPrefs,
     selectedRegions: [...new Set([...currentPrefs.selectedRegions, preset.regionId])],
+    selectedSubregions: preset.subregionId
+      ? [...new Set([...(currentPrefs.selectedSubregions || []), preset.subregionId])]
+      : currentPrefs.selectedSubregions,
     pantry: [...new Set([...currentPrefs.pantry, ...preset.pantry])],
     masalaLocker: [...new Set([...currentPrefs.masalaLocker, ...preset.masalas])],
     favouriteTadkas: [...new Set([...currentPrefs.favouriteTadkas, ...preset.tadkas])],

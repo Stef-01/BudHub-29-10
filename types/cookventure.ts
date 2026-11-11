@@ -23,6 +23,10 @@ export interface Masala {
   aroma: string[];
   description: string;
   use_in?: string[];
+  /** How the blend pushes each flavor axis (0-3); used when swapping one masala for another */
+  taste_effect?: TasteAxes;
+  /** Blends that make a natural substitute */
+  swaps_well_with?: string[];
   refs: string[];
 }
 
@@ -61,6 +65,8 @@ export interface Sweetener {
 
 export interface RecipeCookventureData {
   region_tags?: string[];
+  /** Finer-grained cuisine ids from subregions.json, e.g. "kerala", "chettinad" */
+  subregion_tags?: string[];
   masala_profiles?: string[];
   tadka_profiles?: string[];
   taste_axes?: TasteAxes;
@@ -69,6 +75,9 @@ export interface RecipeCookventureData {
 export interface UserPreferences {
   cravings: string[];
   selectedRegions: string[];
+  /** Sub-regions (subregions.json) picked under the selected regions */
+  selectedSubregions?: string[];
+  /** Minutes available (prep + cook); undefined = no limit */
   timeLimit?: number;
   course?: string[];
   pantry: string[];
@@ -122,12 +131,22 @@ export interface ScoredRecipe {
   missing_ingredients: string[];
   can_swap_tadka: boolean;
   can_swap_masala: boolean;
+  /** True when a strict diet or allergen rules the recipe out */
+  excluded?: boolean;
+  exclusion_reasons?: string[];
+  /** Worth-knowing notes for the user's diet, e.g. "use gluten-free hing" */
+  cautions?: string[];
   /** Set when the user swapped the recipe's tadka on the results screen */
   swapped_tadka?: {
     from?: string;
     to: string;
     tempering_note: string;
   };
+  /** Set when the user swapped a masala on the results screen */
+  swapped_masala?: { from: string; to: string };
+  /** Set when the lower-sugar adapter was applied: each ingredient line and its replacement */
+  sugar_swaps?: Array<{ from: string; to: string }>;
+  sugar_tip?: string;
 }
 
 // Type for region data map
@@ -153,6 +172,9 @@ export interface ScoringWeights {
   tadka: number;
   flavor_axes: number;
   health: number;
+  diet: number;
+  time: number;
+  course: number;
 }
 
 // Default scoring weights
@@ -163,4 +185,7 @@ export const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
   tadka: 10,
   flavor_axes: 10,
   health: 5,
+  diet: 10,
+  time: 5,
+  course: 5,
 };

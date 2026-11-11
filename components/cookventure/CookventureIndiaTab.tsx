@@ -1,10 +1,24 @@
 // components/cookventure/CookventureIndiaTab.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UserPreferences, TasteAxes, ScoredRecipe, RegionsMap } from '../../types/cookventure';
+import type { Recipe } from '../../types';
+import { RECIPE_CATALOG } from '../../constants';
+import { useUserCookbook } from '../../contexts/UserCookbookContext';
+import { useGamification } from '../../contexts/GamificationContext';
+import { useGameScores } from '../../contexts/GameScoresContext';
+import { assignVariant } from '../../services/cookventure/experiments';
+import {
+  loadLastPreferences,
+  saveLastPreferences,
+  setAnalyticsVariant,
+  startNewSession,
+  trackCookventure,
+} from '../../services/cookventure/analytics';
 import {
   loadCookventureData,
   applyRegionalPreset,
+  getSubregion,
   type RegionalPreset,
 } from '../../services/cookventure/regionalPresets';
 import { calculateCookventureScore, sortScoredRecipes } from '../../services/cookventure/cookventureScoring';
@@ -13,112 +27,198 @@ import { STEP_ORDER, STEP_LABELS, type CookventureStep } from '../../services/co
 // Survey components
 import CravingPicker from './survey/CravingPicker';
 import RegionPicker from './survey/RegionPicker';
+import SubregionPicker from './survey/SubregionPicker';
+import TimeCoursePicker from './survey/TimeCoursePicker';
 import PantryBingo from './survey/PantryBingo';
 import FlavorDials from './survey/FlavorDials';
+import DietAvoidsPicker from './survey/DietAvoidsPicker';
 import MasalaTadkaLocker from './survey/MasalaTadkaLocker';
 import RegionalStarterKits from './survey/RegionalStarterKits';
 
 // Results components
-import RecipeResultsGrid from './results/RecipeResultsGrid';
+import RecipeResultsGrid, { type CookventureReward } from './results/RecipeResultsGrid';
 
 type SurveyStep = CookventureStep;
 
 interface CookventureIndiaTabProps {
-  recipes?: any[]; // Will be typed with full Recipe interface later
+  /** The user's cookbook; the full recipe catalog is searched as well */
+  recipes?: Recipe[];
 }
+
+const DEFAULT_PREFS: UserPreferences = {
+  cravings: [],
+  selectedRegions: [],
+  selectedSubregions: [],
+  timeLimit: undefined,
+  course: [],
+  pantry: [],
+  tastePrefs: { heat: 1, masala: 1, tangy: 1, sweet: 0 },
+  diet: ['vegetarian'],
+  avoids: [],
+  masalaLocker: [],
+  favouriteTadkas: [],
+  diabetic_friendly: false,
+};
+
+/** Add the value if absent, remove it if present */
+const toggle = (list: string[] | undefined, value: string) =>
+  (list || []).includes(value) ? (list || []).filter((v) => v !== value) : [...(list || []), value];
 
 const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] }) => {
   const [currentStep, setCurrentStep] = useState<SurveyStep>('craving');
-  const [userPrefs, setUserPrefs] = useState<UserPreferences>({
-    cravings: [],
-    selectedRegions: [],
-    pantry: [],
-    tastePrefs: { heat: 1, masala: 1, tangy: 1, sweet: 0 },
-    diet: ['vegetarian'],
-    avoids: [],
-    masalaLocker: [],
-    favouriteTadkas: [],
-    diabetic_friendly: false,
-  });
+  const [userPrefs, setUserPrefs] = useState<UserPreferences>(DEFAULT_PREFS);
+  const { saveRecipe, isRecipeSaved } = useUserCookbook();
+  const { addXp } = useGamification();
+  const { saveScore } = useGameScores();
+  const [lastAnswers] = useState(loadLastPreferences);
+
+  // Scoring-weight experiment: one stable variant per person
+  const variant = useMemo(() => assignVariant(), []);
+  // Per-session bookkeeping for analytics and XP (reset on "Start over")
+  const session = useRef({ resultsShown: false, swapped: false, cooked: new Set<string>(), viaKit: undefined as string | undefined });
+
+  // Guarded with a ref: React StrictMode runs mount effects twice in development
+  const startedRef = useRef(false);
+  useEffect(() => {
+    setAnalyticsVariant(variant.id);
+    if (startedRef.current) return;
+    startedRef.current = true;
+    trackCookventure('survey_started', {});
+  }, [variant.id]);
 
   // Load taxonomy data
   const { regions, masalas, tadkas } = loadCookventureData();
 
-  // Update craving selection
-  const handleToggleCraving = (cravingId: string) => {
-    setUserPrefs((prev) => ({
-      ...prev,
-      cravings: prev.cravings.includes(cravingId)
-        ? prev.cravings.filter((c) => c !== cravingId)
-        : [...prev.cravings, cravingId],
-    }));
-  };
+  // Search the user's cookbook and the full catalog; the cookbook copy wins when both have a recipe
+  const pool = useMemo(() => {
+    const byId = new Map<string, Recipe>();
+    RECIPE_CATALOG.forEach((r) => byId.set(r.id, r));
+    recipes.forEach((r) => byId.set(r.id, r));
+    return byId;
+  }, [recipes]);
 
-  // Update region selection
-  const handleToggleRegion = (regionId: string) => {
-    setUserPrefs((prev) => ({
-      ...prev,
-      selectedRegions: prev.selectedRegions.includes(regionId)
-        ? prev.selectedRegions.filter((r) => r !== regionId)
-        : [...prev.selectedRegions, regionId],
-    }));
-  };
+  const handleToggleCraving = (cravingId: string) =>
+    setUserPrefs((prev) => ({ ...prev, cravings: toggle(prev.cravings, cravingId) }));
 
-  // Update pantry ingredients
-  const handleToggleIngredient = (ingredient: string) => {
-    setUserPrefs((prev) => ({
-      ...prev,
-      pantry: prev.pantry.includes(ingredient)
-        ? prev.pantry.filter((i) => i !== ingredient)
-        : [...prev.pantry, ingredient],
-    }));
-  };
+  // Deselecting a region also drops the sub-regions picked under it
+  const handleToggleRegion = (regionId: string) =>
+    setUserPrefs((prev) => {
+      const selectedRegions = toggle(prev.selectedRegions, regionId);
+      const selectedSubregions = (prev.selectedSubregions || []).filter((sub) =>
+        selectedRegions.includes(getSubregion(sub)?.region ?? '')
+      );
+      return { ...prev, selectedRegions, selectedSubregions };
+    });
 
-  // Select ingredient pack
-  const handleSelectPack = (ingredients: string[]) => {
-    setUserPrefs((prev) => ({
-      ...prev,
-      pantry: [...new Set([...prev.pantry, ...ingredients])],
-    }));
-  };
+  const handleToggleSubregion = (subregionId: string) =>
+    setUserPrefs((prev) => ({ ...prev, selectedSubregions: toggle(prev.selectedSubregions, subregionId) }));
 
-  // Update taste preferences
-  const handleChangeTaste = (newTaste: TasteAxes) => {
-    setUserPrefs((prev) => ({ ...prev, tastePrefs: newTaste }));
-  };
+  const handleToggleIngredient = (ingredient: string) =>
+    setUserPrefs((prev) => ({ ...prev, pantry: toggle(prev.pantry, ingredient) }));
 
-  // Update masala selection
-  const handleToggleMasala = (masalaId: string) => {
-    setUserPrefs((prev) => ({
-      ...prev,
-      masalaLocker: prev.masalaLocker.includes(masalaId)
-        ? prev.masalaLocker.filter((m) => m !== masalaId)
-        : [...prev.masalaLocker, masalaId],
-    }));
-  };
+  const handleSelectPack = (ingredients: string[]) =>
+    setUserPrefs((prev) => ({ ...prev, pantry: [...new Set([...prev.pantry, ...ingredients])] }));
 
-  // Update tadka selection
-  const handleToggleTadka = (tadkaId: string) => {
-    setUserPrefs((prev) => ({
-      ...prev,
-      favouriteTadkas: prev.favouriteTadkas.includes(tadkaId)
-        ? prev.favouriteTadkas.filter((t) => t !== tadkaId)
-        : [...prev.favouriteTadkas, tadkaId],
-    }));
-  };
+  const handleChangeTaste = (newTaste: TasteAxes) => setUserPrefs((prev) => ({ ...prev, tastePrefs: newTaste }));
 
-  // Score and sort ALL recipes once results are shown (untagged recipes still get base scores,
-  // so every recipe from the cookbook appears)
-  const scoredRecipes = useMemo<ScoredRecipe[]>(() => {
-    if (currentStep !== 'results') return [];
-    return sortScoredRecipes(recipes.map((recipe) => calculateCookventureScore(recipe, userPrefs)));
-  }, [currentStep, recipes, userPrefs]);
+  const handleToggleDiet = (dietId: string) =>
+    setUserPrefs((prev) => {
+      const diet = toggle(prev.diet, dietId);
+      return { ...prev, diet, diabetic_friendly: diet.includes('diabetic_friendly') };
+    });
+
+  const handleToggleAvoid = (allergenId: string) =>
+    setUserPrefs((prev) => ({ ...prev, avoids: toggle(prev.avoids, allergenId) }));
+
+  const handleToggleMasala = (masalaId: string) =>
+    setUserPrefs((prev) => ({ ...prev, masalaLocker: toggle(prev.masalaLocker, masalaId) }));
+
+  const handleToggleTadka = (tadkaId: string) =>
+    setUserPrefs((prev) => ({ ...prev, favouriteTadkas: toggle(prev.favouriteTadkas, tadkaId) }));
+
+  // Score and sort every recipe once results are shown; strict diets and allergens hide recipes
+  const { visible, hidden } = useMemo(() => {
+    if (currentStep !== 'results') return { visible: [] as ScoredRecipe[], hidden: [] as ScoredRecipe[] };
+    const scored = [...pool.values()].map((recipe) => calculateCookventureScore(recipe as any, userPrefs, variant.weights));
+    return {
+      visible: sortScoredRecipes(
+        scored.filter((s) => !s.excluded),
+        userPrefs.selectedRegions[0]
+      ),
+      hidden: scored.filter((s) => s.excluded),
+    };
+  }, [currentStep, pool, userPrefs, variant.weights]);
+
+  // Arriving at results: log the survey, remember the answers, award XP and a Game Center score
+  useEffect(() => {
+    if (currentStep !== 'results') return;
+    const first = !session.current.resultsShown;
+    session.current.resultsShown = true;
+    const top = visible.slice(0, 3);
+    trackCookventure('results_shown', {
+      count: visible.length,
+      hidden: hidden.length,
+      topIds: top.map((s) => s.recipe.id),
+      topRegions: Array.from(new Set<string>(top.flatMap((s) => s.recipe.region_tags || []))),
+      bestMatch: top[0]?.matchPercent ?? 0,
+    });
+    if (!first) return;
+    trackCookventure('survey_completed', {
+      cravings: userPrefs.cravings,
+      regions: userPrefs.selectedRegions,
+      subregions: userPrefs.selectedSubregions || [],
+      masalas: userPrefs.masalaLocker,
+      tadkas: userPrefs.favouriteTadkas,
+      diet: userPrefs.diet,
+      avoids: userPrefs.avoids,
+      timeLimit: userPrefs.timeLimit ?? null,
+      courses: userPrefs.course || [],
+      pantrySize: userPrefs.pantry.length,
+      viaKit: session.current.viaKit ?? null,
+    });
+    saveLastPreferences(userPrefs);
+    addXp('Medium', 'add');
+    if (top[0]) saveScore('cookventure', top[0].matchPercent);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per arrival at results
+  }, [currentStep]);
+
+  // XP for trying things on the results screen: the first swap, and each dish you decide to cook
+  const handleReward = useCallback(
+    (reward: CookventureReward, recipeId: string) => {
+      if (reward === 'swap' && !session.current.swapped) {
+        session.current.swapped = true;
+        addXp('Low', 'add');
+      } else if (reward === 'cook' && !session.current.cooked.has(recipeId)) {
+        session.current.cooked.add(recipeId);
+        addXp('High', 'add');
+      }
+    },
+    [addXp]
+  );
 
   // Starter kit: fill pantry, masalas, tadka and taste from a classic dish, then jump to results
   const handleApplyKit = (preset: RegionalPreset) => {
+    trackCookventure('kit_applied', { kitId: preset.id, region: preset.regionId, subregion: preset.subregionId ?? null });
+    session.current.viaKit = preset.id;
     setUserPrefs((prev) => applyRegionalPreset(preset, prev));
     setCurrentStep('results');
   };
+
+  // Repeat visit: reuse the answers from last time and go straight to matches
+  const handleUseLastAnswers = () => {
+    if (!lastAnswers) return;
+    session.current.viaKit = 'last_answers';
+    setUserPrefs({ ...DEFAULT_PREFS, ...lastAnswers.prefs });
+    setCurrentStep('results');
+  };
+
+  const handleSaveRecipe = useCallback(
+    async (recipeId: string) => {
+      const raw = pool.get(recipeId);
+      if (raw) await saveRecipe(raw);
+    },
+    [pool, saveRecipe]
+  );
 
   // Check if can proceed to next step
   const canProceed = () => {
@@ -126,11 +226,11 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
     return true;
   };
 
-  // Navigation with preserved state
   const currentIndex = STEP_ORDER.indexOf(currentStep);
 
   const handleNext = () => {
     if (!canProceed() || currentIndex >= STEP_ORDER.length - 1) return;
+    trackCookventure('step_completed', { step: currentStep });
     setCurrentStep(STEP_ORDER[currentIndex + 1]);
   };
 
@@ -147,18 +247,11 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
   };
 
   const handleReset = () => {
+    startNewSession();
+    session.current = { resultsShown: false, swapped: false, cooked: new Set(), viaKit: undefined };
+    trackCookventure('survey_started', {});
     setCurrentStep('craving');
-    setUserPrefs({
-      cravings: [],
-      selectedRegions: [],
-      pantry: [],
-      tastePrefs: { heat: 1, masala: 1, tangy: 1, sweet: 0 },
-      diet: ['vegetarian'],
-      avoids: [],
-      masalaLocker: [],
-      favouriteTadkas: [],
-      diabetic_friendly: false,
-    });
+    setUserPrefs(DEFAULT_PREFS);
   };
 
   return (
@@ -194,7 +287,7 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
 
               return (
                 <li key={step} className="flex items-start">
-                  <div className="flex flex-col items-center w-12 sm:w-16">
+                  <div className="flex flex-col items-center w-8 sm:w-14">
                     <motion.button
                       type="button"
                       whileHover={isClickable ? { scale: 1.15 } : {}}
@@ -211,21 +304,22 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
                     >
                       {idx + 1}
                     </motion.button>
+                    {/* Every label on wider screens; only the current one on phones (below) */}
                     <span
-                      className={`mt-1 text-[10px] leading-tight text-center ${
+                      className={`hidden sm:block mt-1 text-[10px] leading-tight text-center ${
                         isCurrent ? 'font-bold text-orange-600' : 'text-gray-500'
                       }`}
                     >
                       {label.en}
                     </span>
-                    <span className="text-[10px] leading-tight text-gray-500" lang="hi">
+                    <span className="hidden sm:block text-[10px] leading-tight text-gray-500" lang="hi">
                       {label.hi}
                     </span>
                   </div>
                   {idx < STEP_ORDER.length - 1 && (
                     <div
                       aria-hidden="true"
-                      className={`mt-3 w-3 sm:w-6 h-1 rounded transition-all ${
+                      className={`mt-3 w-2 sm:w-4 h-1 rounded transition-all ${
                         idx < currentIndex ? 'bg-orange-500' : 'bg-gray-200'
                       }`}
                     ></div>
@@ -234,6 +328,11 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
               );
             })}
           </ol>
+          <p className="sm:hidden mt-2 text-center text-xs text-gray-600">
+            Step {currentIndex + 1} of {STEP_ORDER.length} ·{' '}
+            <span className="font-bold text-orange-600">{STEP_LABELS[currentStep].en}</span>{' '}
+            <span lang="hi">{STEP_LABELS[currentStep].hi}</span>
+          </p>
           {currentStep === 'results' && (
             <motion.p
               initial={{ opacity: 0, y: -10 }}
@@ -253,13 +352,34 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
-            className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-6"
+            className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-6"
           >
             {currentStep === 'craving' && (
-              <CravingPicker
-                selectedCravings={userPrefs.cravings}
-                onToggleCraving={handleToggleCraving}
-              />
+              <>
+                {lastAnswers && (
+                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+                    <p className="text-sm text-gray-800">
+                      👋 Welcome back! Pick up where you left off?
+                      <span className="block text-xs text-gray-500">
+                        {[
+                          ...(lastAnswers.prefs.selectedRegions || []).map((r) => (regions as RegionsMap)[r]?.name ?? r),
+                          lastAnswers.prefs.pantry?.length ? `${lastAnswers.prefs.pantry.length} pantry items` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleUseLastAnswers}
+                      className="rounded-lg bg-orange-500 hover:bg-orange-600 px-4 py-2 text-sm font-bold text-white shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+                    >
+                      ↺ Use my last answers
+                    </button>
+                  </div>
+                )}
+                <CravingPicker selectedCravings={userPrefs.cravings} onToggleCraving={handleToggleCraving} />
+              </>
             )}
 
             {currentStep === 'region' && (
@@ -269,12 +389,28 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
                   selectedRegions={userPrefs.selectedRegions}
                   onToggleRegion={handleToggleRegion}
                 />
+                <SubregionPicker
+                  regions={regions as RegionsMap}
+                  selectedRegions={userPrefs.selectedRegions}
+                  selectedSubregions={userPrefs.selectedSubregions || []}
+                  onToggleSubregion={handleToggleSubregion}
+                />
                 <RegionalStarterKits
                   regions={regions as RegionsMap}
                   selectedRegions={userPrefs.selectedRegions}
+                  selectedSubregions={userPrefs.selectedSubregions}
                   onApplyKit={handleApplyKit}
                 />
               </>
+            )}
+
+            {currentStep === 'time_course' && (
+              <TimeCoursePicker
+                timeLimit={userPrefs.timeLimit}
+                courses={userPrefs.course || []}
+                onChangeTime={(minutes) => setUserPrefs((prev) => ({ ...prev, timeLimit: minutes }))}
+                onToggleCourse={(course) => setUserPrefs((prev) => ({ ...prev, course: toggle(prev.course, course) }))}
+              />
             )}
 
             {currentStep === 'pantry' && (
@@ -287,9 +423,15 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
             )}
 
             {currentStep === 'flavor' && (
-              <FlavorDials
-                tastePrefs={userPrefs.tastePrefs}
-                onChangeTaste={handleChangeTaste}
+              <FlavorDials tastePrefs={userPrefs.tastePrefs} onChangeTaste={handleChangeTaste} />
+            )}
+
+            {currentStep === 'diet' && (
+              <DietAvoidsPicker
+                diet={userPrefs.diet}
+                avoids={userPrefs.avoids}
+                onToggleDiet={handleToggleDiet}
+                onToggleAvoid={handleToggleAvoid}
               />
             )}
 
@@ -305,7 +447,16 @@ const CookventureIndiaTab: React.FC<CookventureIndiaTabProps> = ({ recipes = [] 
             )}
 
             {currentStep === 'results' && (
-              <RecipeResultsGrid scoredRecipes={scoredRecipes} userPrefs={userPrefs} />
+              <RecipeResultsGrid
+                scoredRecipes={visible}
+                hiddenRecipes={hidden}
+                userPrefs={userPrefs}
+                weights={variant.weights}
+                isSaved={isRecipeSaved}
+                onSaveRecipe={handleSaveRecipe}
+                onEditDiet={() => setCurrentStep('diet')}
+                onReward={handleReward}
+              />
             )}
           </motion.div>
         </AnimatePresence>
