@@ -6,7 +6,8 @@ import type { DishSize, PrepLevel } from './params.ts';
 
 export type { DishSize, PrepLevel };
 
-export const SCHEMA_VERSION = 1;
+/** v2 added GameState.runId. */
+export const SCHEMA_VERSION = 2;
 
 export type StationId = 'order' | 'build' | 'prep' | 'finish';
 export type BuildComponent = 'base' | 'main' | 'side';
@@ -128,6 +129,8 @@ export interface ServeResult {
   stars: number;
   /** True when the dish was built for a different order than this ticket (graded honestly). */
   mismatchedOrder: boolean;
+  /** Signed build error in grams per component (negative = under); null when the wrong food. */
+  buildErrorG: { base: number | null; main: number | null; side: number | null };
   servedAtMs: number;
 }
 
@@ -153,6 +156,8 @@ export interface DayState {
 
 export interface GameState {
   schemaVersion: number;
+  /** Identifies this play-through (one per new game), so outside records can key on it. */
+  runId: string;
   /** Parameter-set versions this game is played with. */
   paramVersions: Record<string, string>;
   seed: number;

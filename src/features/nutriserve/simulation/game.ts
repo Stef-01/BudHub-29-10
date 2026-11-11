@@ -3,9 +3,11 @@
 // - No wall-clock reads: time only moves through advanceGame(state, dtMs).
 // - All quantities are integers and time advances in whole milliseconds, so advancing by
 //   1000 ms once or by 1 ms a thousand times gives the identical state (tested).
-// - Preparation, pouring and drizzling continue whatever station is selected.
+// - Preparation keeps cooking whatever station is selected. Held controls (pouring, drizzling,
+//   boosting) are released when the player changes station or pauses, as a real hand would be.
 // - Pause freezes every clock. Callers cap large frame deltas and pause when the page is hidden
-//   (see ui/useGameLoop.ts); advanceGame itself processes exactly the time it is given.
+//   (see ui/useNutriServeGame.ts); advanceGame itself processes exactly the time it is given.
+// - Ids from commands and saves are looked up as own properties only (see lookup.ts).
 import { DRIZZLES, GARNISHES } from '../data/finishItems.ts';
 import { getCatalogCustomer, getFood } from './catalog.ts';
 import { generateOrder, ORDERS_VERSION } from './orders.ts';
@@ -20,6 +22,7 @@ import {
 } from './params.ts';
 import { PROGRESSION_VERSION, rankForPoints, upgradeEffects, UPGRADES } from './progression.ts';
 import { createRng } from './rng.ts';
+import { lookup } from './lookup.ts';
 import {
   aggregateV1,
   dishMatchesOrder,
@@ -72,14 +75,23 @@ export interface CreateGameOptions {
   seed: number;
   customerPool?: string[];
   profile?: Profile;
+  /** Defaults to the day after the profile's last credited day. */
   day?: number;
+  runId?: string;
 }
 
-export function createGame({ seed, customerPool = PILOT_CUSTOMER_POOL, profile = newProfile(), day = 1 }: CreateGameOptions): GameState {
+const STATIONS = ['order', 'build', 'prep', 'finish'];
+const SIZES = ['small', 'medium', 'large'];
+const COMPONENTS = ['base', 'main', 'side'];
+
+export function createGame({ seed, customerPool = PILOT_CUSTOMER_POOL, profile = newProfile(), day, runId }: CreateGameOptions): GameState {
   const pool = customerPool.filter((id) => getCatalogCustomer(id));
   if (pool.length === 0) throw new RangeError('Customer pool has no catalog customers');
+  const startDay = day ?? (profile.creditedDays.length ? Math.max(...profile.creditedDays) + 1 : 1);
+  if (!Number.isInteger(startDay) || startDay < 1) throw new RangeError('day must be a positive integer');
   const state: GameState = {
     schemaVersion: SCHEMA_VERSION,
+    runId: runId ?? `run-${(seed >>> 0).toString(36)}`,
     paramVersions: { ...PARAM_VERSIONS },
     seed: seed >>> 0,
     rngState: seed >>> 0,
@@ -88,7 +100,7 @@ export function createGame({ seed, customerPool = PILOT_CUSTOMER_POOL, profile =
     nextId: 1,
     nextTicketNumber: 1,
     selected: { station: 'order' },
-    day: { number: day, customers: [], completed: false, results: [] },
+    day: { number: startDay, customers: [], completed: false, results: [] },
     tickets: [],
     dishes: [],
     prepSlots: Array.from({ length: PREP_SLOT_COUNT }, (_, index) => ({ index, boostHeld: false, heat: 0, overheated: false })),
@@ -145,8 +157,10 @@ function processDiscrete(s: GameState): void {
   for (const c of s.day.customers) {
     if (c.phase === 'scheduled' && s.nowMs >= c.arrivalMs) c.phase = 'walking_in';
     if (c.phase === 'walking_in' && s.nowMs >= c.arrivalMs + WAITING_V1.walkMs) {
-      c.phase = 'at_counter';
       c.atCounterMs = c.arrivalMs + WAITING_V1.walkMs;
+      // A customer whose catalog entry no longer exists (e.g. renamed since a save) leaves
+      // instead of blocking the queue for everyone behind them.
+      c.phase = getCatalogCustomer(c.catalogId) ? 'at_counter' : 'gone';
     }
     if (c.phase === 'walking_out' && c.leftAtMs !== undefined && s.nowMs >= c.leftAtMs + WAITING_V1.walkMs) c.phase = 'gone';
   }
@@ -232,7 +246,8 @@ export function advanceGame(state: GameState, dtMs: number): GameState {
 
 function completeDay(s: GameState): void {
   s.day.completed = true;
-  s.held = undefined;
+  s.paused = false;
+  releaseHeld(s);
   if (s.profile.creditedDays.includes(s.day.number)) return;
   const tips = s.day.results.reduce((sum, r) => sum + r.tip, 0);
   const points = s.day.results.reduce((sum, r) => sum + r.points, 0);
@@ -260,14 +275,47 @@ export function applyCommand(state: GameState, command: Command): { state: GameS
   return error ? fail(state, error) : { state: s, result: { ok: true } };
 }
 
+/** Let go of every held control: end a pour (dropping an empty portion), a drizzle, and boosts. */
+function releaseHeld(s: GameState): void {
+  const held = s.held;
+  if (held?.kind === 'pour') {
+    const dish = dishById(s, held.dishId);
+    if (dish && dish.build[held.component]?.mg === 0) delete dish.build[held.component];
+  }
+  s.held = undefined;
+  s.prepSlots.forEach((slot) => (slot.boostHeld = false));
+}
+
+/** Reject malformed command values (commands can come from saves, tests or plain JS). */
+function invalidValues(s: GameState, c: Command): string | undefined {
+  const slotOk = (n: unknown) => Number.isInteger(n) && (n as number) >= 0 && (n as number) < s.prepSlots.length;
+  switch (c.type) {
+    case 'selectStation':
+      return STATIONS.includes(c.station) ? undefined : 'Unknown station';
+    case 'startDish':
+      return SIZES.includes(c.size) ? undefined : 'Unknown vessel size';
+    case 'beginPour':
+      return COMPONENTS.includes(c.component) ? undefined : 'Unknown component';
+    case 'startPrep':
+    case 'finishPrep':
+      return slotOk(c.slot) ? undefined : 'No such prep slot';
+    case 'setBoost':
+      return slotOk(c.slot) && typeof c.held === 'boolean' ? undefined : 'Bad boost command';
+    default:
+      return undefined;
+  }
+}
+
 function run(s: GameState, c: Command): string | undefined {
+  const bad = invalidValues(s, c);
+  if (bad) return bad;
+  if (s.day.completed && !['nextDay', 'buyUpgrade', 'markDayReported', 'selectStation', 'resume'].includes(c.type)) return 'Day is over';
   if (s.paused && c.type !== 'resume' && c.type !== 'selectStation') return 'Game is paused';
-  if (s.day.completed && !['nextDay', 'buyUpgrade', 'markDayReported', 'selectStation'].includes(c.type)) return 'Day is over';
   const effects = upgradeEffects(s.profile.upgrades);
 
   switch (c.type) {
     case 'selectStation':
-      if (s.held) s.held = undefined;
+      releaseHeld(s);
       s.selected.station = c.station;
       return;
     case 'selectTicket':
@@ -280,17 +328,17 @@ function run(s: GameState, c: Command): string | undefined {
       return;
     case 'pause':
       s.paused = true;
-      s.held = undefined;
-      s.prepSlots.forEach((slot) => (slot.boostHeld = false));
+      releaseHeld(s);
       return;
     case 'resume':
       s.paused = false;
       return;
 
     case 'takeOrder': {
-      const customer = s.day.customers
+      const queue = s.day.customers
         .filter((x) => x.phase === 'at_counter')
-        .sort((a, b) => (a.atCounterMs ?? 0) - (b.atCounterMs ?? 0))[0];
+        .sort((a, b) => (a.atCounterMs ?? 0) - (b.atCounterMs ?? 0));
+      const customer = queue[0];
       if (!customer) return 'Nobody is waiting at the counter';
       const catalog = getCatalogCustomer(customer.catalogId);
       if (!catalog) return `Unknown customer ${customer.catalogId}`;
@@ -349,7 +397,7 @@ function run(s: GameState, c: Command): string | undefined {
     case 'finishBuild': {
       const dish = dishById(s, c.dishId);
       if (!dish || dish.stage !== 'building') return 'That dish is not on the build counter';
-      if (s.held && 'dishId' in s.held && s.held.dishId === dish.id) s.held = undefined;
+      if (s.held && 'dishId' in s.held && s.held.dishId === dish.id) releaseHeld(s);
       dish.stage = 'built';
       return;
     }
@@ -376,7 +424,8 @@ function run(s: GameState, c: Command): string | undefined {
     case 'finishPrep': {
       const slot = s.prepSlots[c.slot];
       if (!slot?.dishId) return 'Nothing is cooking in that slot';
-      const dish = dishById(s, slot.dishId)!;
+      const dish = dishById(s, slot.dishId);
+      if (!dish?.prep || dish.stage !== 'prepping' || dish.prep.slot !== c.slot) return 'Nothing is cooking in that slot';
       dish.stage = 'prepped';
       dish.prep!.finishedAtMs = s.nowMs;
       slot.dishId = undefined;
@@ -388,7 +437,7 @@ function run(s: GameState, c: Command): string | undefined {
       if (s.held) return 'Already holding a control';
       const dish = dishById(s, c.dishId);
       if (!dish || (dish.stage !== 'prepped' && dish.stage !== 'finishing')) return 'That dish is not at the finish counter';
-      if (!DRIZZLES[c.drizzleId]) return `Unknown drizzle ${c.drizzleId}`;
+      if (!lookup(DRIZZLES, c.drizzleId)) return `Unknown drizzle ${c.drizzleId}`;
       if (!Number.isFinite(c.x) || !Number.isFinite(c.y)) return 'Bad position';
       dish.stage = 'finishing';
       dish.finish.drizzles[c.drizzleId] ??= emptyDeposit();
@@ -410,7 +459,7 @@ function run(s: GameState, c: Command): string | undefined {
     case 'placeGarnish': {
       const dish = dishById(s, c.dishId);
       if (!dish || (dish.stage !== 'prepped' && dish.stage !== 'finishing')) return 'That dish is not at the finish counter';
-      if (!GARNISHES[c.garnishId]) return `Unknown garnish ${c.garnishId}`;
+      if (!lookup(GARNISHES, c.garnishId)) return `Unknown garnish ${c.garnishId}`;
       if (!Number.isFinite(c.x) || !Number.isFinite(c.y)) return 'Bad position';
       dish.stage = 'finishing';
       const x = clampLocal(c.x);
@@ -434,7 +483,8 @@ function run(s: GameState, c: Command): string | undefined {
       if (!ticket) return 'No such ticket';
       if (ticket.servedAtMs !== undefined) return 'That ticket was already served';
       const customer = s.day.customers.find((x) => x.id === ticket.customerId);
-      const build = gradeIndianBuildV1(dish, ticket.order, effects).score;
+      const buildGrade = gradeIndianBuildV1(dish, ticket.order, effects);
+      const build = buildGrade.score;
       const prep = gradeIndianPrepV1(dish, ticket.order, effects);
       const finish = gradeFinishV1(dish, ticket.order, effects).score;
       const waiting = gradeWaitingV1(ticket, s.nowMs, effects);
@@ -454,6 +504,7 @@ function run(s: GameState, c: Command): string | undefined {
         scores: { waiting, build, prep, finish, total },
         ...reward,
         mismatchedOrder: !dishMatchesOrder(dish, ticket.order),
+        buildErrorG: buildGrade.signedErrorG,
         servedAtMs: s.nowMs,
       });
       if (s.selected.ticketId === ticket.id) s.selected.ticketId = undefined;
@@ -470,7 +521,7 @@ function run(s: GameState, c: Command): string | undefined {
           slot.boostHeld = false;
         }
       }
-      if (s.held && 'dishId' in s.held && s.held.dishId === dish.id) s.held = undefined;
+      if (s.held && 'dishId' in s.held && s.held.dishId === dish.id) releaseHeld(s);
       dish.stage = 'trashed';
       if (s.selected.dishId === dish.id) s.selected.dishId = undefined;
       return;
@@ -490,8 +541,9 @@ function run(s: GameState, c: Command): string | undefined {
       return;
     }
     case 'buyUpgrade': {
-      const upgrade = UPGRADES[c.upgradeId];
+      const upgrade = lookup(UPGRADES, c.upgradeId);
       if (!upgrade) return 'Unknown upgrade';
+      if (!Number.isFinite(s.profile.coins)) return 'Coins are not a number';
       if (s.profile.upgrades.includes(upgrade.id)) return 'Already owned';
       if (s.profile.rank < upgrade.unlockRank) return `Unlocks at rank ${upgrade.unlockRank}`;
       if (s.profile.coins < upgrade.cost) return 'Not enough coins';

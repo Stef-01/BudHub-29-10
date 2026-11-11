@@ -34,7 +34,7 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'rice_scoop',
     label: 'Brass rice scoop',
     hi: 'पीतल का चम्मच',
-    description: 'Reference build bonus for a correct vessel and base (+1).',
+    description: 'Reference build bonus when both the vessel and the base food are right (+1).',
     cost: 20,
     unlockRank: 1,
     effect: { kind: 'buildFurniture', categories: ['cup'] },
@@ -43,7 +43,7 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'brass_bell',
     label: 'Brass counter bell',
     hi: 'घंटी',
-    description: 'Customers wait 8 seconds longer before patience drops (provisional rule).',
+    description: 'Customers stay patient 8 seconds longer at the counter and again while waiting for food (provisional rule).',
     cost: 25,
     unlockRank: 1,
     effect: { kind: 'waitingGraceMs', ms: 8_000 },
@@ -92,7 +92,7 @@ export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
     finishBonus: 0,
   };
   for (const id of owned) {
-    const effect = UPGRADES[id]?.effect;
+    const effect = Object.hasOwn(UPGRADES, id) ? UPGRADES[id].effect : undefined;
     if (!effect) continue;
     if (effect.kind === 'buildFurniture') effect.categories.forEach((c) => (effects.buildFurniture[c] = true));
     else if (effect.kind === 'prepFurniture') effects.prepFurniture = true;

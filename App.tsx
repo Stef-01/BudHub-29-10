@@ -1,5 +1,5 @@
 // App.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy, useCallback } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { AppProviders } from './contexts/AppProviders';
 import { useUserGarden } from './contexts/UserGardenContext';
@@ -7,6 +7,7 @@ import { useWeather } from './contexts/WeatherContext';
 import { useTasks } from './contexts/TasksContext';
 import { useUserCookbook } from './contexts/UserCookbookContext';
 import { useGameScores } from './contexts/GameScoresContext';
+import { useGamification } from './contexts/GamificationContext';
 import type { Tab, GameMode } from './types';
 import MainLayout from './components/layout/MainLayout';
 import TabRouter from './components/router/TabRouter';
@@ -18,7 +19,10 @@ import UnifiedNutrientGame from './components/UnifiedNutrientGame';
 import CookventureIndiaTab from './components/cookventure/CookventureIndiaTab';
 import AdminDashboard from './components/AdminDashboard';
 import { getUserId } from './hooks/useUserId';
-import { trackUserSession } from './lib/analytics';
+import { trackUserSession, trackGameComplete } from './lib/analytics';
+
+// Loaded on demand so the remaster's code isn't in the main bundle.
+const NutriServeRemaster = lazy(() => import('./src/features/nutriserve/ui/NutriServeRemaster.tsx'));
 import SmoothScroll from './src/components/ui/SmoothScroll';
 import CustomCursor from './src/components/ui/CustomCursor';
 import FloatingBackgroundFruits from './components/FloatingBackgroundFruits';
@@ -33,6 +37,7 @@ const AppContent: React.FC = () => {
   const tasksCtx = useTasks();
   const cookbookCtx = useUserCookbook();
   const scoresCtx = useGameScores();
+  const { addXp } = useGamification();
 
   const isLoading = useMemo(() => {
     return gardenCtx.loading || weatherCtx.loading || tasksCtx.loading || cookbookCtx.loading || scoresCtx.loading;
@@ -53,6 +58,16 @@ const AppContent: React.FC = () => {
   const handlePlayGame = (gameMode: GameMode) => {
     setActiveGame(gameMode);
   };
+
+  // The remaster reports each finished day once (its save records which days were reported).
+  const handleRemasterDay = useCallback(
+    ({ averageScore }: { day: number; averageScore: number }) => {
+      scoresCtx.saveScore('nutriserve_remaster', averageScore);
+      addXp('Medium', 'add');
+      trackGameComplete('nutriserve_remaster', averageScore, getUserId());
+    },
+    [scoresCtx, addXp]
+  );
 
   const handleExitGame = () => {
     setActiveGame(null);
@@ -84,6 +99,15 @@ const AppContent: React.FC = () => {
     }
     if (activeGame === 'unified_nutrient') {
       return <UnifiedNutrientGame onExit={handleExitGame} />;
+    }
+    if (activeGame === 'nutriserve_remaster') {
+      return (
+        <div className="min-h-screen bg-[#f3eddb]">
+          <Suspense fallback={<LoadingScreen />}>
+            <NutriServeRemaster userId={getUserId()} onExit={handleExitGame} onDayComplete={handleRemasterDay} />
+          </Suspense>
+        </div>
+      );
     }
     if (activeGame === 'cookventure') {
       return (

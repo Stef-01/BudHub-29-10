@@ -33,6 +33,7 @@ const GamesView: React.FC<GamesViewProps> = ({ onPlay }) => {
 
         return {
             nutriserve: getHighScoresByMode('nutriserve')[0]?.score || 0,
+            nutriserve_remaster: getHighScoresByMode('nutriserve_remaster')[0]?.score || 0,
             unified_nutrient: Math.max(...unifiedScores),
         };
     }, [getHighScoresByMode]);
@@ -52,6 +53,16 @@ const GamesView: React.FC<GamesViewProps> = ({ onPlay }) => {
                     highScore={highScores.nutriserve}
                     onPlay={onPlay}
                 />
+                <div className="mt-4">
+                    <GameCard
+                        gameMode="nutriserve_remaster"
+                        title="NutriServe Kitchen (preview)"
+                        description="Run a four-station kitchen: take orders, build each katori, simmer in four handis, finish with drizzle and garnish, and serve the right ticket. Early preview with layout-study art."
+                        icon={<ZapIcon className="w-8 h-8 text-orange-600" />}
+                        highScore={highScores.nutriserve_remaster}
+                        onPlay={onPlay}
+                    />
+                </div>
                 <a href="/nutriserve-art-lab.html" className="inline-block mt-3 text-sm font-semibold text-emerald-800 underline underline-offset-4">
                     Preview the NutriServe remaster art
                 </a>

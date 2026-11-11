@@ -3,6 +3,7 @@
 // through named Indian-food adapters; finish and waiting are provisional and versioned.
 import { gradeReferenceBuild, gradeReferenceMix, MIX_TARGETS } from '../domain/referenceScoring.ts';
 import { DRIZZLES } from '../data/finishItems.ts';
+import { lookup } from './lookup.ts';
 import {
   AGGREGATION_V1,
   BUILD_V1,
@@ -49,12 +50,21 @@ export function gradeIndianBuildV1(dish: Dish, order: TicketOrder, effects?: Upg
     side: side?.foodId === order.sideId,
   };
   const furniture = effects?.buildFurniture ?? { cup: false, mixable: false, syrup: false };
-  const reference = gradeReferenceBuild({
-    cup: { correct: correct.size, actualFill: grams(base?.mg), idealFill: order.idealG.base, furnitureBonus: furniture.cup },
+  const input = (cupCorrect: boolean) => ({
+    // The cup furniture bonus needs the whole cup category right: vessel and base food.
+    cup: { correct: cupCorrect, actualFill: grams(base?.mg), idealFill: order.idealG.base, furnitureBonus: furniture.cup && correct.base },
     mixable: { correct: correct.main, meterFraction: meterFraction(grams(main?.mg), order.idealG.main), furnitureBonus: furniture.mixable },
     syrup: { correct: correct.side, meterFraction: meterFraction(grams(side?.mg), order.idealG.side), furnitureBonus: furniture.syrup },
   });
-  const score = correct.size && !correct.base ? Math.max(0, reference - BUILD_V1.baseMismatchPenalty) : reference;
+  const wrongCupScore = gradeReferenceBuild(input(false));
+  let score: number;
+  if (!correct.size) score = wrongCupScore;
+  else {
+    const reference = gradeReferenceBuild(input(true));
+    const adapted = correct.base ? reference : reference - BUILD_V1.baseMismatchPenalty;
+    // The vessel+base category can never cost more than getting the vessel wrong would.
+    score = Math.max(0, Math.max(adapted, wrongCupScore));
+  }
   return {
     score,
     signedErrorG: {
@@ -89,21 +99,30 @@ export interface FinishGrade {
   penalties: Array<{ reason: string; points: number }>;
 }
 
-function coverage(deposit: Deposit): number {
-  // Only cells whose centre lies inside the unit circle can be covered.
+/** Grid cells whose centre lies inside the vessel rim (the unit circle). */
+const INSIDE_CELLS: number[] = (() => {
   const n = FINISH_V1.gridSize;
-  let inside = 0;
-  let covered = 0;
+  const cells: number[] = [];
   for (let row = 0; row < n; row++) {
     for (let col = 0; col < n; col++) {
       const cx = ((col + 0.5) / n) * 2 - 1;
       const cy = ((row + 0.5) / n) * 2 - 1;
-      if (cx * cx + cy * cy > 1) continue;
-      inside++;
-      if (deposit.cellsMg[row * n + col] >= FINISH_V1.coveredCellMinG * 1000) covered++;
+      if (cx * cx + cy * cy <= 1) cells.push(row * n + col);
     }
   }
-  return inside === 0 ? 0 : covered / inside;
+  return cells;
+})();
+
+/** Share of the inside cells holding at least coveredCellShare of an even split of the target. */
+function coverage(deposit: Deposit, targetG: number): number {
+  const minMg = ((targetG * 1000) / INSIDE_CELLS.length) * FINISH_V1.coveredCellShare;
+  const covered = INSIDE_CELLS.filter((i) => deposit.cellsMg[i] >= minMg).length;
+  return covered / INSIDE_CELLS.length;
+}
+
+/** Versioned target grams for a drizzle on a vessel size. */
+export function drizzleTargetG(drizzleId: string, size: DishSize): number | undefined {
+  return lookup(FINISH_V1.drizzleTargetG, drizzleId)?.[size];
 }
 
 export function gradeFinishV1(dish: Dish, order: TicketOrder, effects?: UpgradeEffects): FinishGrade {
@@ -118,18 +137,18 @@ export function gradeFinishV1(dish: Dish, order: TicketOrder, effects?: UpgradeE
   const applied = Object.entries(dish.finish.drizzles);
   if (ordered) {
     const deposit = dish.finish.drizzles[ordered.id];
-    if (!deposit || deposit.insideMg + deposit.spilledMg === 0) add(`No ${DRIZZLES[ordered.id]?.label ?? ordered.id}`, p.missingDrizzle);
-    else {
-      const target = DRIZZLES[ordered.id].targetG[order.size];
-      const offPct = Math.abs(grams(deposit.insideMg) - target) / target * 100;
+    const target = drizzleTargetG(ordered.id, order.size);
+    if (!deposit || deposit.insideMg + deposit.spilledMg === 0) add(`No ${lookup(DRIZZLES, ordered.id)?.label ?? ordered.id}`, p.missingDrizzle);
+    else if (target) {
+      const offPct = (Math.abs(grams(deposit.insideMg) - target) / target) * 100;
       add('Drizzle amount', Math.max(0, offPct - p.drizzleTolerancePct) * p.drizzleAmountPerPct);
-      add('Drizzle spread', (1 - coverage(deposit)) * p.drizzleCoverage);
+      add('Drizzle spread', (1 - coverage(deposit, target)) * p.drizzleCoverage);
     }
   }
   for (const [id, deposit] of applied) {
     if (id === ordered?.id) continue;
     if (deposit.insideMg + deposit.spilledMg === 0) continue;
-    add(`Unordered ${DRIZZLES[id]?.label ?? id}`, ordered ? p.wrongDrizzle : p.unorderedDrizzle);
+    add(`Unordered ${lookup(DRIZZLES, id)?.label ?? id}`, ordered ? p.wrongDrizzle : p.unorderedDrizzle);
   }
   const spilledG = applied.reduce((sum, [, d]) => sum + grams(d.spilledMg), 0);
   add('Spilled drizzle', spilledG * p.spillPerGram);

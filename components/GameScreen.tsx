@@ -26,6 +26,7 @@ const gameTitles: Record<GameMode, string> = {
     nutriserve: 'NutriServe Chef',
     unified_nutrient: 'Nutrient Challenge',
     cookventure: 'Cookventure India',
+    nutriserve_remaster: 'NutriServe Kitchen',
 };
 
 

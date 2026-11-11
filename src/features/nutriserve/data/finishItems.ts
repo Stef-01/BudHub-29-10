@@ -1,15 +1,14 @@
 // Finish-station ingredients: drizzles (continuous deposit) and garnishes (discrete pieces).
 // They are not in the main food catalog, so their canonical per-100g values live here, rounded
 // from USDA FoodData Central "SR Legacy" entries (named per item). Values are approximate and
-// for education only; they are not medical guidance.
+// for education only; they are not medical guidance. Target amounts are gameplay rules and live,
+// versioned, in simulation/params.ts (FINISH_V1).
 import type { NutrientsPer100g } from './catalogTypes.ts';
 
 export interface DrizzleDef {
   id: string;
   label: string;
   hi: string;
-  /** Target grams for small / medium / large vessels. */
-  targetG: { small: number; medium: number; large: number };
   nutrients_per_100g: NutrientsPer100g;
   source: string;
   /** Rank needed before orders ask for it. */
@@ -32,7 +31,6 @@ export const DRIZZLES: Record<string, DrizzleDef> = {
     id: 'curd_swirl',
     label: 'Curd swirl',
     hi: 'दही',
-    targetG: { small: 15, medium: 20, large: 25 },
     nutrients_per_100g: { calories_kcal: 61, protein_g: 3.5, carbs_g: 4.7, fiber_g: 0, fat_g: 3.3, sodium_mg: 46 },
     source: 'USDA SR Legacy 01116, yogurt, plain, whole milk',
     unlockRank: 1,
@@ -41,7 +39,6 @@ export const DRIZZLES: Record<string, DrizzleDef> = {
     id: 'ghee_tadka',
     label: 'Ghee tadka',
     hi: 'घी तड़का',
-    targetG: { small: 4, medium: 5, large: 6 },
     nutrients_per_100g: { calories_kcal: 876, protein_g: 0.3, carbs_g: 0, fiber_g: 0, fat_g: 99.5, sodium_mg: 2 },
     source: 'USDA SR Legacy 01003, butter oil, anhydrous (ghee)',
     unlockRank: 2,

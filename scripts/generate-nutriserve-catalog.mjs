@@ -14,7 +14,13 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const OUT = 'src/features/nutriserve/data/catalog.generated.ts';
 const SOURCES = { foods: 'services/nutriServeFoodData.ts', customers: 'services/nutriserveCharacters.ts' };
 
-/** Evaluate literal-only expressions; anything else (React components, calls) is skipped. */
+/** Fields that hold React components in the source and are intentionally left out. */
+const SKIPPED_FIELDS = new Set(['visual', 'visuals']);
+
+/**
+ * Evaluate literal-only expressions. Known component fields are skipped; any other non-literal
+ * field fails the build instead of silently vanishing from the generated catalog.
+ */
 function literal(node, source) {
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
   if (ts.isNumericLiteral(node)) return Number(node.text);
@@ -31,8 +37,14 @@ function literal(node, source) {
     const out = {};
     for (const prop of node.properties) {
       if (!ts.isPropertyAssignment(prop)) continue;
+      const name = prop.name.getText(source).replace(/^['"]|['"]$/g, '');
+      if (SKIPPED_FIELDS.has(name)) continue;
       const value = literal(prop.initializer, source);
-      if (value !== undefined) out[prop.name.getText(source).replace(/^['"]|['"]$/g, '')] = value;
+      if (value === undefined) {
+        const { line } = source.getLineAndCharacterOfPosition(prop.getStart(source));
+        throw new Error(`${source.fileName}:${line + 1}: field "${name}" is not a literal; add it to SKIPPED_FIELDS or make it literal`);
+      }
+      out[name] = value;
     }
     return out;
   }

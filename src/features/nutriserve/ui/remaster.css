@@ -1,0 +1,197 @@
+/* NutriServe Kitchen remaster. Scoped under .ns-root; stage text scales with the stage width. */
+.ns-root {
+  --ink: #2b2620;
+  --paper: #fff9ec;
+  --line: #3b3024;
+  --primary: #1d7a4a;
+  --primary-ink: #ffffff;
+  --warn: #b4441b;
+  --focus: #163fbb;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 12px 16px 24px;
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+}
+.ns-root *, .ns-root *::before, .ns-root *::after { box-sizing: border-box; }
+.ns-root button:focus-visible, .ns-root [tabindex]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Start screen */
+.ns-start { display: grid; place-items: center; min-height: 70vh; }
+.ns-start-card { max-width: 620px; background: var(--paper); border: 3px solid var(--line); border-radius: 10px; padding: 24px; box-shadow: 6px 6px 0 #0002; }
+.ns-start-card h1 { margin: 4px 0 10px; font-size: 26px; }
+.ns-start-card p { line-height: 1.5; }
+.ns-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 2px; margin: 0; }
+.ns-start-notes { font-size: 14px; color: #5a5144; padding-left: 18px; }
+
+/* HUD */
+.ns-hud { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 4px; font-size: 15px; }
+.ns-hud small { color: #6b604f; }
+.ns-hud-actions { margin-left: auto; display: flex; gap: 8px; }
+
+/* Stage */
+.ns-stage { position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border: 4px solid var(--line); border-radius: 6px; container-type: inline-size; font-size: 1.9cqw; background: #ddd; user-select: none; -webkit-user-select: none; touch-action: none; }
+.ns-stage > * { position: absolute; }
+.ns-backdrop { inset: 0; width: 100%; height: 100%; }
+
+/* Buttons */
+.ns-btn { font: inherit; font-weight: 700; border: 2px solid var(--line); background: #fff; color: var(--ink); border-radius: 0.5em; padding: 0.35em 0.7em; cursor: pointer; line-height: 1.15; }
+.ns-btn:hover:not(:disabled) { background: #fff3cf; }
+.ns-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ns-btn[aria-pressed='true'] { background: #ffe08a; }
+.ns-btn-primary { background: var(--primary); color: var(--primary-ink); }
+.ns-btn-primary:hover:not(:disabled) { background: #156339; }
+.ns-btn-warn { background: #fff0e8; border-color: var(--warn); color: #6b2208; }
+.ns-btn-quiet { background: #f1ece0; }
+.ns-btn-small { font-size: 14px; }
+.ns-btn-suggested { box-shadow: 0 0 0 0.25em #ffd34d; }
+.ns-hud .ns-btn, .ns-start .ns-btn, .ns-overlay .ns-btn { min-height: 44px; }
+.ns-row { display: flex; flex-wrap: wrap; gap: 0.5em; align-items: center; }
+.ns-muted { color: #574e40; margin: 0; }
+.ns-center { display: grid; place-items: center; text-align: center; }
+.ns-caption { margin: 0; text-align: center; font-size: 0.85em; font-weight: 700; text-transform: capitalize; }
+.ns-provisional { font-size: 0.7em; color: #5b5140; border: 1px dashed #8a7d66; border-radius: 0.4em; padding: 0.1em 0.4em; background: #fffaf0cc; }
+
+/* Ticket rail and paper ticket */
+.ns-rail { display: flex; gap: 0.35em; align-items: center; padding: 0.3em 0.5em; background: #5c6259; border-bottom: 2px solid #242721; overflow-x: auto; }
+.ns-rail-empty { color: #eee; font-size: 0.85em; }
+.ns-rail-ticket { font: inherit; font-size: 0.8em; font-weight: 700; background: var(--paper); border: 2px solid var(--line); border-radius: 0.3em; padding: 0.15em 0.5em; white-space: nowrap; cursor: pointer; }
+.ns-rail-ticket[aria-pressed='true'] { background: #ffe08a; }
+.ns-ticket { background: var(--paper); border: 2px solid var(--line); box-shadow: -0.3em 0.3em 0 #0003; padding: 0.5em 0.5em; display: flex; flex-direction: column; gap: 0.2em; font-size: 0.82em; overflow: hidden; }
+.ns-ticket hr { width: 100%; border: 0; border-top: 2px dashed #b9a98c; margin: 0.15em 0; }
+.ns-ticket-number { font-weight: 900; font-size: 1.2em; }
+.ns-ticket-foods { list-style: none; margin: 0; padding: 0; font-weight: 800; line-height: 1.3; }
+.ns-ticket-finish { margin: 0; padding-left: 1.2em; }
+
+/* Station tabs */
+.ns-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3em; padding: 0.3em; background: #2f2a22; }
+.ns-tab { position: relative; font: inherit; font-weight: 800; border: 2px solid #111; border-radius: 0.45em; background: color-mix(in srgb, var(--tab) 55%, white); color: #111; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4em; }
+.ns-tab small { font-weight: 600; }
+.ns-tab[aria-pressed='true'] { background: var(--tab); color: #fff; }
+.ns-tab em { position: absolute; top: -0.35em; right: 0.3em; min-width: 1.4em; height: 1.4em; border-radius: 999px; background: #c0222a; color: #fff; font-style: normal; font-size: 0.8em; display: grid; place-items: center; border: 2px solid #fff; }
+
+/* Order */
+.ns-sprite { pointer-events: none; }
+.ns-sprite-img { width: 100%; height: 100%; display: block; }
+.ns-order-counter { display: grid; place-items: center; text-align: center; }
+.ns-counter-front { inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ns-waiting { background: #fff9ecdd; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.3em 0.5em; overflow: hidden; }
+.ns-waiting h3 { margin: 0 0 0.2em; font-size: 0.85em; }
+.ns-waiting ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.2em 0.7em; font-size: 0.85em; }
+.ns-waiting li { display: flex; align-items: center; gap: 0.2em; }
+.ns-thumb { display: inline-block; width: 1.6em; height: 2.4em; vertical-align: middle; }
+.ns-summary .ns-thumb { width: 22px; height: 33px; margin-right: 6px; }
+
+/* Panels, build */
+.ns-panel { background: var(--paper); border: 3px solid var(--line); border-radius: 0.6em; padding: 0.8em; display: flex; flex-direction: column; gap: 0.6em; }
+.ns-panel h2 { margin: 0; font-size: 1.3em; }
+.ns-size { font-size: 1.1em; padding: 0.6em 1em; }
+.ns-vessel-side svg, .ns-vessel-top svg { width: 100%; height: 100%; display: block; }
+.ns-gauges { display: flex; flex-direction: column; gap: 0.3em; background: #fff9ecdd; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.35em 0.5em; }
+.ns-gauge-label { font-size: 0.8em; }
+.ns-gauge-label .ns-over { color: #8a2a00; font-weight: 700; }
+.ns-gauge-label .ns-under { color: #1d4f9a; font-weight: 700; }
+.ns-gauge-track { position: relative; display: block; height: 0.7em; border-radius: 999px; background: linear-gradient(90deg, #d7e7f8, #fff 45%, #fff 55%, #fbdcd0); border: 1.5px solid var(--line); }
+.ns-gauge-target { position: absolute; left: 50%; top: -0.2em; bottom: -0.2em; width: 0.15em; background: #14213d; transform: translateX(-50%); }
+.ns-gauge-needle { position: absolute; top: 50%; width: 0.75em; height: 0.75em; border-radius: 50%; background: #f2b632; border: 2px solid var(--line); transform: translate(-50%, -50%); }
+.ns-dispensers { display: flex; flex-direction: column; gap: 0.3em; overflow: hidden; }
+.ns-dispenser-row { margin: 0; border: 2px solid var(--line); border-radius: 0.5em; background: #fff9ecee; padding: 0.1em 0.3em 0.3em; display: grid; grid-template-columns: 1fr 1fr; gap: 0.25em; min-width: 0; }
+.ns-dispenser-row legend { font-weight: 800; font-size: 0.8em; padding: 0 0.2em; }
+.ns-dispenser-row legend small { font-weight: 400; }
+.ns-hold { font: inherit; touch-action: none; }
+.ns-dispenser { font-size: 0.72em; font-weight: 700; border: 2px solid var(--line); border-radius: 0.45em; background: #fff; padding: 0.35em 0.4em; cursor: pointer; display: flex; align-items: center; gap: 0.3em; min-width: 0; text-align: left; }
+.ns-dispenser-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ns-dispenser i, .ns-tool i { display: inline-block; width: 0.9em; height: 0.9em; border-radius: 50%; border: 1.5px solid var(--line); }
+.ns-dispenser[aria-pressed='true'] { background: #ffe08a; box-shadow: inset 0 0 0 0.15em #f2a30f; }
+.ns-dispenser:disabled { opacity: 0.4; cursor: not-allowed; }
+.ns-actions { align-items: center; }
+
+/* Prep */
+.ns-prep-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4em; }
+.ns-prep-unit { background: #fff9ecee; border: 3px solid var(--line); border-radius: 0.6em; padding: 0.4em; display: flex; flex-direction: column; gap: 0.35em; min-width: 0; }
+.ns-prep-unit h3 { margin: 0; font-size: 1.3em; font-weight: 900; }
+.ns-prep-unit .ns-btn { font-size: 0.85em; }
+.ns-prep-dish { margin: 0; font-size: 0.8em; font-weight: 700; text-transform: capitalize; min-height: 2.4em; }
+.ns-prep-bar { position: relative; height: 1.1em; border: 2px solid var(--line); border-radius: 0.3em; background: #fff; }
+.ns-prep-target { margin: 0; font-size: 0.72em; }
+.ns-prep-fill { position: absolute; inset: 0 auto 0 0; background: #d98a2b; }
+.ns-prep-mark { position: absolute; top: -0.2em; bottom: -0.2em; width: 0.12em; background: #3b3024; }
+.ns-prep-mark.ns-wanted { background: #c0222a; width: 0.2em; }
+.ns-heat { height: 0.45em; border-radius: 999px; background: #f4ddc6; border: 1.5px solid var(--line); overflow: hidden; }
+.ns-heat span { display: block; height: 100%; background: #c0222a; }
+.ns-overheated { border-color: #c0222a; box-shadow: 0 0 0 0.15em #c0222a55; }
+.ns-btn-boost[aria-pressed='true'] { background: #ffb84d; }
+.ns-tray { display: flex; flex-wrap: wrap; gap: 0.35em; align-items: center; background: #fff9ecdd; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.35em 0.5em; overflow: auto; }
+.ns-tray-column { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+.ns-tray .ns-btn { font-size: 0.8em; text-transform: capitalize; }
+.ns-tray-label { font-weight: 800; font-size: 0.8em; }
+.ns-serve { display: flex; flex-direction: column; gap: 0.3em; border-top: 2px dashed #b9a98c; padding-top: 0.3em; }
+
+/* Finish */
+.ns-vessel-top { cursor: crosshair; border-radius: 50%; touch-action: none; }
+.ns-tools { display: flex; flex-wrap: wrap; gap: 0.3em; align-content: flex-start; }
+.ns-tool { font: inherit; font-size: 0.75em; font-weight: 700; border: 2px solid var(--line); background: #fff; border-radius: 0.45em; padding: 0.2em 0.45em; display: inline-flex; align-items: center; gap: 0.3em; cursor: pointer; }
+.ns-tool svg { width: 1.1em; height: 1.1em; }
+.ns-tool[aria-pressed='true'] { background: #ffe08a; }
+
+/* Toast and overlays */
+.ns-toast { background: var(--paper); border: 3px solid var(--line); border-radius: 0.6em; padding: 0.5em 0.8em; box-shadow: 0.3em 0.3em 0 #0003; pointer-events: none; }
+.ns-toast p { margin: 0.2em 0; }
+.ns-toast ul { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.2em; padding: 0; margin: 0.3em 0; text-align: center; }
+.ns-toast li { display: flex; flex-direction: column; }
+.ns-toast li small { font-size: 0.75em; color: #5a5144; }
+.ns-toast li b { font-size: 1.3em; }
+.ns-toast em { color: var(--warn); font-style: normal; font-weight: 700; }
+.ns-overlay { inset: 0; background: #2b2620aa; display: grid; place-items: center; padding: 2%; }
+.ns-overlay-card { background: var(--paper); border: 3px solid var(--line); border-radius: 10px; padding: 14px 18px; max-height: 100%; overflow: auto; font-size: 14px; width: min(100%, 560px); }
+.ns-overlay-card h2 { margin: 0 0 6px; font-size: 20px; }
+.ns-summary table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; margin: 8px 0; }
+.ns-summary th, .ns-summary td { border-bottom: 1px solid #d8cdb5; padding: 4px; text-align: right; }
+.ns-summary th[scope='row'], .ns-summary thead th:first-child { text-align: left; }
+.ns-nutrition h3 { margin: 8px 0 2px; font-size: 14px; }
+.ns-nutrition p, .ns-nutrition ul { margin: 2px 0; font-size: 13px; }
+.ns-upgrades { list-style: none; padding: 0; margin: 4px 0 10px; display: flex; flex-direction: column; gap: 6px; }
+.ns-upgrades li { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+
+.ns-status { min-height: 1.4em; margin: 8px 0 0; font-size: 14px; }
+.ns-help { margin-top: 6px; font-size: 14px; color: #4b4336; }
+.ns-help kbd { border: 1px solid #8a7d66; border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: #fff; font-size: 12px; }
+
+/* Compact (narrow) layout: the stage shows the scene, the dock below holds readable controls. */
+.ns-dock { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; font-size: 15px; }
+.ns-dock:empty { display: none; }
+.ns-dock-top { display: flex; flex-direction: column; gap: 8px; }
+.ns-dock-main { display: flex; flex-direction: column; gap: 10px; }
+.ns-docked { position: static; width: auto; height: auto; }
+.ns-dock .ns-btn, .ns-dock .ns-dispenser, .ns-dock .ns-tool, .ns-dock .ns-rail-ticket, .ns-dock .ns-tab { min-height: 44px; font-size: 15px; }
+.ns-dock .ns-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: 8px; }
+.ns-dock .ns-tab { flex-direction: column; gap: 0; }
+.ns-dock .ns-rail { border-radius: 8px; flex-wrap: wrap; }
+.ns-dock .ns-ticket { font-size: 14px; flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }
+.ns-dock .ns-ticket hr { display: none; }
+.ns-dock .ns-ticket-foods { width: 100%; display: flex; flex-wrap: wrap; }
+.ns-dock .ns-ticket-foods li + li::before { content: '·'; padding: 0 0.4em; font-weight: 400; }
+.ns-dock .ns-prep-slots { grid-template-columns: repeat(2, 1fr); }
+.ns-dock .ns-prep-unit h3 { font-size: 18px; }
+.ns-dock .ns-prep-dish, .ns-dock .ns-prep-target, .ns-dock .ns-gauge-label { font-size: 14px; }
+.ns-dock .ns-prep-bar { height: 16px; }
+.ns-dock .ns-heat { height: 8px; }
+.ns-dock .ns-dispenser-row { grid-template-columns: 1fr 1fr; }
+.ns-dock .ns-dispenser { font-size: 14px; }
+.ns-dock .ns-gauge-track { height: 12px; }
+.ns-dock .ns-gauge-needle { width: 14px; height: 14px; }
+.ns-dock .ns-vessel-top { width: min(100%, 340px); aspect-ratio: 1; margin: 0 auto; }
+.ns-dock .ns-tray .ns-btn, .ns-dock .ns-tray-label { font-size: 15px; }
+.ns-dock .ns-toast { font-size: 15px; }
+.ns-dock .ns-order-counter { padding: 4px 0; }
+.ns-dock .ns-provisional { font-size: 12px; }
+.ns-compact .ns-overlay { position: fixed; inset: 0; z-index: 60; padding: 12px; }
+/* Prep and finish have no scene of their own on a phone: collapse the stage (overlays are fixed). */
+.ns-compact .ns-stage.ns-scene-empty { aspect-ratio: auto; height: 0; border-width: 0; }
+.ns-compact .ns-overlay-card { width: 100%; max-height: 100%; }
+.ns-compact .ns-hud { font-size: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ns-root *, .ns-root *::before, .ns-root *::after { transition: none !important; animation: none !important; }
+}

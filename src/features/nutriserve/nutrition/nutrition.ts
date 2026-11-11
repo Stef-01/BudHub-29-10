@@ -11,6 +11,7 @@ import { CATALOG_CUSTOMERS, CATALOG_FOODS } from '../data/catalog.generated.ts';
 import type { CatalogCustomer, CatalogOrder, NutrientsPer100g } from '../data/catalogTypes.ts';
 import { DRIZZLES, GARNISHES } from '../data/finishItems.ts';
 import type { Dish } from '../simulation/types.ts';
+import { lookup } from '../simulation/lookup.ts';
 
 export type Nutrients = NutrientsPer100g;
 export const NUTRIENT_KEYS: Array<keyof Nutrients> = ['calories_kcal', 'protein_g', 'carbs_g', 'fiber_g', 'fat_g', 'sodium_mg'];
@@ -66,7 +67,7 @@ export function dishNutrition(dish: Dish): DishNutrition {
   for (const [id, deposit] of Object.entries(dish.finish.drizzles)) {
     spilledDrizzleG += deposit.spilledMg / 1000;
     if (deposit.insideMg === 0) continue;
-    const def = DRIZZLES[id];
+    const def = lookup(DRIZZLES, id);
     if (!def) {
       unknownIds.push(id);
       continue;
@@ -79,7 +80,7 @@ export function dishNutrition(dish: Dish): DishNutrition {
   let fallenGarnishG = 0;
   const kept = new Map<string, number>();
   for (const piece of dish.finish.garnishes) {
-    const def = GARNISHES[piece.id];
+    const def = lookup(GARNISHES, piece.id);
     if (!def) {
       unknownIds.push(piece.id);
       continue;
@@ -90,7 +91,7 @@ export function dishNutrition(dish: Dish): DishNutrition {
     } else kept.set(piece.id, (kept.get(piece.id) ?? 0) + 1);
   }
   for (const [id, count] of kept) {
-    const def = GARNISHES[id];
+    const def = lookup(GARNISHES, id)!;
     const grams = def.pieceG * count;
     lines.push({ source: 'garnish', id, label: `${def.label} ×${count}`, grams, nutrients: scaled(def.nutrients_per_100g, grams) });
   }

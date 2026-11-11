@@ -50,15 +50,23 @@ export const PREP_V1 = {
 } as const;
 
 export const FINISH_V1 = {
-  version: 'finish-v1-provisional',
+  // v2: drizzle targets moved here (versioned) and coverage scaled to each drizzle's target, so a
+  // small drizzle such as ghee tadka can reach full marks (v1 needed 11 g of cover for a 5 g target).
+  version: 'finish-v2-provisional',
   /** Drizzle deposition rate while held, mg per ms. */
   drizzleRateMgPerMs: 12,
-  /** Target drizzle in grams, by vessel size. */
-  drizzleTargetG: { small: 15, medium: 20, large: 25 },
+  /** Target drizzle in grams, by drizzle and vessel size. */
+  drizzleTargetG: {
+    curd_swirl: { small: 15, medium: 20, large: 25 },
+    ghee_tadka: { small: 4, medium: 5, large: 6 },
+  } as Record<string, Record<DishSize, number>>,
   /** Distribution grid laid over the vessel's circular top (local coordinates -1..1). */
   gridSize: 6,
-  /** A grid cell counts as covered when it holds at least this many grams. */
-  coveredCellMinG: 0.35,
+  /**
+   * A grid cell counts as covered when it holds at least this share of an even split of the
+   * target across the cells inside the rim.
+   */
+  coveredCellShare: 0.56,
   /** Penalties (points out of 100). */
   penalty: {
     missingDrizzle: 30,
