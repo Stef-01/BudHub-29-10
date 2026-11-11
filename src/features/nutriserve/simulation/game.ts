@@ -213,16 +213,16 @@ function flushDrizzle(s: GameState, toX: number, toY: number): void {
 }
 
 /**
- * The ticket a new dish is started for: the selected open ticket (the player's pick is always
- * honoured; finishBuild moves the selection on to the next ticket without a dish), else the
- * oldest open ticket without a dish, else the oldest open ticket.
+ * The ticket a new dish is started for: the ticket the player picked on the rail (always honoured;
+ * automatic follows don't count), else the oldest open ticket without a dish, else the shown
+ * ticket, else the oldest open ticket.
  */
 export function ticketForNewDish(s: GameState): Ticket | undefined {
   const open = s.tickets.filter((t) => t.servedAtMs === undefined);
-  const selected = open.find((t) => t.id === s.selected.ticketId);
-  if (selected) return selected;
+  const picked = open.find((t) => t.id === s.selected.pickedTicketId);
+  if (picked) return picked;
   const live = new Set(s.dishes.filter((d) => d.stage !== 'served' && d.stage !== 'trashed').map((d) => d.forTicketId));
-  return open.find((t) => !live.has(t.id)) ?? open[0];
+  return open.find((t) => !live.has(t.id)) ?? open.find((t) => t.id === s.selected.ticketId) ?? open[0];
 }
 
 /** At Finish, point the paper ticket at the dish now shown on the vessel. */
@@ -258,7 +258,13 @@ function stepOneMs(s: GameState): void {
   if (held?.kind === 'pour') {
     const dish = dishById(s, held.dishId);
     const portion = dish?.build[held.component];
-    if (portion) portion.mg += BUILD_V1.pourRateMgPerMs[held.component];
+    if (portion) {
+      portion.mg += BUILD_V1.pourRateMgPerMs[held.component];
+      if (held.stopAtMg !== undefined && portion.mg >= held.stopAtMg) {
+        portion.mg = Math.max(held.stopAtMg, held.startMg);
+        s.held = undefined; // reached the line: the pour stops by itself
+      }
+    }
   } else if (held?.kind === 'drizzle') {
     held.pendingMg += lookup(FINISH_V1.drizzleRateMgPerMs, held.drizzleId) ?? 0;
     held.pendingMs += 1;
@@ -364,7 +370,8 @@ function invalidValues(s: GameState, c: Command): string | undefined {
     case 'startDish':
       return SIZES.includes(c.size) ? undefined : 'Unknown vessel size';
     case 'beginPour':
-      return COMPONENTS.includes(c.component) ? undefined : 'Unknown component';
+      if (!COMPONENTS.includes(c.component)) return 'Unknown component';
+      return c.stopAtMg === undefined || (Number.isInteger(c.stopAtMg) && c.stopAtMg > 0) ? undefined : 'Bad stop amount';
     case 'startPrep':
     case 'finishPrep':
       return slotOk(c.slot) ? undefined : 'No such prep slot';
@@ -390,10 +397,15 @@ function run(s: GameState, c: Command): string | undefined {
     case 'selectStation': {
       releaseHeld(s);
       s.selected.station = c.station;
-      // At Build and Finish, the paper ticket shows the ticket of the dish being worked on.
+      // At Build and Finish, the paper ticket shows the ticket of the dish being worked on; at Build
+      // with nothing on the counter, the ticket the next dish would be made for.
       if (c.station === 'build') {
         const building = s.dishes.find((d) => d.stage === 'building');
         if (building) followDishTicket(s, building);
+        else {
+          const next = ticketForNewDish(s);
+          if (next) s.selected.ticketId = next.id;
+        }
       } else if (c.station === 'finish') {
         const working = s.dishes.filter((d) => d.stage === 'prepped' || d.stage === 'finishing');
         const shown = working.find((d) => d.id === s.selected.dishId) ?? working[0];
@@ -404,10 +416,13 @@ function run(s: GameState, c: Command): string | undefined {
     case 'selectTicket':
       if (c.ticketId && !s.tickets.some((t) => t.id === c.ticketId)) return 'No such ticket';
       s.selected.ticketId = c.ticketId;
+      s.selected.pickedTicketId = c.ticketId; // the player's own pick
       return;
     case 'selectDish': {
       const dish = c.dishId ? dishById(s, c.dishId) : undefined;
       if (c.dishId && !dish) return 'No such dish';
+      // A drizzle on the dish being left ends (it must never keep pouring onto a dish off screen).
+      if (s.held?.kind === 'drizzle' && s.held.dishId !== c.dishId) endDrizzle(s);
       s.selected.dishId = c.dishId;
       if (dish) followDishTicket(s, dish);
       return;
@@ -460,6 +475,7 @@ function run(s: GameState, c: Command): string | undefined {
         finish: { drizzles: {}, garnishes: [], steps: [] },
       };
       if (forTicket) s.selected.ticketId = forTicket.id; // the paper ticket shows what the gauges follow
+      s.selected.pickedTicketId = undefined; // the pick has been used
       s.dishes.push(dish);
       s.selected.dishId = dish.id;
       return;
@@ -473,12 +489,20 @@ function run(s: GameState, c: Command): string | undefined {
       if (existing && existing.foodId !== c.foodId) {
         // build-v4: a mis-tap (no more than one minimum press) can be swapped for another food.
         if (existing.mg > BUILD_V1.pourRateMgPerMs[c.component] * BUILD_V1.minPressMs) {
-          return `This ${c.component} is already ${existing.foodId}; trash the dish to change it`;
+          return `The ${c.component} is already ${getFood(existing.foodId)?.label ?? existing.foodId}; trash the dish to change it`;
         }
         delete dish.build[c.component];
       }
       dish.build[c.component] ??= { foodId: c.foodId, mg: 0 };
-      s.held = { kind: 'pour', dishId: dish.id, component: c.component, foodId: c.foodId, startMg: dish.build[c.component]?.mg ?? 0 };
+      const startMg = dish.build[c.component]?.mg ?? 0;
+      s.held = {
+        kind: 'pour',
+        dishId: dish.id,
+        component: c.component,
+        foodId: c.foodId,
+        startMg,
+        ...(c.stopAtMg !== undefined && c.stopAtMg > startMg ? { stopAtMg: c.stopAtMg } : {}),
+      };
       return;
     }
     case 'cancelPour': {
@@ -642,6 +666,7 @@ function run(s: GameState, c: Command): string | undefined {
         servedAtMs: s.nowMs,
       });
       if (s.selected.ticketId === ticket.id) s.selected.ticketId = undefined;
+      if (s.selected.pickedTicketId === ticket.id) s.selected.pickedTicketId = undefined;
       if (s.selected.dishId === dish.id) s.selected.dishId = undefined;
       followShownFinishDish(s);
       return;

@@ -81,7 +81,11 @@ function validate(state: any): string[] {
   need(isInt(state.nextId) && state.nextId >= 1, 'nextId');
   need(isInt(state.nextTicketNumber) && state.nextTicketNumber >= 1, 'nextTicketNumber');
   need(typeof state.paused === 'boolean', 'paused');
-  need(isObj(state.selected) && STATIONS.includes(state.selected.station), 'selected');
+  need(
+    isObj(state.selected) && STATIONS.includes(state.selected.station) &&
+      [state.selected.ticketId, state.selected.pickedTicketId, state.selected.dishId].every((v) => v === undefined || isStr(v)),
+    'selected'
+  );
   need(
     isObj(state.paramVersions) && Object.entries(PARAM_VERSIONS).every(([k, v]) => state.paramVersions[k] === v),
     'paramVersions (saved with different rules)'
@@ -191,7 +195,8 @@ function validate(state: any): string[] {
     const h = state.held;
     const dish = isObj(h) ? dishes.find((d) => isObj(d) && d.id === h.dishId) : undefined;
     const pourOk =
-      isObj(h) && h.kind === 'pour' && dish?.stage === 'building' && COMPONENTS.includes(h.component) && isStr(h.foodId) && !!getFood(h.foodId) && isNonNegInt(h.startMg);
+      isObj(h) && h.kind === 'pour' && dish?.stage === 'building' && COMPONENTS.includes(h.component) && isStr(h.foodId) && !!getFood(h.foodId) && isNonNegInt(h.startMg) &&
+      (h.stopAtMg === undefined || isNonNegInt(h.stopAtMg));
     const drizzleOk =
       isObj(h) && h.kind === 'drizzle' && dish?.stage === 'finishing' && !!lookup(DRIZZLES, h.drizzleId) &&
       [h.x, h.y, h.px, h.py].every(isNum) && isNonNegInt(h.pendingMg) && isNonNegInt(h.pendingMs);

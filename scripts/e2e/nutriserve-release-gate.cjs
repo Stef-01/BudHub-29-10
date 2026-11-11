@@ -404,13 +404,15 @@ async function runRegressions(browser) {
     else {
       await clickVessel();
       await page.waitForTimeout(2600); // the automatic swirl pours the ordered amount (about 1.7 s)
+      await clickVessel(); // a second click must not pour it all again (it is already at the target)
+      await page.waitForTimeout(600);
     }
   }
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await page.locator('.ns-serve button').first().click();
   await page.waitForTimeout(300);
   const bar = await page.locator('.ns-lastserve').first().innerText();
-  check(!/No (Curd|Ghee)|Missing/.test(bar), `regressions: click-only input finishes the order (${bar.replace(/\s+/g, ' ').slice(0, 90)})`);
+  check(!/No (Curd|Ghee)|Missing|Too much/.test(bar), `regressions: click-only input finishes the order, once (${bar.replace(/\s+/g, ' ').slice(0, 90)})`);
   const why = page.getByRole('button', { name: 'Why?' });
   if (await why.count()) {
     await why.click();
@@ -420,11 +422,29 @@ async function runRegressions(browser) {
     check(items > 0 && closed, `regressions: Why? lists every reason (${items}) and Escape closes it`);
   }
 
-  // 6. A short laptop window keeps the station tabs on screen.
+  // The Why? panel never sits over a dialog.
+  if (await why.count()) {
+    await why.click();
+    await page.keyboard.press('p');
+    await page.getByRole('dialog', { name: 'Paused' }).waitFor();
+    const panelUnderDialog = (await page.locator('.ns-why-panel').count()) === 0;
+    await page.keyboard.press('Escape');
+    check(panelUnderDialog, 'regressions: pausing closes the Why? panel');
+  }
+
+  // 6. A short laptop window keeps the station tabs on screen; a shorter one puts the controls
+  //    beside the scene.
   await page.setViewportSize({ width: 1366, height: 657 });
   await page.waitForTimeout(300);
   const tabsBottom = await page.evaluate(() => document.querySelector('.ns-tabs').getBoundingClientRect().bottom + scrollY);
   check(tabsBottom <= 657, `regressions: station tabs fit a 1366x657 window (bottom ${Math.round(tabsBottom)} px)`);
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await page.waitForTimeout(300);
+  const side = await page.evaluate(() => {
+    const root = document.querySelector('.ns-root');
+    return { side: root.classList.contains('ns-side-dock'), tabs: document.querySelector('.ns-tabs').getBoundingClientRect().bottom + scrollY };
+  });
+  check(side.side && side.tabs <= 600, `regressions: a 1280x600 window puts the controls beside the scene (tabs end at ${Math.round(side.tabs)} px)`);
 
   check(errors.length === 0, `regressions: no app errors${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   await context.close();

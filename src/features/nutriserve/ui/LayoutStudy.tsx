@@ -3,6 +3,7 @@
 // foods A03). They are deliberately plain: flat shapes, no attempt to stand in as finished art.
 // Every element carries data-layout-study so a visual review can find (and replace) them.
 import React from 'react';
+import { VESSEL_RIM_SHARE } from './stage.ts';
 import type { StationId } from '../simulation/index.ts';
 import { getFood } from '../simulation/index.ts';
 import { FINISH_V1 } from '../simulation/index.ts';
@@ -97,9 +98,7 @@ export function VesselSide({
           return <rect key={i} x="0" y={y} width="160" height={h} fill={layer.color} stroke="#0002" />;
         })}
       </g>
-      {fillLine !== undefined && (
-        <path d={`M14 ${104 - fillLine * 74}H146`} stroke="#14213d" strokeWidth="2.5" strokeDasharray="0" />
-      )}
+      {fillLine !== undefined && <path d={`M14 ${104 - fillLine * 74}H146`} stroke="#14213d" strokeWidth="2.5" strokeDasharray="0" />}
       <ellipse cx="80" cy="34" rx="63" ry="12" fill="none" stroke="#30332e" strokeWidth="4" />
     </svg>
   );
@@ -141,7 +140,7 @@ export function VesselTop({
 }) {
   const n = FINISH_V1.gridSize;
   const cell = 200 / n;
-  const toSvg = (v: number) => 120 + v * 100;
+  const toSvg = (v: number) => 120 + v * 120 * VESSEL_RIM_SHARE; // local 1 = the drawn rim (stage.ts)
   return (
     <svg viewBox="0 0 240 240" role="img" aria-label={label} data-layout-study="vessel-top">
       <circle cx="120" cy="120" r="112" fill="#c4cfce" stroke="#30332e" strokeWidth="4" />
@@ -163,8 +162,8 @@ export function VesselTop({
                 stroke="#0001"
                 opacity={Math.min(0.92, 0.45 + mg / 3000)}
               />
-            ) : null
-          )
+            ) : null,
+          ),
         )}
       </g>
       {garnishes.map((g, i) => (

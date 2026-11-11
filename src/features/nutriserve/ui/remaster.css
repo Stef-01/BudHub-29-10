@@ -178,7 +178,7 @@
 .ns-lastserve-empty p { white-space: normal; }
 .ns-summary-notes { display: block; font-weight: 400; color: #4b4336; max-width: 260px; white-space: normal; }
 .ns-save-notes { font-size: 14px; margin: 8px 0; padding-left: 18px; }
-.ns-overlay { inset: 0; background: #2b2620aa; display: grid; place-items: center; padding: 2%; }
+.ns-overlay { z-index: 60; inset: 0; background: #2b2620aa; display: grid; place-items: center; padding: 2%; }
 .ns-overlay-card { background: var(--paper); border: 3px solid var(--line); border-radius: 10px; padding: 14px 18px; max-height: 100%; overflow: auto; font-size: 14px; width: min(100%, 560px); }
 .ns-overlay-card h2 { margin: 0 0 6px; font-size: 20px; }
 .ns-summary table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; margin: 8px 0; }
@@ -251,3 +251,12 @@
   .ns-root:not(.ns-compact) .ns-lastserve-notes { display: none; }
   .ns-root:not(.ns-compact) .ns-lastserve-wrap { margin-bottom: 4px; }
 }
+
+/* Compact layout in a wide landscape window (landscape tablets, short desktop windows): the scene
+   and the controls side by side, so the controls are on screen with the scene. */
+.ns-root.ns-side-dock { max-width: 1280px; display: grid; grid-template-columns: minmax(0, 5fr) minmax(360px, 6fr); column-gap: 16px; align-items: start; }
+.ns-side-dock > .ns-hud, .ns-side-dock > .ns-status, .ns-side-dock > .ns-help { grid-column: 1 / -1; }
+.ns-side-dock > .ns-stage-wrap { grid-column: 1; position: sticky; top: 8px; max-width: none; margin: 0; }
+.ns-side-dock > .ns-dock { grid-column: 2; margin-top: 0; }
+/* Side by side, Prep and Finish keep their (empty) scene so the left column isn't blank. */
+.ns-side-dock .ns-stage.ns-scene-empty { aspect-ratio: 4 / 3; height: auto; border-width: 4px; }

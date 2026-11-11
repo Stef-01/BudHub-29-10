@@ -32,6 +32,8 @@ const GLIDE_DELAY_MS = 200;
 const GLIDE_SPEED = 2.5;
 const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 const clampCursor = (v: number) => Math.max(-1.2, Math.min(1.2, v));
+/** Click-only garnish spots when no count is known: opposite pairs, each pair turned from the last. */
+const PAIR_ANGLES_DEG = [0, 180, 90, 270, 45, 225, 135, 315, 22.5, 202.5, 112.5, 292.5];
 
 interface Press {
   id: number;
@@ -66,6 +68,8 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   const vesselEl = useRef<HTMLElement | null>(null);
   const drizzling = state.held?.kind === 'drizzle';
   const lastPressAt = useRef(-Infinity);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const [live, setLive] = useState('');
   const auto = useRef<{ frame: number } | null>(null);
   const drizzlingRef = useRef(drizzling);
@@ -215,12 +219,19 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
     const label = DRIZZLES[drizzleId]?.label ?? drizzleId;
     const targetG = drizzleTargetG(drizzleId, dish.size) ?? 0;
     const rate = FINISH_V1.drizzleRateMgPerMs[drizzleId] ?? 1;
-    const duration = (targetG * 1000) / rate;
-    // Five passes across the vessel (the evenest simple path measured for keyboard play).
-    const rows = [-0.64, -0.32, 0, 0.32, 0.64];
+    // Pour only what is still missing: a second click tops up instead of doubling the drizzle.
+    const haveMg = dish.finish.drizzles[drizzleId]?.insideMg ?? 0;
+    const missingMg = targetG * 1000 - haveMg;
+    if (missingMg < 500) {
+      setLive(`${label} is already at its ${targetG} grams.`);
+      return;
+    }
+    const duration = missingMg / rate;
+    // Six passes across the vessel (scores 98-100 on spread; five passes left gaps).
+    const rows = [-0.75, -0.45, -0.15, 0.15, 0.45, 0.75];
     const points: Array<[number, number]> = [];
     rows.forEach((y, i) => {
-      const w = Math.sqrt(1 - y * y) * 0.8;
+      const w = Math.sqrt(1 - y * y) * 0.85;
       points.push(i % 2 ? [w, y] : [-w, y], i % 2 ? [-w, y] : [w, y]);
     });
     const lengths = points.slice(1).map((p, i) => Math.hypot(p[0] - points[i][0], p[1] - points[i][1]));
@@ -237,16 +248,25 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
       return points[points.length - 1];
     };
     const [x0, y0] = at(0);
-    if (!dispatch({ type: 'beginDrizzle', dishId: dish.id, drizzleId, x: x0, y: y0 }).ok) return;
+    const swirlDish = dish.id;
+    if (!dispatch({ type: 'beginDrizzle', dishId: swirlDish, drizzleId, x: x0, y: y0 }).ok) return;
     setLive(`Drizzling ${label}. Click again to stop.`);
     const t0 = performance.now();
+    const landedG = () => Math.round((stateRef.current.dishes.find((d) => d.id === swirlDish)?.finish.drizzles[drizzleId]?.insideMg ?? 0) / 1000);
     const frame = (now: number) => {
       if (!auto.current) return;
       const f = (now - t0) / duration;
-      if (f >= 1 || !drizzlingRef.current) {
+      // Paused, left the station or picked another dish: the drizzle was let go from outside.
+      if (!drizzlingRef.current || shownDishId.current !== swirlDish) {
         auto.current = null;
         stop();
-        setLive(`${label} done.`);
+        setLive(`${label} stopped at ${landedG()} of ${targetG} grams.`);
+        return;
+      }
+      if (f >= 1) {
+        auto.current = null;
+        stop();
+        setLive(`${label} done: ${landedG()} of ${targetG} grams.`);
         return;
       }
       const [x, y] = at(f);
@@ -258,7 +278,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   };
   const onClickOnly = (e: React.MouseEvent) => {
     // Mouse, touch and pen clicks follow a press (handled above); only a bare activation counts.
-    if (e.detail !== 0 || performance.now() - lastPressAt.current < 600) return;
+    if (performance.now() - lastPressAt.current < 600) return;
     if (auto.current) {
       stopAuto();
       setLive('Drizzle stopped.');
@@ -273,16 +293,29 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
       return;
     }
     // Garnish: the next of the ordered number of evenly spaced spots on a ring, so the pieces end up
-    // balanced; six spots when the ticket didn't order this garnish.
+    // balanced. The order comes from the dish's ticket, else an open ticket this dish matches; with
+    // no order, pieces alternate between opposite spots so the dish stays balanced after every pair.
+    // Each garnish type has its own starting angle and ring, so two types never share a spot.
     const placed = dish.finish.garnishes.filter((g) => g.id === tool.id).length;
-    const ordered = forTicket?.order.finish.find((f) => f.kind === 'garnish' && f.id === tool.id);
-    const spots = ordered && ordered.kind === 'garnish' ? ordered.count : 6;
-    const angle = -Math.PI / 2 + (placed % spots) * ((2 * Math.PI) / spots) + Math.floor(placed / spots) * (Math.PI / spots);
-    const p = { x: 0.5 * Math.cos(angle), y: 0.5 * Math.sin(angle) };
+    const ticketFor = forTicket ?? state.tickets.find((t) => t.servedAtMs === undefined && dishMatchesOrder(dish, t.order));
+    const ordered = ticketFor?.order.finish.find((f) => f.kind === 'garnish' && f.id === tool.id);
+    const typeIndex = Math.max(0, Object.keys(GARNISHES).indexOf(tool.id));
+    const start = -Math.PI / 2 + typeIndex * (Math.PI / 5);
+    const radius = typeIndex % 2 ? 0.62 : 0.45;
+    let angle: number;
+    if (ordered && ordered.kind === 'garnish' && ordered.count > 1) {
+      const spots = ordered.count;
+      angle = start + (placed % spots) * ((2 * Math.PI) / spots) + Math.floor(placed / spots) * (Math.PI / spots);
+    } else {
+      // Opposite pairs, each pair turned from the last, so every pair is balanced.
+      angle = start + (PAIR_ANGLES_DEG[placed % PAIR_ANGLES_DEG.length] * Math.PI) / 180;
+    }
+    const p = { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
+    const spots = ordered && ordered.kind === 'garnish' ? ordered.count : 0;
     setCursor(p);
     if (dispatch({ type: 'placeGarnish', dishId: dish.id, garnishId: tool.id, x: p.x, y: p.y }).ok) {
       const label = GARNISHES[tool.id]?.label ?? tool.id;
-      setLive(`${label} placed: ${placed + 1}${ordered ? ` of ${spots}` : ''}.`);
+      setLive(`${label} placed: ${placed + 1}${spots ? ` of ${spots}` : ''}.`);
     }
   };
 
@@ -456,7 +489,17 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
             ))}
           </Dockable>
           <Dockable slot="main" region={box(164, 392, 316, 40)} className="ns-row ns-actions">
-            <button type="button" className="ns-btn ns-btn-primary" disabled={drizzling} onClick={() => dispatch({ type: 'finishDish', dishId: dish.id })}>
+            <button
+              type="button"
+              className="ns-btn ns-btn-primary"
+              disabled={drizzling}
+              onClick={(e) => {
+                const keyboard = e.detail === 0;
+                dispatch({ type: 'finishDish', dishId: dish.id });
+                // From the keyboard, Done would now apply to the next dish: move focus off it.
+                if (keyboard) (document.querySelector('.ns-tab[aria-pressed="true"]') as HTMLElement | null)?.focus();
+              }}
+            >
               Done
             </button>
             <button type="button" className="ns-btn ns-btn-quiet" disabled={drizzling} onClick={() => dispatch({ type: 'trash', dishId: dish.id })}>

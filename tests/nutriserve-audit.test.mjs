@@ -569,10 +569,13 @@ test('Build suggests the oldest ticket that has no dish yet, not the one just ma
   let s = advanceUntil(game(42), atCounter);
   s = cmd(s, { type: 'takeOrder' });
   s = advanceUntil(s, atCounter);
-  s = cmd(s, { type: 'takeOrder' }); // #2 selected
+  s = cmd(s, { type: 'takeOrder' }); // #2 shown, but not picked by the player
   const [t1, t2] = s.tickets;
+  assert.equal(ticketForNewDish(s).id, t1.id, 'an automatic selection is not a pick: the oldest ticket without a dish comes first');
+  s = cmd(s, { type: 'selectTicket', ticketId: t2.id }); // the player picks #2
   const { s: built } = buildPerfect(s, t2);
   s = built;
+  assert.equal(s.dishes.at(-1).forTicketId, t2.id);
   assert.equal(s.selected.ticketId, t1.id, 'sending #2 to prep moves the selection to #1, which has no dish yet');
   assert.equal(ticketForNewDish(s).id, t1.id);
   // The player's own pick is always honoured, and the paper ticket follows the new dish.
@@ -631,4 +634,39 @@ test('score notes use labels, say which way a drizzle was off, and skip rounding
   assert.ok(!reasons.some((r) => /green_chilli|onion\b/.test(r)), 'no raw ids');
   const notes = serveNotes(dish, order, { waiting: 100, build: 100, prep: 100, finish: grade.score }, 1, grade.penalties, 0);
   assert.ok(notes.every((n) => !/\(−0\)/.test(n)), notes.join(' | '));
+});
+
+test('automatic ticket follows never steer the next dish onto a ticket that already has one', () => {
+  let s = advanceUntil(game(42), atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  s = advanceUntil(s, atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  const [t1, t2] = s.tickets;
+  s = cmd(s, { type: 'selectTicket', ticketId: t1.id });
+  const r = buildPerfect(s, t1);
+  s = cmd(r.s, { type: 'startPrep', dishId: r.dishId, slot: 0 });
+  s = advanceGame(s, 6_000);
+  s = cmd(s, { type: 'finishPrep', slot: 0 });
+  s = cmd(s, { type: 'selectStation', station: 'finish' }); // follows #1's dish
+  assert.equal(s.selected.ticketId, t1.id);
+  s = cmd(s, { type: 'selectStation', station: 'build' });
+  assert.equal(s.selected.ticketId, t2.id, 'Build shows the ticket the next dish is for');
+  s = cmd(s, { type: 'startDish', size: t2.order.size });
+  assert.equal(s.dishes.at(-1).forTicketId, t2.id);
+});
+
+test('a click-only pour stops exactly at its line; changing dish ends a drizzle on the old one', () => {
+  let { s } = withTicket();
+  s = cmd(s, { type: 'startDish', size: 'medium' });
+  const dishId = s.dishes.at(-1).id;
+  s = cmd(s, { type: 'beginPour', dishId, component: 'main', foodId: s.tickets[0].order.mainId, stopAtMg: 176_000 });
+  s = advanceGame(s, 5_000);
+  assert.equal(s.held, undefined, 'the pour ended by itself');
+  assert.equal(s.dishes.at(-1).build.main.mg, 176_000);
+  const f = finishing(42, 2);
+  let t = cmd(f.s, { type: 'beginDrizzle', dishId: f.dishId, drizzleId: 'curd_swirl', x: 0, y: 0 });
+  t = advanceGame(t, 300);
+  t = cmd(t, { type: 'selectDish' }); // the player picks another dish (here: none)
+  assert.equal(t.held, undefined);
+  assert.equal(t.dishes.find((d) => d.id === f.dishId).finish.drizzles.curd_swirl.insideMg, 300 * 12, 'what was poured landed');
 });

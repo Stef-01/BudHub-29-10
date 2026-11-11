@@ -112,7 +112,16 @@ export interface PrepSlot {
 
 /** An action that is in progress while a control is held. */
 export type HeldAction =
-  | { kind: 'pour'; dishId: string; component: BuildComponent; foodId: string; /** Portion mg when the press began. */ startMg: number }
+  | {
+      kind: 'pour';
+      dishId: string;
+      component: BuildComponent;
+      foodId: string;
+      /** Portion mg when the press began. */
+      startMg: number;
+      /** The pour ends by itself at this portion mg (click-only pours stop at the line). */
+      stopAtMg?: number;
+    }
   | {
       kind: 'drizzle';
       dishId: string;
@@ -189,7 +198,11 @@ export interface GameState {
   paused: boolean;
   nextId: number;
   nextTicketNumber: number;
-  selected: { station: StationId; ticketId?: string; dishId?: string };
+  /**
+   * ticketId is the ticket shown on the paper ticket (it follows the dish being worked on);
+   * pickedTicketId is a ticket the player chose on the rail, which the next new dish is made for.
+   */
+  selected: { station: StationId; ticketId?: string; dishId?: string; pickedTicketId?: string };
   day: DayState;
   tickets: Ticket[];
   dishes: Dish[];
@@ -206,7 +219,8 @@ export type Command =
   | { type: 'selectDish'; dishId?: string }
   | { type: 'takeOrder' }
   | { type: 'startDish'; size: DishSize }
-  | { type: 'beginPour'; dishId: string; component: BuildComponent; foodId: string }
+  /** stopAtMg: stop by itself once the portion reaches this (click-only pours stop at the line). */
+  | { type: 'beginPour'; dishId: string; component: BuildComponent; foodId: string; stopAtMg?: number }
   | { type: 'endPour' }
   /** Undo the pour in progress (a touch that turned into a scroll). */
   | { type: 'cancelPour' }

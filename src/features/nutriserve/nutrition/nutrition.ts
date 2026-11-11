@@ -249,6 +249,8 @@ export interface ServiceNutritionReport {
 }
 
 const signed = (n: number, unit: string) => `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(Math.round(n))} ${unit}`;
+/** ": +12 kcal", or nothing when the effect rounds to zero (a garnish or a dab of drizzle). */
+const kcalSuffix = (kcal: number) => (Math.round(kcal) === 0 ? '' : `: ${signed(kcal, 'kcal')}`);
 
 export function serviceNutritionReport(dish: Dish, order: TicketOrder, goalsFor: Pick<CatalogOrder, 'plateSize' | 'diabetesMode'>): ServiceNutritionReport {
   const served = dishNutrition(dish);
@@ -283,7 +285,7 @@ export function serviceNutritionReport(dish: Dish, order: TicketOrder, goalsFor:
     const landedG = deposit.insideMg / 1000;
     const label = lookup(DRIZZLES, id)?.label ?? id;
     if (id !== orderedDrizzle) {
-      if (landedG > 0) changes.push({ text: `Unordered ${label}: ${signed(drizzleKcal(id, landedG), 'kcal')}`, kcal: drizzleKcal(id, landedG) });
+      if (landedG > 0) changes.push({ text: `Unordered ${label}${kcalSuffix(drizzleKcal(id, landedG))}`, kcal: drizzleKcal(id, landedG) });
       continue;
     }
     const targetG = lookup(FINISH_V1.drizzleTargetG, id)?.[order.size] ?? 0;
@@ -313,7 +315,7 @@ export function serviceNutritionReport(dish: Dish, order: TicketOrder, goalsFor:
     const kcal = garnishKcal(id, got - want);
     const text =
       want === 0
-        ? `${got} unordered ${label}: ${signed(kcal, 'kcal')}`
+        ? `${got} unordered ${label}${kcalSuffix(kcal)}`
         : got === 0
           ? `No ${label} (${want} ordered)`
           : `${Math.abs(got - want)} ${got > want ? 'more' : 'fewer'} ${label} than ordered`;

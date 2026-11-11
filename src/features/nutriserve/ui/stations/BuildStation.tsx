@@ -93,28 +93,27 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
 
   // Click-only (latched) pours are announced: started, at the line, past it. A sighted player
   // watches the gauge; a screen-reader user hears when to click again.
-  const latch = useRef<{ component: BuildComponent; said: 'start' | 'near' | 'line' | 'over' } | null>(null);
+  // Click-only (latched) pours with a fill line stop at it by themselves (stopAtMg): a spoken cue
+  // can't arrive in time at 50-90 g a second. They are announced when they start and stop; without a
+  // line (the vessel size isn't the ticket's) they run until clicked again.
+  const latch = useRef<{ component: BuildComponent; foodId: string } | null>(null);
   const pressOnLatched = useRef(false);
   const [live, setLive] = useState('');
   const latchedPour = state.held?.kind === 'pour' ? state.held : undefined;
-  const latchedG = dish && latchedPour ? (dish.build[latchedPour.component]?.mg ?? 0) / 1000 : 0;
-  const latchedIdeal = ticket && dish && latchedPour && ticket.order.size === dish.size ? ticket.order.idealG[latchedPour.component] : undefined;
   useEffect(() => {
     const l = latch.current;
-    if (!l || !latchedPour || latchedPour.component !== l.component || !latchedIdeal) return;
-    const label = foodLabel(latchedPour.foodId);
-    // A cue at three quarters leaves time to react (pouring runs at 50-90 g a second).
-    if (l.said === 'start' && latchedG >= latchedIdeal * 0.75 && latchedG < latchedIdeal) {
-      l.said = 'near';
-      setLive(`${label} nearly at the line, ${Math.round(latchedG)} of ${latchedIdeal} grams.`);
-    } else if ((l.said === 'start' || l.said === 'near') && latchedG >= latchedIdeal) {
-      l.said = 'line';
-      setLive(`${label} at the line, ${Math.round(latchedG)} grams. Click again to stop.`);
-    } else if (l.said === 'line' && latchedG >= latchedIdeal * 1.25) {
-      l.said = 'over';
-      setLive(`${label} over the line, ${Math.round(latchedG)} grams.`);
-    }
-  }, [latchedG, latchedIdeal, latchedPour]);
+    if (!l || latchedPour || !dish) return;
+    // The latched pour has ended (at its line, or by a click).
+    latch.current = null;
+    setLive(`${foodLabel(l.foodId)}: ${Math.round((dish.build[l.component]?.mg ?? 0) / 1000)} grams.`);
+  }, [latchedPour, dish]);
+  // A locked dispenser's reason, shown beside the dispensers for a few seconds.
+  const [blocked, setBlocked] = useState<{ component: BuildComponent; text: string } | null>(null);
+  useEffect(() => {
+    if (!blocked) return;
+    const id = window.setTimeout(() => setBlocked(null), 3_500);
+    return () => window.clearTimeout(id);
+  }, [blocked]);
 
   if (!dish) {
     return (
@@ -172,6 +171,11 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
           const chosen = dish.build[c.id]?.foodId;
           return (
             <fieldset key={c.id} className="ns-dispenser-row">
+              {blocked?.component === c.id && (
+                <p className="ns-blocked-msg" role="alert">
+                  {blocked.text}
+                </p>
+              )}
               <legend>
                 {c.label}{' '}
                 <small>
@@ -210,17 +214,28 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                       setLive(`Pour cancelled: that looked like a scroll.`);
                     }}
                     // A locked dispenser says why (the simulation's own reason, in the status line).
-                    onBlocked={() => dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId })}
+                    onBlocked={() => {
+                      const result = dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId });
+                      if ('error' in result) setBlocked({ component: c.id, text: result.error });
+                    }}
                     // Click-only input: the first click starts pouring, the next one stops it.
                     onTap={() => {
                       if (held?.component === c.id && held.foodId === foodId) {
                         latch.current = null;
                         dispatch({ type: 'endPour' });
-                      } else if (dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId }).ok) {
-                        latch.current = { component: c.id, said: 'start' };
+                      } else if (
+                        dispatch({
+                          type: 'beginPour',
+                          dishId: dish.id,
+                          component: c.id,
+                          foodId,
+                          ...(ideal ? { stopAtMg: Math.round(ideal[c.id] * 1000) } : {}),
+                        }).ok
+                      ) {
+                        latch.current = { component: c.id, foodId };
                         setLive(
                           ideal
-                            ? `Pouring ${foodLabel(foodId)}, line at ${ideal[c.id]} grams. Click again to stop.`
+                            ? `Pouring ${foodLabel(foodId)} to the line at ${ideal[c.id]} grams; it stops by itself.`
                             : `Pouring ${foodLabel(foodId)}. No fill line: this vessel size isn't the ticket's. Click again to stop.`,
                         );
                       }

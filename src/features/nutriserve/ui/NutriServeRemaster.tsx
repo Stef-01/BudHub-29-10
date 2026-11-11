@@ -24,21 +24,26 @@ import { clearSave, readSavedGame, recordDayReported, useNutriServeGame, wasDayR
 import { LayoutContext, type DockSlot } from './Dockable.tsx';
 
 /**
- * Compact layout: the stage keeps the scene and controls move to a full-size dock below it. Used
- * when the kitchen is narrower than 700 px (below that, stage text drops under about 9 px and
- * dispensers under 24 px tall) or the window is shorter than 500 px (a phone held sideways can't fit
- * the 4:3 stage). Leaving needs 720 px and 540 px, so a scrollbar or toolbar appearing near an edge
- * can't flip it back and forth.
+ * Compact layout: the stage keeps the scene and controls move to a full-size dock. Used when:
+ * - the kitchen is narrower than 700 px (below that, stage text drops under about 9 px and
+ *   dispensers under 24 px tall);
+ * - the window is shorter than 640 px (the 720 px minimum stage plus the bars no longer fits, so
+ *   the station tabs would be below the fold);
+ * - a touch-first screen's window is narrower than 1100 px (stage targets there are about 26 px).
+ * Leaving needs 720 px wide, 680 px tall and 1120 px for touch, so a scrollbar or toolbar
+ * appearing near an edge can't flip it back and forth.
  */
-const COMPACT_ENTER = { width: 700, height: 500 };
-const COMPACT_LEAVE = { width: 720, height: 540 };
-/** Touch-first screens (tablets) use the dock below this width: stage targets there are ~26 px. */
+const COMPACT_ENTER = { width: 700, height: 640 };
+const COMPACT_LEAVE = { width: 720, height: 680 };
 const COMPACT_TOUCH = { enter: 1100, leave: 1120 };
-function nextCompact(was: boolean, width: number, viewportHeight: number, coarse: boolean): boolean {
-  const enterW = coarse ? COMPACT_TOUCH.enter : COMPACT_ENTER.width;
-  const leaveW = coarse ? COMPACT_TOUCH.leave : COMPACT_LEAVE.width;
-  return was ? !(width >= leaveW && viewportHeight >= COMPACT_LEAVE.height) : width < enterW || viewportHeight < COMPACT_ENTER.height;
+function nextCompact(was: boolean, kitchenWidth: number, windowWidth: number, windowHeight: number, coarse: boolean): boolean {
+  if (was) {
+    return !(kitchenWidth >= COMPACT_LEAVE.width && windowHeight >= COMPACT_LEAVE.height && (!coarse || windowWidth >= COMPACT_TOUCH.leave));
+  }
+  return kitchenWidth < COMPACT_ENTER.width || windowHeight < COMPACT_ENTER.height || (coarse && windowWidth < COMPACT_TOUCH.enter);
 }
+/** A wide, landscape window in the compact layout puts the scene and the controls side by side. */
+const SIDE_DOCK_MIN_WIDTH = 900;
 /** How long a status message stays in the live line. */
 const STATUS_MS = 6_000;
 import './remaster.css';
@@ -204,12 +209,16 @@ function Kitchen({
   // Compact layout for narrow screens (see Dockable.tsx).
   const rootRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
+  const [sideDock, setSideDock] = useState(false);
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
     let width = el.clientWidth;
     const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
-    const update = () => setCompact((was) => nextCompact(was, width, window.innerHeight, coarse()));
+    const update = () => {
+      setCompact((was) => nextCompact(was, width, window.innerWidth, window.innerHeight, coarse()));
+      setSideDock(window.innerWidth >= SIDE_DOCK_MIN_WIDTH && window.innerWidth > window.innerHeight);
+    };
     const observer = new ResizeObserver(([entry]) => {
       width = entry.contentRect.width;
       update();
@@ -325,33 +334,45 @@ function Kitchen({
   // button), focus moves to the next sensible control instead of dropping to the page.
   const modalRef = useRef(modalOpen);
   modalRef.current = modalOpen;
-  // Only for keyboard (and screen-reader) users: moving focus after a tap would scroll the page.
+  // Keyboard (and screen-reader) users only; moving focus after a tap would scroll the page.
+  // - Holding Enter or Space never repeats a button's action (browsers click again on each repeat).
+  // - When the focused control goes away (Take order, Send to prep, a prep slot's Done, Serve),
+  //   focus moves to a neutral control: the suggested vessel size, else the current station tab.
+  //   Never to Done or Serve, which would then act on a different dish.
   const keyboardUser = useRef(false);
+  const recoverFocus = useCallback(() => {
+    const el = rootRef.current;
+    if (!el || !keyboardUser.current || modalRef.current) return;
+    const active = document.activeElement as HTMLElement | null;
+    if (active && active !== document.body && active.isConnected) return; // focus is somewhere real
+    const usable = (q: string) =>
+      [...el.querySelectorAll<HTMLElement>(q)].find((b) => !b.closest('[inert]') && b.getClientRects().length > 0 && !(b as HTMLButtonElement).disabled);
+    (usable('.ns-btn-suggested') ?? usable('.ns-tab[aria-pressed="true"]'))?.focus();
+  }, []);
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    const onKey = () => (keyboardUser.current = true);
+    const onKey = (e: KeyboardEvent) => {
+      keyboardUser.current = true;
+      const target = e.target as HTMLElement;
+      if (e.repeat && (e.key === 'Enter' || e.key === ' ') && target.tagName === 'BUTTON' && el.contains(target)) e.preventDefault();
+    };
     const onPointer = () => (keyboardUser.current = false);
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('pointerdown', onPointer, true);
-    const onFocusOut = (e: FocusEvent) => {
-      const lost = e.target as HTMLElement;
-      requestAnimationFrame(() => {
-        if (!keyboardUser.current || lost.isConnected || modalRef.current) return;
-        const active = document.activeElement;
-        if (active && active !== document.body) return;
-        const usable = (q: string) =>
-          [...el.querySelectorAll<HTMLElement>(q)].find((b) => !b.closest('[inert]') && b.getClientRects().length > 0 && !(b as HTMLButtonElement).disabled);
-        (usable('.ns-btn-suggested') ?? usable('.ns-btn-primary:not([aria-disabled="true"])') ?? usable('.ns-tab[aria-pressed="true"]'))?.focus();
-      });
-    };
+    // Chromium fires focusout when the focused element is removed; Firefox does not, so the check
+    // also runs after every render (below).
+    const onFocusOut = () => requestAnimationFrame(recoverFocus);
     el.addEventListener('focusout', onFocusOut);
     return () => {
       el.removeEventListener('focusout', onFocusOut);
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('pointerdown', onPointer, true);
     };
-  }, []);
+  }, [recoverFocus]);
+  useEffect(() => {
+    if (keyboardUser.current && document.activeElement === document.body) recoverFocus();
+  });
   const wasModal = useRef(modalOpen);
   useEffect(() => {
     if (wasModal.current && !modalOpen) {
@@ -374,7 +395,7 @@ function Kitchen({
 
   return (
     <LayoutContext.Provider value={layout}>
-      <div className={`ns-root${compact ? ' ns-compact' : ''}`} ref={rootRef}>
+      <div className={`ns-root${compact ? ' ns-compact' : ''}${compact && sideDock ? ' ns-side-dock' : ''}`} ref={rootRef}>
         <header className="ns-hud" inert={modalOpen}>
           <span>
             <b>Day {state.day.number}</b> · {Math.floor(state.nowMs / 60_000)}:{String(Math.floor((state.nowMs % 60_000) / 1000)).padStart(2, '0')}
@@ -411,7 +432,7 @@ function Kitchen({
         {/* The wrapper is the size container the stage's cqw text is measured against (an element
             can't be measured against itself; cqw would fall back to the window). */}
         <div className="ns-stage-wrap">
-          {!compact && <LastServe result={latest} inert={modalOpen} />}
+          {!compact && <LastServe result={latest} inert={modalOpen} modal={modalOpen} />}
           <div
             className={`ns-stage ns-station-${station}${compact && (station === 'prep' || station === 'finish') ? ' ns-scene-empty' : ''}`}
             aria-label={`${station} station`}
@@ -438,7 +459,7 @@ function Kitchen({
         {compact && (
           <div className="ns-dock" inert={modalOpen}>
             <div ref={slotRefs.tabs} />
-            <LastServe result={latest} />
+            <LastServe result={latest} modal={modalOpen} />
             <div ref={slotRefs.top} className="ns-dock-top" />
             <div ref={slotRefs.main} className="ns-dock-main" />
           </div>
@@ -468,12 +489,16 @@ function Kitchen({
  * top of the dock on a phone), so it never covers a control and nothing moves when it changes.
  * The full breakdown is in the day summary.
  */
-function LastServe({ result, inert }: { result: ServeResult | undefined; inert?: boolean }) {
+function LastServe({ result, inert, modal }: { result: ServeResult | undefined; inert?: boolean; modal?: boolean }) {
   // "Why?" opens every reason in a panel over the stage: the bar's fixed height (so nothing moves)
   // can't show them all, and the day summary comes too late to learn from.
   const [open, setOpen] = useState(false);
   const whyRef = useRef<HTMLButtonElement>(null);
   useEffect(() => setOpen(false), [result?.ticketId]);
+  // A dialog (pause, day summary) closes the panel; it must never sit over one.
+  useEffect(() => {
+    if (modal) setOpen(false);
+  }, [modal]);
   if (!result) {
     return (
       <div className="ns-lastserve-wrap">
