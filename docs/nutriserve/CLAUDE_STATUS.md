@@ -51,9 +51,10 @@ Each run also checks that stage text is 1.9% of the stage width. The regressions
 - a second click-only swirl doesn't double the drizzle;
 - pausing closes the Why? panel;
 - a 1280×600 window puts the controls beside the scene;
-- a long mouse drizzle is never topped up by the click-only swirl.
+- a long mouse drizzle is never topped up by the click-only swirl;
+- a wiggled touch on a dispenser pours nothing.
 
-46/46 checks passed. The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
+47/47 checks passed. The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
 
 Independent audits (findings and fixes are below).
 
