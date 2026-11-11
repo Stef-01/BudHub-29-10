@@ -287,12 +287,15 @@ function PauseOverlay({ dispatch, onExit }: { dispatch: (c: Command) => CommandR
 }
 
 function DaySummary({ state, dispatch, onExit }: { state: GameState; dispatch: (c: Command) => CommandResult; onExit: () => void }) {
+  // Focus the dialog itself (not its last button) so it opens scrolled to the top.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => cardRef.current?.focus(), []);
   const results = state.day.results;
   const average = results.length ? Math.round(results.reduce((a, r) => a + r.scores.total, 0) / results.length) : 0;
   const tips = results.reduce((a, r) => a + r.tip, 0);
   return (
     <div className="ns-overlay" role="dialog" aria-modal="true" aria-label={`Day ${state.day.number} summary`}>
-      <div className="ns-overlay-card ns-summary">
+      <div className="ns-overlay-card ns-summary" ref={cardRef} tabIndex={-1}>
         <h2>Day {state.day.number} done</h2>
         <p>
           Average {average} · {tips} coins in tips · rank {state.profile.rank} ({state.profile.points} points)
@@ -388,7 +391,7 @@ function DaySummary({ state, dispatch, onExit }: { state: GameState; dispatch: (
           })}
         </ul>
         <div className="ns-row">
-          <button type="button" className="ns-btn ns-btn-primary" autoFocus onClick={() => dispatch({ type: 'nextDay' })}>
+          <button type="button" className="ns-btn ns-btn-primary" onClick={() => dispatch({ type: 'nextDay' })}>
             Start day {state.day.number + 1}
           </button>
           <button type="button" className="ns-btn ns-btn-quiet" onClick={onExit}>

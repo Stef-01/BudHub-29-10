@@ -13,6 +13,7 @@ Open **Games → Preview the NutriServe remaster art**, or `/nutriserve-art-lab.
 | [Prompts](asset-prompts.json) | Built-in image generation inputs and source identities |
 | [Claude track](CLAUDE_BUILD_TRACK.md) | Ready-to-execute engineering handoff and ownership boundary |
 | [Track CSV](build-track.csv) | Concrete tasks and evidence/asset dependencies |
+| [Claude status](CLAUDE_STATUS.md) | Engineering status, verification, measured costs, asset requests by id/state |
 
 Codex owns asset generation and visual acceptance. Claude's gameplay track is prepared but has not been dispatched to an actual Claude session.
 
