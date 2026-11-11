@@ -495,7 +495,17 @@ function LastServe({ result, inert }: { result: ServeResult | undefined; inert?:
     whyRef.current?.focus();
   };
   return (
-    <div className="ns-lastserve-wrap" inert={inert}>
+    <div
+      className="ns-lastserve-wrap"
+      inert={inert}
+      // Escape closes the panel from the Why? button or from inside the panel.
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && open) {
+          e.stopPropagation();
+          close();
+        }
+      }}
+    >
       <section className="ns-lastserve" aria-label="Last serve">
         <p>
           <b>{name(result.catalogCustomerId)}</b> <span aria-label={`${result.stars} of 5 stars`}>{stars(result.stars)}</span> · total{' '}
@@ -517,22 +527,14 @@ function LastServe({ result, inert }: { result: ServeResult | undefined; inert?:
         <p className="ns-lastserve-notes">{barNotes.length ? barNotes.join(' · ') : result.notes.length ? '' : 'No points lost.'}</p>
       </section>
       {open && (
-        <div
-          id="ns-why-panel"
-          className="ns-why-panel"
-          role="region"
-          aria-label={`Why ${name(result.catalogCustomerId)}'s scores`}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.stopPropagation();
-              close();
-            }
-          }}
-        >
+        <div id="ns-why-panel" className="ns-why-panel" role="region" aria-label={`Why ${name(result.catalogCustomerId)}'s scores`}>
           <ul>
-            {flags.map((f) => (
-              <li key={f}>{f[0].toUpperCase() + f.slice(1)}</li>
-            ))}
+            {/* The content flag is already a note ("Only N% of the ordered food…"). */}
+            {flags
+              .filter((f) => !/^only \d+% of the order/.test(f))
+              .map((f) => (
+                <li key={f}>{f[0].toUpperCase() + f.slice(1)}</li>
+              ))}
             {result.notes.map((n) => (
               <li key={n}>{n}</li>
             ))}
