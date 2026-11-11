@@ -1,0 +1,68 @@
+{
+  "tool": "built-in image_gen",
+  "transparent_background": true,
+  "modelAndSeed": "Not exposed by tool; no claim of deterministic regeneration",
+  "reviewNote": "Prompt intent is not acceptance proof; source interiors are alpha 252–254 and bounded shading remains. Browser inspection establishes the pilot acceptance.",
+  "assets": [
+    {
+      "id": "arjun_fit",
+      "sourceFile": "exec-b76a92d1-6da4-438c-a157-b04eec1555c3.png",
+      "sha256": "dc0203ae256e97736565e5aec1c280a5e868324a6cdc95da3c04eb269c5497f7",
+      "referenceRoles": [
+        "Arjun V2 edit target",
+        "Official screenshot 09 style reference"
+      ],
+      "prompt": "Edit Image 1 into a production sprite. Image 2 is the original classic Freezeria STYLE reference. Keep Arjun's identity, teal polo, yellow collar, dark pants, cream shoes, hollow oval eyes, and left-facing idle pose. Correct ONLY these failures: make the head including hair roughly 38 percent of total body height by shortening torso and legs; shorten neck; remove ALL soft shaded highlights, gradients and surface texture, using truly flat solid fills and at most ONE hard edged shadow shape per hair/garment. Remove the large halo/glow completely. Outlines stay uniform dark brown, clearly readable when full character is only 160 pixels tall. Skin must be uniform medium warm brown. Eye interiors flat pale cream, no pupils, no shiny glints. NO 3D rendering. Transparent background everywhere outside the tightly antialiased outline; fully opaque character interior. No background shadow, text, border, additional people or objects. Full body, centered, 8 percent clear padding. The goal is the simple charming 2011 Flash game look of Image 2, never a polished contemporary portrait."
+    },
+    {
+      "id": "priya_balanced",
+      "sourceFile": "exec-d4327b1f-83bb-4494-8c68-8ae53649a55f.png",
+      "sha256": "c5ea92f47942aacabd7f53543871fe12dab4477be39e84a1d6d800d2e4ed60b0",
+      "referenceRoles": [
+        "Arjun V3 approved master",
+        "Official screenshot 09 style reference"
+      ],
+      "prompt": "Use case: stylized-concept. Create ONE original customer sprite for NutriServe, an Indian food serving Flash-style game. Image 1 is the approved master for outline weight, simplified anatomy, eye design and coloring. Image 2 is the classic Freezeria style reference. Match their simple flat cartoon style, NOT realism. Full body with generous transparent padding, three-quarter left-facing idle pose. Head including hair 36-39 percent of total body height, tiny torso, slender tubular arms, simple mitten hands, short legs, oversized rounded shoes. Hollow outlined small vertical oval eyes with pale interiors, NO pupils or irises, small curved smile. Crisp dark brown outlines; flat color fills with at most a single hard-edged shadow shape per garment/hair. Fully opaque character interior; true alpha transparency outside silhouette, no cast shadow, scenery, text, border, glow, painted texture, photographic lighting, muscle definition or realistic anatomy. Character identity: Priya, young Indian woman with medium warm-brown skin, dark hair in a low side braid, terracotta knee-length kurta with a simple cream hem, cream leggings, teal flat shoes, tiny plain round earrings. Friendly relaxed idle pose."
+    },
+    {
+      "id": "rohan_light",
+      "sourceFile": "exec-a41e7a9d-e504-4ca7-8ce1-a9e3484a76bc.png",
+      "sha256": "f727295c31813e6104daf6ac49e518f755846086e9a3da83bf0fe327af510581",
+      "referenceRoles": [
+        "Arjun V3 approved master",
+        "Official screenshot 09 style reference"
+      ],
+      "prompt": "Use case: stylized-concept. Create ONE original customer sprite for NutriServe, an Indian food serving Flash-style game. Image 1 is the approved master for outline weight, simplified anatomy, eye design and coloring. Image 2 is the classic Freezeria style reference. Match their simple flat cartoon style, NOT realism. Full body with generous transparent padding, three-quarter left-facing idle pose. Head including hair 36-39 percent of total body height, tiny torso, slender tubular arms, simple mitten hands, short legs, oversized rounded shoes. Hollow outlined small vertical oval eyes with pale interiors, NO pupils or irises, small curved smile. Crisp dark brown outlines; flat color fills with at most a single hard-edged shadow shape per garment/hair. Fully opaque character interior; true alpha transparency outside silhouette, no cast shadow, scenery, text, border, glow, painted texture, photographic lighting, muscle definition or realistic anatomy. Character identity: Rohan, Indian male student with deeper warm-brown skin, short dark wavy hair, round thin dark glasses over the hollow oval eyes, mustard hoodie with teal drawstrings, dark brown shorts and teal rounded sneakers. Friendly relaxed idle pose."
+    },
+    {
+      "id": "maya_protein",
+      "sourceFile": "exec-5513f159-c96a-4919-8eb6-9c186def9ae8.png",
+      "sha256": "30600b791119325e002d2a72fdb76450695f1be52ac62cbd48142e819c8bd0c4",
+      "referenceRoles": [
+        "Arjun V3 approved master",
+        "Official screenshot 09 style reference"
+      ],
+      "prompt": "Use case: stylized-concept. Create ONE original customer sprite for NutriServe, an Indian food serving Flash-style game. Image 1 is the approved master for outline weight, simplified anatomy, eye design and coloring. Image 2 is the classic Freezeria style reference. Match their simple flat cartoon style, NOT realism. Full body with generous transparent padding, three-quarter left-facing idle pose. Head including hair 36-39 percent of total body height, tiny torso, slender tubular arms, simple mitten hands, short legs, oversized rounded shoes. Hollow outlined small vertical oval eyes with pale interiors, NO pupils or irises, small curved smile. Crisp dark brown outlines; flat color fills with at most a single hard-edged shadow shape per garment/hair. Fully opaque character interior; true alpha transparency outside silhouette, no cast shadow, scenery, text, border, glow, painted texture, photographic lighting, muscle definition or realistic anatomy. Character identity: Maya, Indian adult woman with deep-brown skin, curly black hair tied in a high ponytail, teal short-sleeved athletic top with cream side stripe, plum jogger trousers, cream rounded sneakers. Friendly relaxed idle pose."
+    },
+    {
+      "id": "vikram_lowsodium",
+      "sourceFile": "exec-c1f2f7c5-268c-4ab9-97e6-aefc561acdc1.png",
+      "sha256": "8619fced8a6ee12f0038de5bd698080224cea301274e3f6cf00666680df5a9f0",
+      "referenceRoles": [
+        "Arjun V3 approved master",
+        "Official screenshot 09 style reference"
+      ],
+      "prompt": "Use case: stylized-concept. Create ONE original customer sprite for NutriServe, an Indian food serving Flash-style game. Image 1 is the approved master for outline weight, simplified anatomy, eye design and coloring. Image 2 is the classic Freezeria style reference. Match their simple flat cartoon style, NOT realism. Full body with generous transparent padding, three-quarter left-facing idle pose. Head including hair 36-39 percent of total body height, tiny torso, slender tubular arms, simple mitten hands, short legs, oversized rounded shoes. Hollow outlined small vertical oval eyes with pale interiors, NO pupils or irises, small curved smile. Crisp dark brown outlines; flat color fills with at most a single hard-edged shadow shape per garment/hair. Fully opaque character interior; true alpha transparency outside silhouette, no cast shadow, scenery, text, border, glow, painted texture, photographic lighting, muscle definition or realistic anatomy. Character identity: Vikram, older Indian man with medium-brown skin, short gray hair and a simple gray moustache, cream short-sleeved shirt under an olive waistcoat, chocolate trousers, large brown slip-on shoes. Friendly relaxed idle pose, age suggested through hair only, no realistic wrinkles."
+    },
+    {
+      "id": "ananya_breakfast",
+      "sourceFile": "exec-19d2870c-7bdd-4219-a793-84139784623d.png",
+      "sha256": "f35e86684d2ce6d16cbd09f27c351ef227fdb16278e19770622048bd222c7dbd",
+      "referenceRoles": [
+        "Arjun V3 approved master",
+        "Official screenshot 09 style reference"
+      ],
+      "prompt": "Use case: stylized-concept. Create ONE original customer sprite for NutriServe, an Indian food serving Flash-style game. Image 1 is the approved master for outline weight, simplified anatomy, eye design and coloring. Image 2 is the classic Freezeria style reference. Match their simple flat cartoon style, NOT realism. Full body with generous transparent padding, three-quarter left-facing idle pose. Head including hair 36-39 percent of total body height, tiny torso, slender tubular arms, simple mitten hands, short legs, oversized rounded shoes. Hollow outlined small vertical oval eyes with pale interiors, NO pupils or irises, small curved smile. Crisp dark brown outlines; flat color fills with at most a single hard-edged shadow shape per garment/hair. Fully opaque character interior; true alpha transparency outside silhouette, no cast shadow, scenery, text, border, glow, painted texture, photographic lighting, muscle definition or realistic anatomy. Character identity: Ananya, Indian young adult woman with light warm-brown skin, black chin-length bob with side fringe, lavender short-sleeved blouse, dark indigo ankle-length trousers, mustard flat shoes, small cream tote on right shoulder. Friendly relaxed idle pose."
+    }
+  ]
+}

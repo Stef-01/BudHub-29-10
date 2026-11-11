@@ -1,0 +1,291 @@
+{
+  "version": 1,
+  "styleRevision": "classic-cartoon-2026-11-10",
+  "status": "pilot-idle-sprites",
+  "generator": "OpenAI built-in image_gen",
+  "referenceUse": "Official screenshots used for local style analysis only; no original game assets shipped.",
+  "characters": [
+    {
+      "id": "arjun_fit",
+      "name": "Arjun",
+      "revision": 3,
+      "state": "idle",
+      "path": "/assets/nutriserve/characters/arjun_fit-idle-v3.png",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1161220,
+      "sha256": "dc0203ae256e97736565e5aec1c280a5e868324a6cdc95da3c04eb269c5497f7",
+      "sourceFile": "exec-b76a92d1-6da4-438c-a157-b04eec1555c3.png",
+      "alpha": {
+        "transparentPixels": 1095907,
+        "opaqueLikePixels": 463058,
+        "threshold": 245
+      },
+      "visibleBounds": {
+        "left": 212,
+        "top": 127,
+        "right": 811,
+        "bottom": 1452
+      },
+      "footAnchor": [
+        0.49951171875,
+        0.9453125
+      ],
+      "review": {
+        "status": "accepted-pilot-idle",
+        "date": "2026-11-10",
+        "masterEvidence": "ev_5196bb9eaa5e7fcb036dd66ae9d49750f7abb6eae339acd08188b8f6f0695863",
+        "castEvidence": "ev_656c3b33a1ab15fd71725d13023a0fd4f87aa0ae300a1573b992c4ff5e3b363b",
+        "mobileEvidence": "ev_9ee460a3f330c4c4cdc77ecc827c027419cb5b145c90de10d6e0a8c8d0086437",
+        "reviewer": "Codex visual inspection; not user approval",
+        "limitations": [
+          "Idle state only",
+          "No full-cast animation/pose parity claim",
+          "Source alpha interiors mostly 252–254; checked on actual backgrounds"
+        ]
+      },
+      "statesNotProduced": [
+        "walk",
+        "taking-order",
+        "happy",
+        "impatient",
+        "disappointed"
+      ]
+    },
+    {
+      "id": "priya_balanced",
+      "name": "Priya",
+      "revision": 2,
+      "state": "idle",
+      "path": "/assets/nutriserve/characters/priya_balanced-idle-v2.png",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1157318,
+      "sha256": "c5ea92f47942aacabd7f53543871fe12dab4477be39e84a1d6d800d2e4ed60b0",
+      "sourceFile": "exec-d4327b1f-83bb-4494-8c68-8ae53649a55f.png",
+      "alpha": {
+        "transparentPixels": 1105580,
+        "opaqueLikePixels": 453603,
+        "threshold": 245
+      },
+      "visibleBounds": {
+        "left": 244,
+        "top": 116,
+        "right": 795,
+        "bottom": 1466
+      },
+      "footAnchor": [
+        0.50732421875,
+        0.9544270833333334
+      ],
+      "review": {
+        "status": "accepted-pilot-idle",
+        "date": "2026-11-10",
+        "masterEvidence": "ev_5196bb9eaa5e7fcb036dd66ae9d49750f7abb6eae339acd08188b8f6f0695863",
+        "castEvidence": "ev_656c3b33a1ab15fd71725d13023a0fd4f87aa0ae300a1573b992c4ff5e3b363b",
+        "mobileEvidence": "ev_9ee460a3f330c4c4cdc77ecc827c027419cb5b145c90de10d6e0a8c8d0086437",
+        "reviewer": "Codex visual inspection; not user approval",
+        "limitations": [
+          "Idle state only",
+          "No full-cast animation/pose parity claim",
+          "Source alpha interiors mostly 252–254; checked on actual backgrounds"
+        ]
+      },
+      "statesNotProduced": [
+        "walk",
+        "taking-order",
+        "happy",
+        "impatient",
+        "disappointed"
+      ]
+    },
+    {
+      "id": "rohan_light",
+      "name": "Rohan",
+      "revision": 2,
+      "state": "idle",
+      "path": "/assets/nutriserve/characters/rohan_light-idle-v2.png",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1228818,
+      "sha256": "f727295c31813e6104daf6ac49e518f755846086e9a3da83bf0fe327af510581",
+      "sourceFile": "exec-a41e7a9d-e504-4ca7-8ce1-a9e3484a76bc.png",
+      "alpha": {
+        "transparentPixels": 1072377,
+        "opaqueLikePixels": 484176,
+        "threshold": 245
+      },
+      "visibleBounds": {
+        "left": 232,
+        "top": 88,
+        "right": 799,
+        "bottom": 1494
+      },
+      "footAnchor": [
+        0.50341796875,
+        0.97265625
+      ],
+      "review": {
+        "status": "accepted-pilot-idle",
+        "date": "2026-11-10",
+        "masterEvidence": "ev_5196bb9eaa5e7fcb036dd66ae9d49750f7abb6eae339acd08188b8f6f0695863",
+        "castEvidence": "ev_656c3b33a1ab15fd71725d13023a0fd4f87aa0ae300a1573b992c4ff5e3b363b",
+        "mobileEvidence": "ev_9ee460a3f330c4c4cdc77ecc827c027419cb5b145c90de10d6e0a8c8d0086437",
+        "reviewer": "Codex visual inspection; not user approval",
+        "limitations": [
+          "Idle state only",
+          "No full-cast animation/pose parity claim",
+          "Source alpha interiors mostly 252–254; checked on actual backgrounds"
+        ]
+      },
+      "statesNotProduced": [
+        "walk",
+        "taking-order",
+        "happy",
+        "impatient",
+        "disappointed"
+      ]
+    },
+    {
+      "id": "maya_protein",
+      "name": "Maya",
+      "revision": 2,
+      "state": "idle",
+      "path": "/assets/nutriserve/characters/maya_protein-idle-v2.png",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1215274,
+      "sha256": "30600b791119325e002d2a72fdb76450695f1be52ac62cbd48142e819c8bd0c4",
+      "sourceFile": "exec-5513f159-c96a-4919-8eb6-9c186def9ae8.png",
+      "alpha": {
+        "transparentPixels": 1040819,
+        "opaqueLikePixels": 512350,
+        "threshold": 245
+      },
+      "visibleBounds": {
+        "left": 209,
+        "top": 102,
+        "right": 876,
+        "bottom": 1485
+      },
+      "footAnchor": [
+        0.52978515625,
+        0.966796875
+      ],
+      "review": {
+        "status": "accepted-pilot-idle",
+        "date": "2026-11-10",
+        "masterEvidence": "ev_5196bb9eaa5e7fcb036dd66ae9d49750f7abb6eae339acd08188b8f6f0695863",
+        "castEvidence": "ev_656c3b33a1ab15fd71725d13023a0fd4f87aa0ae300a1573b992c4ff5e3b363b",
+        "mobileEvidence": "ev_9ee460a3f330c4c4cdc77ecc827c027419cb5b145c90de10d6e0a8c8d0086437",
+        "reviewer": "Codex visual inspection; not user approval",
+        "limitations": [
+          "Idle state only",
+          "No full-cast animation/pose parity claim",
+          "Source alpha interiors mostly 252–254; checked on actual backgrounds"
+        ]
+      },
+      "statesNotProduced": [
+        "walk",
+        "taking-order",
+        "happy",
+        "impatient",
+        "disappointed"
+      ]
+    },
+    {
+      "id": "vikram_lowsodium",
+      "name": "Vikram",
+      "revision": 2,
+      "state": "idle",
+      "path": "/assets/nutriserve/characters/vikram_lowsodium-idle-v2.png",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1227530,
+      "sha256": "8619fced8a6ee12f0038de5bd698080224cea301274e3f6cf00666680df5a9f0",
+      "sourceFile": "exec-c1f2f7c5-268c-4ab9-97e6-aefc561acdc1.png",
+      "alpha": {
+        "transparentPixels": 1085895,
+        "opaqueLikePixels": 472237,
+        "threshold": 245
+      },
+      "visibleBounds": {
+        "left": 240,
+        "top": 96,
+        "right": 789,
+        "bottom": 1477
+      },
+      "footAnchor": [
+        0.50244140625,
+        0.9615885416666666
+      ],
+      "review": {
+        "status": "accepted-pilot-idle",
+        "date": "2026-11-10",
+        "masterEvidence": "ev_5196bb9eaa5e7fcb036dd66ae9d49750f7abb6eae339acd08188b8f6f0695863",
+        "castEvidence": "ev_656c3b33a1ab15fd71725d13023a0fd4f87aa0ae300a1573b992c4ff5e3b363b",
+        "mobileEvidence": "ev_9ee460a3f330c4c4cdc77ecc827c027419cb5b145c90de10d6e0a8c8d0086437",
+        "reviewer": "Codex visual inspection; not user approval",
+        "limitations": [
+          "Idle state only",
+          "No full-cast animation/pose parity claim",
+          "Source alpha interiors mostly 252–254; checked on actual backgrounds"
+        ]
+      },
+      "statesNotProduced": [
+        "walk",
+        "taking-order",
+        "happy",
+        "impatient",
+        "disappointed"
+      ]
+    },
+    {
+      "id": "ananya_breakfast",
+      "name": "Ananya",
+      "revision": 2,
+      "state": "idle",
+      "path": "/assets/nutriserve/characters/ananya_breakfast-idle-v2.png",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1132963,
+      "sha256": "f35e86684d2ce6d16cbd09f27c351ef227fdb16278e19770622048bd222c7dbd",
+      "sourceFile": "exec-19d2870c-7bdd-4219-a793-84139784623d.png",
+      "alpha": {
+        "transparentPixels": 1090310,
+        "opaqueLikePixels": 468916,
+        "threshold": 245
+      },
+      "visibleBounds": {
+        "left": 217,
+        "top": 121,
+        "right": 799,
+        "bottom": 1451
+      },
+      "footAnchor": [
+        0.49609375,
+        0.9446614583333334
+      ],
+      "review": {
+        "status": "accepted-pilot-idle",
+        "date": "2026-11-10",
+        "masterEvidence": "ev_5196bb9eaa5e7fcb036dd66ae9d49750f7abb6eae339acd08188b8f6f0695863",
+        "castEvidence": "ev_656c3b33a1ab15fd71725d13023a0fd4f87aa0ae300a1573b992c4ff5e3b363b",
+        "mobileEvidence": "ev_9ee460a3f330c4c4cdc77ecc827c027419cb5b145c90de10d6e0a8c8d0086437",
+        "reviewer": "Codex visual inspection; not user approval",
+        "limitations": [
+          "Idle state only",
+          "No full-cast animation/pose parity claim",
+          "Source alpha interiors mostly 252–254; checked on actual backgrounds"
+        ]
+      },
+      "statesNotProduced": [
+        "walk",
+        "taking-order",
+        "happy",
+        "impatient",
+        "disappointed"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 // components/games/nutriserve-ui/CustomerDisplay.tsx
 import React from 'react';
 import type { NutriServeCustomerWithTargets } from '../NutriServeTypes';
+import { CustomerSprite } from '../../../src/features/nutriserve/assets/CustomerSprite';
+import { getCustomerSprite } from '../../../src/features/nutriserve/assets/characters';
 
 interface CustomerDisplayProps {
   customer: NutriServeCustomerWithTargets;
@@ -10,12 +12,13 @@ interface CustomerDisplayProps {
 
 const CustomerDisplay: React.FC<CustomerDisplayProps> = ({ customer, onServe, isPlateEmpty }) => {
   const CharacterVisual = customer.visuals.default;
+  const hasRemasterSprite = Boolean(getCustomerSprite(customer.id));
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-lg space-y-4">
         <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-full bg-slate-200 overflow-hidden flex-shrink-0 border-4 border-white ring-2 ring-slate-200">
-                <CharacterVisual />
+            <div className={hasRemasterSprite ? 'w-24 h-40 flex-shrink-0' : 'w-16 h-16 rounded-full bg-slate-200 overflow-hidden flex-shrink-0 border-4 border-white ring-2 ring-slate-200'}>
+                <CustomerSprite customerId={customer.id} className="w-full h-full" fallback={<CharacterVisual />} decorative />
             </div>
             <div className="flex-grow">
                 <h3 className="text-xl font-bold text-slate-800">{customer.name}</h3>

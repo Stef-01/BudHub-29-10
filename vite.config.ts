@@ -33,6 +33,10 @@ export default defineConfig(({ mode }) => {
         chunkSizeWarningLimit: 1000,
 
         rollupOptions: {
+          input: {
+            app: path.resolve(__dirname, 'index.html'),
+            nutriserveArtLab: path.resolve(__dirname, 'nutriserve-art-lab.html'),
+          },
           output: {
             // Simplified manual chunk splitting - only split vendor code
             // This avoids circular dependency issues while still improving caching
