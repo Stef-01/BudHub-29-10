@@ -2,17 +2,17 @@
   "sourceFiles": [
     {
       "path": "services/nutriServeFoodData.ts",
-      "sha256": "e172b9b2054eb62183e6e328e49298d275ba87480bc8122c7d42a08ae5ebbdb6"
+      "sha256": "12956e15249702510d317075356e86e0a0526e7ad2d8fd4dcd8a37190959a8e0"
     },
     {
       "path": "services/nutriserveCharacters.ts",
-      "sha256": "96329f2727b8991ffea34d263651a23dcc8cca91541842032d575736ec201707"
+      "sha256": "ccf3c56a14ee01e4ede80bd2a62c92d67bc91865bd79671c04e85ac10c872372"
     }
   ],
   "method": "TypeScript AST of exact exported array initializers; unrelated tips excluded",
   "counts": {
-    "foodIds": 49,
-    "customerIds": 33,
+    "foodIds": 55,
+    "customerIds": 53,
     "acceptedIdleSprites": 6
   },
   "foods": [
@@ -289,6 +289,66 @@
     {
       "id": "jackfruit_seeds_thoran",
       "label": "Jackfruit Seeds Thoran (Chakkakuru)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "cabbage_thoran",
+      "label": "Cabbage Thoran",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "beetroot_thoran",
+      "label": "Beetroot Thoran",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "snake_gourd_thoran",
+      "label": "Snake Gourd Thoran (Padavalanga)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "bitter_gourd_pavakka",
+      "label": "Bitter Gourd Fry (Pavakka)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "kovakka_fry",
+      "label": "Ivy Gourd Fry (Kovakka)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "avial",
+      "label": "Avial (Mixed Veg with Coconut)",
       "status": "planned-remaster",
       "requiredStates": [
         "library-icon",
@@ -735,6 +795,146 @@
     {
       "id": "yash_meatlover",
       "label": "Yash",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "sara_wholegrains",
+      "label": "Sara",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "omar_protein",
+      "label": "Omar",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "fatima_light",
+      "label": "Fatima",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "chen_veggie",
+      "label": "Chen",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "elena_breakfast",
+      "label": "Elena",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "hassan_hearty",
+      "label": "Hassan",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "ling_traditional",
+      "label": "Ling",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "marcus_lowcarb",
+      "label": "Marcus",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "sofia_fiber",
+      "label": "Sofia",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "ahmed_spice",
+      "label": "Ahmed",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "nina_simple",
+      "label": "Nina",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "raj_protein_rich",
+      "label": "Rajesh",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "yuki_balanced",
+      "label": "Yuki",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "diego_energy",
+      "label": "Diego",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "amara_traditional",
+      "label": "Amara",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "kai_veggie_lover",
+      "label": "Kai",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "zara_light_protein",
+      "label": "Zara",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "lucas_wholesome",
+      "label": "Lucas",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "maya_curious",
+      "label": "Maya",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "ibrahim_hearty_protein",
+      "label": "Ibrahim",
       "idleStatus": "planned",
       "reactionStates": "planned",
       "walkStates": "planned"
