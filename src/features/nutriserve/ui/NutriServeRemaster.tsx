@@ -556,7 +556,8 @@ function LastServe({ result, inert, modal }: { result: ServeResult | undefined; 
         </p>
         <p className="ns-lastserve-notes">{barNotes.length ? barNotes.join(' · ') : result.notes.length ? '' : 'No points lost.'}</p>
       </section>
-      {open && (
+      {/* Never rendered under a dialog, not even for the frame before the effect above closes it. */}
+      {open && !modal && (
         <div id="ns-why-panel" className="ns-why-panel" role="region" aria-label={`Why ${name(result.catalogCustomerId)}'s scores`}>
           <ul>
             {/* The content flag is already a note ("Only N% of the ordered food…"). */}
