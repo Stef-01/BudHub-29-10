@@ -325,7 +325,8 @@ function Kitchen({
     // Every kitchen control, docked or on the stage, is inside the root.
     const onFocusIn = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.ns-overlay')) lastFocus.current = target;
+      // Focus placed by recovery isn't the player's choice: closing a dialog returns to their control.
+      if (!target.closest('.ns-overlay') && !recovering.current) lastFocus.current = target;
     };
     el.addEventListener('focusin', onFocusIn);
     return () => el.removeEventListener('focusin', onFocusIn);
@@ -340,6 +341,7 @@ function Kitchen({
   //   focus moves to a neutral control: the suggested vessel size, else the current station tab.
   //   Never to Done or Serve, which would then act on a different dish.
   const keyboardUser = useRef(false);
+  const recovering = useRef(false);
   const recoverFocus = useCallback(() => {
     const el = rootRef.current;
     if (!el || !keyboardUser.current || modalRef.current) return;
@@ -347,7 +349,10 @@ function Kitchen({
     if (active && active !== document.body && active.isConnected) return; // focus is somewhere real
     const usable = (q: string) =>
       [...el.querySelectorAll<HTMLElement>(q)].find((b) => !b.closest('[inert]') && b.getClientRects().length > 0 && !(b as HTMLButtonElement).disabled);
-    (usable('.ns-btn-suggested') ?? usable('.ns-tab[aria-pressed="true"]'))?.focus();
+    const next = usable('.ns-btn-suggested') ?? usable('.ns-tab[aria-pressed="true"]');
+    recovering.current = true;
+    next?.focus();
+    recovering.current = false;
   }, []);
   useEffect(() => {
     const el = rootRef.current;
