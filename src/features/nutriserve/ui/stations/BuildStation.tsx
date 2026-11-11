@@ -221,9 +221,16 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                     // Click-only input: the first click starts pouring, the next one stops it.
                     onTap={() => {
                       if (held?.component === c.id && held.foodId === foodId) {
-                        latch.current = null;
+                        // Stopping by click: the effect above announces the grams once it has stopped.
                         dispatch({ type: 'endPour' });
-                      } else if (
+                        return;
+                      }
+                      const haveG = (dish.build[c.id]?.foodId === foodId ? (dish.build[c.id]?.mg ?? 0) : 0) / 1000;
+                      if (ideal && haveG >= ideal[c.id]) {
+                        setLive(`${foodLabel(foodId)} is already at the line: ${Math.round(haveG)} of ${ideal[c.id]} grams.`);
+                        return;
+                      }
+                      if (
                         dispatch({
                           type: 'beginPour',
                           dishId: dish.id,
@@ -255,7 +262,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
         {live}
       </span>
       <span id="ns-hold-hint" className="sr-only">
-        Press and hold to pour; a quick tap adds a little. Clicking once starts pouring and clicking again stops.
+        Press and hold to pour; a quick tap adds a little. A single click pours to the fill line and stops by itself (click again to stop sooner).
       </span>
       <Dockable slot="main" region={box(12, 362, 468, 48)} className="ns-row ns-actions">
         <button type="button" className="ns-btn ns-btn-primary" disabled={!!held} onClick={() => dispatch({ type: 'finishBuild', dishId: dish.id })}>

@@ -42,8 +42,8 @@ function nextCompact(was: boolean, kitchenWidth: number, windowWidth: number, wi
   }
   return kitchenWidth < COMPACT_ENTER.width || windowHeight < COMPACT_ENTER.height || (coarse && windowWidth < COMPACT_TOUCH.enter);
 }
-/** A wide, landscape window in the compact layout puts the scene and the controls side by side. */
-const SIDE_DOCK_MIN_WIDTH = 900;
+/** A landscape window this wide (phones held sideways, tablets, short desktops) in the compact layout puts the scene and the controls side by side. */
+const SIDE_DOCK_MIN_WIDTH = 640;
 /** How long a status message stays in the live line. */
 const STATUS_MS = 6_000;
 import './remaster.css';
@@ -216,6 +216,7 @@ function Kitchen({
     let width = el.clientWidth;
     const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
     const update = () => {
+      width = el.clientWidth; // current, not the last ResizeObserver value (diagonal resizes flapped)
       setCompact((was) => nextCompact(was, width, window.innerWidth, window.innerHeight, coarse()));
       setSideDock(window.innerWidth >= SIDE_DOCK_MIN_WIDTH && window.innerWidth > window.innerHeight);
     };
@@ -342,16 +343,22 @@ function Kitchen({
   //   Never to Done or Serve, which would then act on a different dish.
   const keyboardUser = useRef(false);
   const recovering = useRef(false);
+  // Set during the render in which a dialog closes, cleared once its focus restore has run.
+  const closingModal = useRef(false);
+  const modalBefore = useRef(modalOpen);
+  if (modalBefore.current && !modalOpen) closingModal.current = true;
+  modalBefore.current = modalOpen;
   const recoverFocus = useCallback(() => {
     const el = rootRef.current;
-    if (!el || !keyboardUser.current || modalRef.current) return;
+    // While a dialog is open, or just closed (its own restore puts focus back), stay out of the way.
+    if (!el || !keyboardUser.current || modalRef.current || closingModal.current) return;
     const active = document.activeElement as HTMLElement | null;
     if (active && active !== document.body && active.isConnected) return; // focus is somewhere real
     const usable = (q: string) =>
       [...el.querySelectorAll<HTMLElement>(q)].find((b) => !b.closest('[inert]') && b.getClientRects().length > 0 && !(b as HTMLButtonElement).disabled);
     const next = usable('.ns-btn-suggested') ?? usable('.ns-tab[aria-pressed="true"]');
     recovering.current = true;
-    next?.focus();
+    next?.focus({ preventScroll: true }); // never scroll the page from under the player
     recovering.current = false;
   }, []);
   useEffect(() => {
@@ -386,6 +393,7 @@ function Kitchen({
       (usable ? back : pauseButton.current)?.focus();
     }
     wasModal.current = modalOpen;
+    closingModal.current = false;
   }, [modalOpen]);
 
   const station = state.selected.station;
@@ -479,9 +487,9 @@ function Kitchen({
           <summary>Controls</summary>
           <p>
             <kbd>1</kbd>–<kbd>4</kbd> switch stations · <kbd>P</kbd> pause · hold a dispenser or <kbd>Space</kbd> on it to pour (a quick tap adds a little; a
-            single click starts and a second click stops) · on the finish vessel, pick a tool, then arrows move the cursor, hold <kbd>Space</kbd> to drizzle,{' '}
-            <kbd>Enter</kbd> places a garnish. On a touch screen, press and keep still for a moment before dragging to drizzle or pour; a finger that moves
-            straight away scrolls the page.
+            single click pours to the fill line and stops by itself) · on the finish vessel, pick a tool, then arrows move the cursor, hold <kbd>Space</kbd> to
+            drizzle, <kbd>Enter</kbd> places a garnish (a single click places a garnish, or drizzles the ordered amount). On a touch screen, press and keep
+            still for a moment before dragging to drizzle or pour; a finger that moves straight away scrolls the page.
           </p>
         </details>
       </div>

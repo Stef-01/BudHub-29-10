@@ -432,6 +432,25 @@ async function runRegressions(browser) {
     check(panelUnderDialog, 'regressions: pausing closes the Why? panel');
   }
 
+  // A long mouse drizzle (any length) is the player's own: never topped up by the click-only swirl.
+  await page.getByRole('button', { name: 'Save & exit' }).click();
+  await storeFinishSave();
+  await open();
+  await page.getByRole('button', { name: /^Continue day/ }).click();
+  await page.getByRole('button', { name: 'Curd swirl', exact: true }).click();
+  const vb = await page.locator('.ns-vessel-top').boundingBox();
+  const [vx, vy] = [vb.x + vb.width / 2, vb.y + vb.height / 2];
+  await page.mouse.move(vx, vy);
+  await page.mouse.down();
+  for (let i = 0; i < 8; i++) {
+    await page.mouse.move(vx + 30 * Math.cos(i), vy + 30 * Math.sin(i));
+    await page.waitForTimeout(100);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(2500);
+  const said = (await page.locator('[role=status]').allInnerTexts()).join(' | ');
+  check(!/Drizzling|done:|already at its/.test(said), `regressions: a long mouse drizzle is not mistaken for a click-only one (${said.slice(0, 60)})`);
+
   // 6. A short laptop window keeps the station tabs on screen; a shorter one puts the controls
   //    beside the scene.
   await page.setViewportSize({ width: 1366, height: 657 });

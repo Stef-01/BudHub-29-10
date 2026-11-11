@@ -266,15 +266,15 @@ export function serviceNutritionReport(dish: Dish, order: TicketOrder, goalsFor:
     const gotG = portion ? portion.mg / 1000 : 0;
     if (!portion || gotG === 0) {
       const kcal = -kcalOf(wanted[c], idealG);
-      changes.push({ text: `No ${foodLabel(wanted[c])} (${c}): ${signed(kcal, 'kcal')}`, kcal });
+      changes.push({ text: `No ${foodLabel(wanted[c])} (${c})${kcalSuffix(kcal)}`, kcal });
     } else if (portion.foodId !== wanted[c]) {
       const kcal = kcalOf(portion.foodId, gotG) - kcalOf(wanted[c], idealG);
-      changes.push({ text: `${foodLabel(portion.foodId)} instead of ${foodLabel(wanted[c])}: ${signed(kcal, 'kcal')}`, kcal });
+      changes.push({ text: `${foodLabel(portion.foodId)} instead of ${foodLabel(wanted[c])}${kcalSuffix(kcal)}`, kcal });
     } else {
       const deltaG = gotG - idealG;
       if (Math.abs(deltaG) >= Math.max(5, idealG * 0.05)) {
         const kcal = kcalOf(wanted[c], deltaG);
-        changes.push({ text: `${Math.round(Math.abs(deltaG))} g ${deltaG > 0 ? 'more' : 'less'} ${foodLabel(wanted[c])} than ordered: ${signed(kcal, 'kcal')}`, kcal });
+        changes.push({ text: `${Math.round(Math.abs(deltaG))} g ${deltaG > 0 ? 'more' : 'less'} ${foodLabel(wanted[c])} than ordered${kcalSuffix(kcal)}`, kcal });
       }
     }
   }
@@ -291,13 +291,13 @@ export function serviceNutritionReport(dish: Dish, order: TicketOrder, goalsFor:
     const targetG = lookup(FINISH_V1.drizzleTargetG, id)?.[order.size] ?? 0;
     const deltaG = landedG - targetG;
     if (Math.abs(deltaG) >= Math.max(1, targetG * 0.2)) {
-      changes.push({ text: `${Math.round(Math.abs(deltaG))} g ${deltaG > 0 ? 'more' : 'less'} ${label} than ordered: ${signed(drizzleKcal(id, deltaG), 'kcal')}`, kcal: drizzleKcal(id, deltaG) });
+      changes.push({ text: `${Math.round(Math.abs(deltaG))} g ${deltaG > 0 ? 'more' : 'less'} ${label} than ordered${kcalSuffix(drizzleKcal(id, deltaG))}`, kcal: drizzleKcal(id, deltaG) });
     }
   }
   if (orderedDrizzle && !dish.finish.drizzles[orderedDrizzle]) {
     const targetG = lookup(FINISH_V1.drizzleTargetG, orderedDrizzle)?.[order.size] ?? 0;
     const kcal = -drizzleKcal(orderedDrizzle, targetG);
-    changes.push({ text: `No ${lookup(DRIZZLES, orderedDrizzle)?.label ?? orderedDrizzle}: ${signed(kcal, 'kcal')}`, kcal });
+    changes.push({ text: `No ${lookup(DRIZZLES, orderedDrizzle)?.label ?? orderedDrizzle}${kcalSuffix(kcal)}`, kcal });
   }
   // Garnish pieces that stayed on, against what was ordered (counts, and kcal for completeness).
   const kept = new Map<string, number>();

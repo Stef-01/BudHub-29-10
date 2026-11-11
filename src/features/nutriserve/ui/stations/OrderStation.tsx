@@ -19,16 +19,15 @@ function Sprite({ catalogId, footX, footY, height, label }: { catalogId: string;
   const b = spriteBoxAtFoot(placement, footX, footY, height);
   return (
     <div className="ns-sprite" style={box(b.left, b.top, b.width, b.height)}>
-      <CustomerSprite customerId={catalogId} className="ns-sprite-img" decorative={!label} />
+      {/* The image is decorative: the text below names the customer (an alt would say it twice). */}
+      <CustomerSprite customerId={catalogId} className="ns-sprite-img" decorative />
       {label && <span className="sr-only">{label}</span>}
     </div>
   );
 }
 
 export function OrderStation({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
-  const queue = state.day.customers
-    .filter((c) => c.phase === 'at_counter')
-    .sort((a, b) => (a.atCounterMs ?? 0) - (b.atCounterMs ?? 0));
+  const queue = state.day.customers.filter((c) => c.phase === 'at_counter').sort((a, b) => (a.atCounterMs ?? 0) - (b.atCounterMs ?? 0));
   const front = queue[0];
   const waiting = state.day.customers.filter((c) => c.phase === 'waiting_food');
   const arriving = state.day.customers.filter((c) => c.phase === 'walking_in');
@@ -43,9 +42,7 @@ export function OrderStation({ state, dispatch }: { state: GameState; dispatch: 
           <Sprite catalogId={c.catalogId} footX={120 - i * 55} footY={COUNTER_FOOT_Y - 10} height={215} />
         </React.Fragment>
       ))}
-      {front && (
-        <Sprite catalogId={front.catalogId} footX={255} footY={COUNTER_FOOT_Y} height={285} label={`${name(front.catalogId)} is at the counter`} />
-      )}
+      {front && <Sprite catalogId={front.catalogId} footX={255} footY={COUNTER_FOOT_Y} height={285} label={`${name(front.catalogId)} is at the counter`} />}
       <CounterFront />
 
       <Dockable slot="main" region={box(150, 340, 220, 80)} className="ns-order-counter">

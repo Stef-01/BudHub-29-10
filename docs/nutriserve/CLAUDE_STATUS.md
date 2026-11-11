@@ -20,7 +20,7 @@ The catalog on this branch has **55 foods and 53 customers** (main has 49 and 33
 ## Verification
 
 ```sh
-npm run test:nutriserve            # 86 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
+npm run test:nutriserve            # 88 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
 npm run typecheck:nutriserve-sim   # strict TypeScript for simulation/nutrition/data/domain
 npx tsc -p tsconfig.nutriserve.json --noEmit
 npm run build
@@ -53,6 +53,27 @@ Independent audits (findings and fixes are below).
 ### Audit 1: simulation core
 
 Ten issues, all fixed with regression tests in `tests/nutriserve-audit.test.mjs`.
+
+### Audit 7: long presses, layouts across devices, plus re-check of the audit 6 fixes
+
+The auditor's fuzzer (200,000 round trips, 16,216 chunk checks, now including stop-at-line pours and picks) and whole days on every input found no crashes or save problems. Findings, all addressed:
+
+| # | Finding | Fix |
+|---|---|---|
+| H1 | A mouse press on the vessel held longer than 0.6 s counted as a click-only activation (automatic swirl, double garnish) | A click is click-only only when no press is down and none ended in the last 600 ms (timed from the release, like the hold buttons); a release anywhere ends the timing |
+| M1 | A second click-only pour after the line poured without limit, announced as stopping by itself | Refused in the simulation (`Already at the line`) and in the UI ("already at the line, N of M grams"); a click that stops a pour announces the grams |
+| M2 | Resuming from pause with the keyboard scrolled the focused control off screen | Focus recovery stays out of the way while a dialog closes, and never scrolls (`preventScroll`) |
+| M3 | The locked-dispenser reason reshuffled the dispenser grid | An overlay over the row's legend; the grid never moves |
+| M4 | Phones in landscape never got side by side | Any landscape compact window 640 px or wider |
+| L1 | Side by side left only an empty wall beside Prep and Finish | The left column holds the scene, station tabs, last result and tickets; the right column the station's controls |
+| L2 | The layout flapped on diagonal resizes | The current width is read on every resize |
+| L3 | A pick of the ticket being built outlived its dish | Cleared when that dish goes to prep |
+| L4 | Some click-only garnish spots overlapped | One ring per garnish type, at least 0.13 apart |
+| L5 | "+0 kcal" on swap and portion lines | All kcal amounts that round to zero are omitted |
+| L6 | Help text still said "a second click stops" | Updated |
+| L8 | The front customer was announced twice | The sprite is decorative; the text names them |
+
+On L7: click-only play reaches full Build and Finish marks, because pours stop at the line and the swirl lays down an even drizzle. That is deliberate. It is an accessibility assist for players who can't hold or drag, and it is no longer reachable with a mouse (H1).
 
 ### Audit 6: click-only and keyboard details, tablets, plus re-check of the audit 5 fixes
 

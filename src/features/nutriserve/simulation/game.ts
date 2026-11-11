@@ -495,6 +495,8 @@ function run(s: GameState, c: Command): string | undefined {
       }
       dish.build[c.component] ??= { foodId: c.foodId, mg: 0 };
       const startMg = dish.build[c.component]?.mg ?? 0;
+      // A pour that should stop at a line it has already reached would otherwise run unchecked.
+      if (c.stopAtMg !== undefined && c.stopAtMg <= startMg) return `Already at the line (${Math.round(startMg / 1000)} g)`;
       s.held = {
         kind: 'pour',
         dishId: dish.id,
@@ -535,6 +537,8 @@ function run(s: GameState, c: Command): string | undefined {
       dish.stage = 'built';
       // That ticket now has its dish: point the selection at the next ticket still waiting for
       // one, so the next dish is suggested for it (the player can still pick any ticket).
+      // A pick of this dish's own ticket has been used by it.
+      if (s.selected.pickedTicketId === dish.forTicketId) s.selected.pickedTicketId = undefined;
       if (s.selected.ticketId === dish.forTicketId) {
         const next = ticketForNewDish({ ...s, selected: { ...s.selected, ticketId: undefined } });
         if (next) s.selected.ticketId = next.id;

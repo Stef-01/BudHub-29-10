@@ -670,3 +670,30 @@ test('a click-only pour stops exactly at its line; changing dish ends a drizzle 
   assert.equal(t.held, undefined);
   assert.equal(t.dishes.find((d) => d.id === f.dishId).finish.drizzles.curd_swirl.insideMg, 300 * 12, 'what was poured landed');
 });
+
+// --- Seventh audit, 2026-11-11 -----------------------------------------------------------------
+test('a stop-at-line pour already at its line is refused, never left running', () => {
+  let { s } = withTicket();
+  s = cmd(s, { type: 'startDish', size: 'medium' });
+  const dishId = s.dishes.at(-1).id;
+  const foodId = s.tickets[0].order.baseId;
+  s = cmd(s, { type: 'beginPour', dishId, component: 'base', foodId, stopAtMg: 50_000 });
+  s = advanceGame(s, 2_000);
+  assert.equal(s.dishes.at(-1).build.base.mg, 50_000);
+  assert.match(reject(s, { type: 'beginPour', dishId, component: 'base', foodId, stopAtMg: 50_000 }), /Already at the line/);
+});
+
+test('a rail pick of the ticket being built is used up when that dish goes to prep', () => {
+  let s = advanceUntil(game(42), atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  s = advanceUntil(s, atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  const [t1, t2] = s.tickets;
+  s = cmd(s, { type: 'selectTicket', ticketId: t1.id });
+  s = cmd(s, { type: 'startDish', size: t1.order.size });
+  s = cmd(s, { type: 'selectTicket', ticketId: t1.id }); // tapping the ticket already being built
+  s = cmd(s, { type: 'finishBuild', dishId: s.dishes.at(-1).id });
+  assert.equal(s.selected.pickedTicketId, undefined);
+  s = cmd(s, { type: 'startDish', size: t2.order.size });
+  assert.equal(s.dishes.at(-1).forTicketId, t2.id, 'the next dish goes to the ticket without one');
+});

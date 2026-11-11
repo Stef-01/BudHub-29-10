@@ -32,6 +32,10 @@ const GLIDE_DELAY_MS = 200;
 const GLIDE_SPEED = 2.5;
 const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 const clampCursor = (v: number) => Math.max(-1.2, Math.min(1.2, v));
+/** A click this soon after a press on the vessel ended belongs to that press (see onClickOnly). */
+const CLICK_AFTER_PRESS_MS = 600;
+/** Click-only garnish rings, one per garnish type (in GARNISHES order). */
+const GARNISH_RINGS = [0.4, 0.66, 0.53, 0.79, 0.26]; // at least 0.13 apart, so types never touch
 /** Click-only garnish spots when no count is known: opposite pairs, each pair turned from the last. */
 const PAIR_ANGLES_DEG = [0, 180, 90, 270, 45, 225, 135, 315, 22.5, 202.5, 112.5, 292.5];
 
@@ -67,7 +71,26 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   };
   const vesselEl = useRef<HTMLElement | null>(null);
   const drizzling = state.held?.kind === 'drizzle';
-  const lastPressAt = useRef(-Infinity);
+  // A click is a bare (click-only) activation only when no press is down and none ended within
+  // CLICK_AFTER_PRESS_MS: the click that ends a long press (any length) is that press's own.
+  const pressDown = useRef(false);
+  const lastPressEnd = useRef(-Infinity);
+  const endPressTiming = () => {
+    pressDown.current = false;
+    lastPressEnd.current = performance.now();
+  };
+  // A press released anywhere (it may have left the vessel) ends the press timing.
+  useEffect(() => {
+    const end = () => {
+      if (pressDown.current) endPressTiming();
+    };
+    window.addEventListener('pointerup', end, true);
+    window.addEventListener('pointercancel', end, true);
+    return () => {
+      window.removeEventListener('pointerup', end, true);
+      window.removeEventListener('pointercancel', end, true);
+    };
+  }, []);
   const stateRef = useRef(state);
   stateRef.current = state;
   const [live, setLive] = useState('');
@@ -110,6 +133,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   useEffect(() => {
     if (!drizzling) return;
     const end = (e: PointerEvent) => {
+      if (pressDown.current) endPressTiming();
       if (!press.current || press.current.id === e.pointerId) {
         clearPress();
         stop();
@@ -278,7 +302,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   };
   const onClickOnly = (e: React.MouseEvent) => {
     // Mouse, touch and pen clicks follow a press (handled above); only a bare activation counts.
-    if (performance.now() - lastPressAt.current < 600) return;
+    if (pressDown.current || performance.now() - lastPressEnd.current < CLICK_AFTER_PRESS_MS) return;
     if (auto.current) {
       stopAuto();
       setLive('Drizzle stopped.');
@@ -301,7 +325,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
     const ordered = ticketFor?.order.finish.find((f) => f.kind === 'garnish' && f.id === tool.id);
     const typeIndex = Math.max(0, Object.keys(GARNISHES).indexOf(tool.id));
     const start = -Math.PI / 2 + typeIndex * (Math.PI / 5);
-    const radius = typeIndex % 2 ? 0.62 : 0.45;
+    const radius = GARNISH_RINGS[typeIndex % GARNISH_RINGS.length]; // each type its own ring: no overlaps
     let angle: number;
     if (ordered && ordered.kind === 'garnish' && ordered.count > 1) {
       const spots = ordered.count;
@@ -381,7 +405,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
             }Arrow keys move the cursor; hold Space to drizzle, Enter to place a garnish.`}
             onClick={onClickOnly}
             onPointerDown={(e) => {
-              lastPressAt.current = performance.now();
+              pressDown.current = true;
               if (e.button !== 0 || !e.isPrimary || press.current || !tool) return;
               const p = local(e);
               setCursor(p);
@@ -420,6 +444,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
               dispatch({ type: 'moveDrizzle', x: p.x, y: p.y }, { silent: true });
             }}
             onPointerUp={(e) => {
+              endPressTiming();
               const pr = press.current;
               if (!pr || pr.id !== e.pointerId) return;
               clearPress();
@@ -427,12 +452,14 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
               if (pr.started) stop();
             }}
             onPointerCancel={(e) => {
+              endPressTiming();
               const pr = press.current;
               if (!pr || pr.id !== e.pointerId) return;
               clearPress();
               if (pr.started) stop();
             }}
             onLostPointerCapture={(e) => {
+              if (pressDown.current) endPressTiming();
               const pr = press.current;
               if (pr && pr.id === e.pointerId && pr.started) {
                 clearPress();
