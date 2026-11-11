@@ -21,8 +21,7 @@ import { FinishStation } from './stations/FinishStation.tsx';
 import { OrderStation } from './stations/OrderStation.tsx';
 import { PrepStation } from './stations/PrepStation.tsx';
 import { clearSave, readSavedGame, recordDayReported, useNutriServeGame, wasDayReported, writeSave, type Dispatch } from './useNutriServeGame.ts';
-import { boxAuto } from './stage.ts';
-import { Dockable, LayoutContext, type DockSlot } from './Dockable.tsx';
+import { LayoutContext, type DockSlot } from './Dockable.tsx';
 
 /**
  * Compact layout: the stage keeps the scene and controls move to a full-size dock below it. Used
@@ -44,7 +43,7 @@ export interface NutriServeRemasterProps {
   userId: string;
   onExit: () => void;
   /** Called once per completed day (guarded by the save's reportedDays). */
-  onDayComplete?: (report: { day: number; averageScore: number; coins: number; served: number }) => void;
+  onDayComplete?: (report: { day: number; averageScore: number; coins: number; served: number; xpTier: 'Low' | 'Medium' | 'High' | null }) => void;
 }
 
 const SCORE_LABELS: Array<[keyof ServeResult['scores'], string]> = [
@@ -59,11 +58,22 @@ const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 const newRunId = () => `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-/** Plain-language reason for a save that could not be restored. */
+/** Plain-language reason for a save that could not be restored (the technical reason goes in a disclosure). */
 function describeSaveProblem(reason: string): string {
   if (/paramVersions/.test(reason)) return 'The kitchen rules were updated since this day was saved, so the day itself cannot continue.';
   if (/version/i.test(reason)) return 'This save was made by a different version of the game.';
-  return `The saved day could not be restored (${reason}).`;
+  return 'The saved day could not be restored. It may be damaged, or from a different version of the game.';
+}
+
+/**
+ * XP for the wider app scales with how well the day went; a day of empty katoris earns none.
+ * (BudHub XP tiers are task priorities.)
+ */
+export function xpTierForDay(averageScore: number): 'Low' | 'Medium' | 'High' | null {
+  if (averageScore >= 75) return 'High';
+  if (averageScore >= 50) return 'Medium';
+  if (averageScore >= 25) return 'Low';
+  return null;
 }
 
 /** Start screen: continue a saved day or start a new game. */
@@ -109,6 +119,13 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
             <p>
               <b>{describeSaveProblem(problem.reason)}</b>
             </p>
+            <details>
+              <summary>Technical details</summary>
+              <p>
+                <small>{problem.reason}</small>
+              </p>
+            </details>
+            {problem.droppedUpgrades?.length ? <p>Retired upgrades not carried over: {problem.droppedUpgrades.join(', ')}.</p> : null}
             {problem.profile ? (
               <p>
                 Your progress is safe: rank {problem.profile.rank}, {problem.profile.coins} coins
@@ -119,6 +136,13 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
               <p>No progress could be read from it.</p>
             )}
           </div>
+        )}
+        {saved && stored.notes.length > 0 && (
+          <ul className="ns-save-notes">
+            {stored.notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
         )}
         <div className="ns-row">
           {saved && (
@@ -205,7 +229,7 @@ function Kitchen({
   const [slots, setSlots] = useState<Partial<Record<DockSlot, HTMLElement | null>>>({});
   const slotRefs = useMemo(() => {
     const make = (name: DockSlot) => (el: HTMLElement | null) => setSlots((prev) => (prev[name] === el ? prev : { ...prev, [name]: el }));
-    return { top: make('top'), toast: make('toast'), main: make('main'), tabs: make('tabs') };
+    return { top: make('top'), main: make('main'), tabs: make('tabs') };
   }, []);
   const layout = useMemo(() => ({ compact, slots }), [compact, slots]);
 
@@ -239,11 +263,13 @@ function Kitchen({
     }
     recordDayReported(userId, state.runId, day);
     const results = state.day.results;
+    const averageScore = results.length ? Math.round(results.reduce((a, r) => a + r.scores.total, 0) / results.length) : 0;
     onDayComplete?.({
       day,
-      averageScore: results.length ? Math.round(results.reduce((a, r) => a + r.scores.total, 0) / results.length) : 0,
+      averageScore,
       coins: results.reduce((a, r) => a + r.tip, 0),
       served: results.length,
+      xpTier: xpTierForDay(averageScore),
     });
     dispatch({ type: 'markDayReported', day }, { silent: true });
   }, [state, onDayComplete, dispatch, userId]);
@@ -303,8 +329,6 @@ function Kitchen({
   const station = state.selected.station;
   const openTickets = state.tickets.filter((t) => t.servedAtMs === undefined).length;
   const latest = state.day.results[state.day.results.length - 1];
-  const [dismissed, setDismissed] = useState<string | null>(null);
-  const showToast = !!latest && state.nowMs - latest.servedAtMs < 6_000 && dismissed !== latest.ticketId;
   const nextRank = RANK_THRESHOLDS[state.profile.rank];
 
   const exit = () => {
@@ -314,7 +338,7 @@ function Kitchen({
 
   return (
     <LayoutContext.Provider value={layout}>
-      <div className={`ns-root${compact ? ' ns-compact' : ''}${compact && showToast ? ' ns-has-snackbar' : ''}`} ref={rootRef}>
+      <div className={`ns-root${compact ? ' ns-compact' : ''}`} ref={rootRef}>
         <header className="ns-hud" inert={modalOpen}>
           <span>
             <b>Day {state.day.number}</b> · {Math.floor(state.nowMs / 60_000)}:{String(Math.floor((state.nowMs % 60_000) / 1000)).padStart(2, '0')}
@@ -348,33 +372,37 @@ function Kitchen({
           </span>
         </header>
 
-        <div
-          className={`ns-stage ns-station-${station}${compact && (station === 'prep' || station === 'finish') ? ' ns-scene-empty' : ''}`}
-          aria-label={`${station} station`}
-        >
-          <div className="ns-stage-content" inert={modalOpen}>
-            <StationBackdrop station={station} />
-            <TicketRail state={state} dispatch={dispatch} />
-            {station === 'order' && <OrderStation state={state} dispatch={dispatch} />}
-            {station === 'build' && <BuildStation state={state} dispatch={dispatch} />}
-            {station === 'prep' && <PrepStation state={state} dispatch={dispatch} />}
-            {station === 'finish' && <FinishStation state={state} dispatch={dispatch} />}
-            <StationTabs state={state} dispatch={dispatch} />
-            {showToast && <ServeToast result={latest} onDismiss={() => setDismissed(latest.ticketId)} />}
+        {/* The wrapper is the size container the stage's cqw text is measured against (an element
+            can't be measured against itself; cqw would fall back to the window). */}
+        <div className="ns-stage-wrap">
+          {!compact && <LastServe result={latest} inert={modalOpen} />}
+          <div
+            className={`ns-stage ns-station-${station}${compact && (station === 'prep' || station === 'finish') ? ' ns-scene-empty' : ''}`}
+            aria-label={`${station} station`}
+          >
+            <div className="ns-stage-content" inert={modalOpen}>
+              <StationBackdrop station={station} />
+              <TicketRail state={state} dispatch={dispatch} />
+              {station === 'order' && <OrderStation state={state} dispatch={dispatch} />}
+              {station === 'build' && <BuildStation state={state} dispatch={dispatch} />}
+              {station === 'prep' && <PrepStation state={state} dispatch={dispatch} />}
+              {station === 'finish' && <FinishStation state={state} dispatch={dispatch} />}
+              <StationTabs state={state} dispatch={dispatch} />
+            </div>
+            {fatal ? (
+              <FatalOverlay message={fatal} onExit={onExit} onRestart={() => onRestart(state.profile, state.runId)} />
+            ) : state.day.completed ? (
+              <DaySummary state={state} dispatch={dispatch} onExit={exit} />
+            ) : state.paused ? (
+              <PauseOverlay dispatch={dispatch} onExit={exit} />
+            ) : null}
           </div>
-          {fatal ? (
-            <FatalOverlay message={fatal} onExit={onExit} onRestart={() => onRestart(state.profile, state.runId)} />
-          ) : state.day.completed ? (
-            <DaySummary state={state} dispatch={dispatch} onExit={exit} />
-          ) : state.paused ? (
-            <PauseOverlay dispatch={dispatch} onExit={exit} />
-          ) : null}
         </div>
 
         {compact && (
           <div className="ns-dock" inert={modalOpen}>
             <div ref={slotRefs.tabs} />
-            <div ref={slotRefs.toast} />
+            <LastServe result={latest} />
             <div ref={slotRefs.top} className="ns-dock-top" />
             <div ref={slotRefs.main} className="ns-dock-main" />
           </div>
@@ -399,34 +427,40 @@ function Kitchen({
   );
 }
 
-function ServeToast({ result, onDismiss }: { result: ServeResult; onDismiss: () => void }) {
+/**
+ * The last serve's result, always in the same place with a fixed height (above the stage, or at the
+ * top of the dock on a phone), so it never covers a control and nothing moves when it changes.
+ * The full breakdown is in the day summary.
+ */
+function LastServe({ result, inert }: { result: ServeResult | undefined; inert?: boolean }) {
+  if (!result) {
+    return (
+      <section className="ns-lastserve ns-lastserve-empty" aria-label="Last serve" inert={inert}>
+        <p>Serve results appear here: each station's score and what cost points.</p>
+      </section>
+    );
+  }
+  const flags = [
+    result.mismatchedOrder ? 'not what this ticket ordered' : '',
+    result.contentShare < AGGREGATION_V2.fullCreditShare ? `katori ${Math.round(result.contentShare * 100)}% full` : '',
+    !result.complete && !result.mismatchedOrder ? 'order incomplete (no five stars or bonus)' : '',
+  ].filter(Boolean);
   return (
-    <Dockable slot="toast" region={boxAuto(110, 54, 370)} className="ns-toast" role="group" aria-label="Last serve">
-      <button type="button" className="ns-toast-close" onClick={onDismiss} aria-label="Dismiss serve result">
-        ×
-      </button>
+    <section className="ns-lastserve" aria-label="Last serve" inert={inert}>
       <p>
-        <b>{name(result.catalogCustomerId)}</b> <span aria-label={`${result.stars} of 5 stars`}>{stars(result.stars)}</span>
+        <b>{name(result.catalogCustomerId)}</b> <span aria-label={`${result.stars} of 5 stars`}>{stars(result.stars)}</span> · total{' '}
+        <b>{result.scores.total}</b> · tip {result.tip} coins{flags.length ? <em> · {flags.join(' · ')}</em> : null}
       </p>
-      <ul>
-        {SCORE_LABELS.map(([key, label]) => (
-          <li key={key}>
-            <small>{label}</small>
-            <b>{result.scores[key]}</b>
-          </li>
+      <p>
+        {SCORE_LABELS.map(([key, label], i) => (
+          <React.Fragment key={key}>
+            {i > 0 && ' · '}
+            {label} <b>{result.scores[key]}</b>
+          </React.Fragment>
         ))}
-      </ul>
-      <p>
-        Total <b>{result.scores.total}</b> · tip {result.tip} coins
-        {result.mismatchedOrder && <em> · not what this ticket ordered</em>}
-        {result.contentShare < AGGREGATION_V2.fullCreditShare && (
-          <em title="Waiting, prep and finish count in full only when at least half the ordered food is in the katori">
-            {' '}
-            · katori {Math.round(result.contentShare * 100)}% full
-          </em>
-        )}
       </p>
-    </Dockable>
+      <p className="ns-lastserve-notes">{result.notes.length ? result.notes.join(' · ') : 'No points lost.'}</p>
+    </section>
   );
 }
 
@@ -548,6 +582,7 @@ function DaySummary({ state, dispatch, onExit }: { state: GameState; dispatch: D
                 </span>
                 {name(r.catalogCustomerId)}
                 {r.mismatchedOrder && <small> (wrong order)</small>}
+                {r.notes.length > 0 && <small className="ns-summary-notes">{r.notes.join(' · ')}</small>}
               </th>
               {SCORE_LABELS.map(([key]) => (
                 <td key={key}>{r.scores[key]}</td>

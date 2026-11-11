@@ -1,11 +1,12 @@
 // Build station: pick a vessel size, then hold dispensers to portion base, main and side.
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CATALOG_FOODS } from '../../data/catalog.generated.ts';
 import {
   BUILD_V1,
   meterFraction,
   seedFrom,
   createRng,
+  ticketForNewDish,
   type BuildComponent,
   type DishSize,
   type GameState,
@@ -53,7 +54,13 @@ function Gauge({ label, actualG, idealG, kind }: { label: string; actualG: numbe
       <span className="ns-gauge-label">
         {label} <b>{Math.round(actualG)} g</b>
         {idealG !== undefined && <small> / {idealG} g</small>}
-        {error !== undefined && Math.abs(error) >= 1 && <small className={error > 0 ? 'ns-over' : 'ns-under'}> {error > 0 ? '+' : ''}{Math.round(error)}</small>}
+        {error !== undefined && Math.abs(error) >= 1 && (
+          <small className={error > 0 ? 'ns-over' : 'ns-under'}>
+            {' '}
+            {error > 0 ? '+' : ''}
+            {Math.round(error)}
+          </small>
+        )}
       </span>
       <span
         className="ns-gauge-track"
@@ -76,13 +83,33 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
   const open = state.tickets.filter((t) => t.servedAtMs === undefined);
   // The dish on the counter is guided by the ticket it was started for; before that, by the
   // selected (or oldest) open ticket, which is the one startDish will record.
-  const ticket = dish ? dishTicket(state, dish) : open.find((t) => t.id === state.selected.ticketId) ?? open[0];
+  const ticket = dish ? dishTicket(state, dish) : ticketForNewDish(state);
   const options = useMemo(
     () => (dish ? COMPONENTS.map((c) => ({ ...c, foods: dispenserFoods(c, open, dish.id) })) : []),
     // Recompute when the dish or the set of open tickets changes, not every frame.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dish?.id, open.map((t) => t.id).join(',')]
+    [dish?.id, open.map((t) => t.id).join(',')],
   );
+
+  // Click-only (latched) pours are announced: started, at the line, past it. A sighted player
+  // watches the gauge; a screen-reader user hears when to click again.
+  const latch = useRef<{ component: BuildComponent; said: 'start' | 'line' | 'over' } | null>(null);
+  const [live, setLive] = useState('');
+  const latchedPour = state.held?.kind === 'pour' ? state.held : undefined;
+  const latchedG = dish && latchedPour ? (dish.build[latchedPour.component]?.mg ?? 0) / 1000 : 0;
+  const latchedIdeal = ticket && dish && latchedPour && ticket.order.size === dish.size ? ticket.order.idealG[latchedPour.component] : undefined;
+  useEffect(() => {
+    const l = latch.current;
+    if (!l || !latchedPour || latchedPour.component !== l.component || !latchedIdeal) return;
+    const label = foodLabel(latchedPour.foodId);
+    if (l.said === 'start' && latchedG >= latchedIdeal) {
+      l.said = 'line';
+      setLive(`${label} at the line, ${Math.round(latchedG)} grams. Click again to stop.`);
+    } else if (l.said === 'line' && latchedG >= latchedIdeal * 1.25) {
+      l.said = 'over';
+      setLive(`${label} over the line, ${Math.round(latchedG)} grams.`);
+    }
+  }, [latchedG, latchedIdeal, latchedPour]);
 
   if (!dish) {
     return (
@@ -107,6 +134,8 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
 
   const held = state.held?.kind === 'pour' ? state.held : undefined;
   const grams = (c: BuildComponent) => (dish.build[c]?.mg ?? 0) / 1000;
+  /** A component holding no more than one minimum press can still be switched (build-v4). */
+  const locked = (c: BuildComponent) => (dish.build[c]?.mg ?? 0) > BUILD_V1.pourRateMgPerMs[c] * BUILD_V1.minPressMs;
   const ideal = ticket?.order.size === dish.size ? ticket.order.idealG : undefined;
   const capacity = ideal ? (ideal.base + ideal.main + ideal.side) * 1.5 : 600;
 
@@ -139,30 +168,49 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
           return (
             <fieldset key={c.id} className="ns-dispenser-row">
               <legend>
-                {c.label} <small>hold to {c.id === 'base' ? 'fill' : 'ladle'} · {BUILD_V1.pourRateMgPerMs[c.id]} g/s · tap {(BUILD_V1.pourRateMgPerMs[c.id] * BUILD_V1.minPressMs) / 1000} g</small>
+                {c.label}{' '}
+                <small>
+                  hold to {c.id === 'base' ? 'fill' : 'ladle'} · {BUILD_V1.pourRateMgPerMs[c.id]} g/s · tap{' '}
+                  {(BUILD_V1.pourRateMgPerMs[c.id] * BUILD_V1.minPressMs) / 1000} g
+                </small>
               </legend>
               {c.foods.map((foodId) => (
                 <React.Fragment key={foodId}>
-                <HoldButton
-                  title={foodLabel(foodId)}
-                  className="ns-dispenser"
-                  disabled={(!!chosen && chosen !== foodId) || (!!held && !(held.component === c.id && held.foodId === foodId))}
-                  active={held?.component === c.id && held.foodId === foodId}
-                  aria-label={`Hold to add ${foodLabel(foodId)} as ${c.label.toLowerCase()}`}
-                  aria-describedby="ns-hold-hint"
-                  onStart={() => dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId })}
-                  // Silent: leaving the station mid-hold already released the pour.
-                  onEnd={() => dispatch({ type: 'endPour' }, { silent: true })}
-                  // Click-only input: the first click starts pouring, the next one stops it.
-                  onTap={() =>
-                    held?.component === c.id && held.foodId === foodId
-                      ? dispatch({ type: 'endPour' })
-                      : dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId })
-                  }
-                >
-                  <i style={{ background: foodColor(foodId) }} aria-hidden="true" />
-                  <span className="ns-dispenser-name">{foodLabel(foodId)}</span>
-                </HoldButton>
+                  <HoldButton
+                    title={foodLabel(foodId)}
+                    className="ns-dispenser"
+                    disabled={(!!chosen && chosen !== foodId && locked(c.id)) || (!!held && !(held.component === c.id && held.foodId === foodId))}
+                    active={held?.component === c.id && held.foodId === foodId}
+                    aria-label={`Hold to add ${foodLabel(foodId)} as ${c.label.toLowerCase()}`}
+                    aria-describedby="ns-hold-hint"
+                    onStart={() => {
+                      // Pressing a dispenser that is already pouring (latched by a click) just stops it on release.
+                      if (held?.component === c.id && held.foodId === foodId) return;
+                      dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId });
+                    }}
+                    // Silent: leaving the station mid-hold already released the pour.
+                    onEnd={() => {
+                      latch.current = null;
+                      dispatch({ type: 'endPour' }, { silent: true });
+                    }}
+                    onCancel={() => {
+                      latch.current = null;
+                      dispatch({ type: 'cancelPour' }, { silent: true });
+                    }}
+                    // Click-only input: the first click starts pouring, the next one stops it.
+                    onTap={() => {
+                      if (held?.component === c.id && held.foodId === foodId) {
+                        latch.current = null;
+                        dispatch({ type: 'endPour' });
+                      } else if (dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId }).ok) {
+                        latch.current = { component: c.id, said: 'start' };
+                        setLive(`Pouring ${foodLabel(foodId)}. Click again to stop.`);
+                      }
+                    }}
+                  >
+                    <i style={{ background: foodColor(foodId) }} aria-hidden="true" />
+                    <span className="ns-dispenser-name">{foodLabel(foodId)}</span>
+                  </HoldButton>
                 </React.Fragment>
               ))}
             </fieldset>
@@ -170,6 +218,9 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
         })}
       </Dockable>
 
+      <span className="sr-only" role="status" aria-live="polite">
+        {live}
+      </span>
       <span id="ns-hold-hint" className="sr-only">
         Press and hold to pour; a quick tap adds a little. Clicking once starts pouring and clicking again stops.
       </span>

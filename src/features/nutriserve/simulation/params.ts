@@ -16,9 +16,11 @@ export const SIZE_FOR_PLATE = { Light: 'small', Regular: 'medium', Hearty: 'larg
 
 export const BUILD_V1 = {
   // v3: every press of a dispenser pours at least minPressMs worth, so a quick tap (mouse, touch or
-  // an assistive-tech activation) always adds a small fixed amount instead of nothing. Hold rates
-  // are unchanged.
-  version: 'build-v3',
+  // an assistive-tech activation) always adds a small fixed amount instead of nothing.
+  // v4: a component holding no more than one minimum press of a food can still be switched to a
+  // different food (the mis-tap is discarded), so a stray tap never forces trashing the dish.
+  // Hold rates are unchanged.
+  version: 'build-v4',
   /** Pour rates while a dispenser is held, in milligrams per millisecond (= grams per second). */
   pourRateMgPerMs: { base: 80, main: 90, side: 50 },
   /** The least one press pours, in ms of pouring (100 ms = 8 g base, 9 g main, 5 g side). */
@@ -139,7 +141,12 @@ export const AGGREGATION_V2 = {
 } as const;
 
 export const ECONOMY_V1 = {
-  version: 'economy-v1',
+  // v2: five stars and the great-service bonus need a complete order (the right vessel and foods,
+  // and every ordered drizzle and garnish piece on the dish). In v1 a katori with no side, or no
+  // garnish at all, still earned five stars and the bonus.
+  version: 'economy-v2',
+  /** Stars without a complete order are capped here. */
+  incompleteStarCap: 4,
   /** Base tip in coins by vessel size, scaled by the overall score. */
   baseTip: { small: 4, medium: 6, large: 8 },
   /** Extra tip for an overall score at or above this. */

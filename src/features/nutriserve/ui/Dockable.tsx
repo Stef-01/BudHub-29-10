@@ -5,7 +5,7 @@
 import React, { createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
 
-export type DockSlot = 'top' | 'toast' | 'main' | 'tabs';
+export type DockSlot = 'top' | 'main' | 'tabs';
 
 export interface LayoutMode {
   compact: boolean;

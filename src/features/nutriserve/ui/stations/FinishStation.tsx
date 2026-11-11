@@ -38,6 +38,8 @@ interface Press {
   /** Drizzle: whether the drizzle has begun (touch waits HOLD_DELAY_MS first). */
   started: boolean;
   timer?: number;
+  /** The dish on the vessel when the press began; a delayed drizzle only starts on that dish. */
+  dishId: string;
 }
 
 export function FinishStation({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
@@ -62,6 +64,8 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   const drizzlingRef = useRef(drizzling);
   drizzlingRef.current = drizzling;
   const press = useRef<Press | null>(null);
+  const shownDishId = useRef<string | undefined>(undefined);
+  shownDishId.current = dish?.id;
   const forTicket = dishTicket(state, dish);
   const name = (d: Dish) => dishLabel(state, d);
 
@@ -139,11 +143,28 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
         setCursor(next);
         if (drizzlingRef.current) dispatch({ type: 'moveDrizzle', x: next.x, y: next.y }, { silent: true });
       }
-      glideFrame.current = held.current.size ? requestAnimationFrame(frame) : 0;
+      glideFrame.current = held.current.size && vesselEl.current?.isConnected ? requestAnimationFrame(frame) : 0;
     };
     if (!glideFrame.current) glideFrame.current = requestAnimationFrame(frame);
   }, [dispatch]);
-  useEffect(() => () => cancelAnimationFrame(glideFrame.current), []);
+  // Arrow keys released anywhere (focus moved, Safari clicks that don't move focus) or the window
+  // losing focus end the glide; so does the vessel going away (layout switch, Done, station change).
+  useEffect(() => {
+    const up = (e: KeyboardEvent) => held.current.delete(e.key);
+    const lost = () => held.current.clear();
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', lost);
+    return () => {
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', lost);
+      held.current.clear();
+      cancelAnimationFrame(glideFrame.current);
+      glideFrame.current = 0;
+    };
+  }, []);
+  useEffect(() => {
+    if (!dish) held.current.clear();
+  }, [dish]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (ARROWS[e.key]) {
@@ -235,7 +256,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
               if (e.button !== 0 || !e.isPrimary || press.current || !tool) return;
               const p = local(e);
               setCursor(p);
-              const pr: Press = { id: e.pointerId, x: e.clientX, y: e.clientY, kind: tool.kind, moved: false, started: false };
+              const pr: Press = { id: e.pointerId, x: e.clientX, y: e.clientY, kind: tool.kind, moved: false, started: false, dishId: dish.id };
               press.current = pr;
               if (tool.kind !== 'drizzle') return;
               if (e.pointerType === 'mouse') {
@@ -245,6 +266,10 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
               } else {
                 pr.timer = window.setTimeout(() => {
                   if (press.current !== pr) return;
+                  if (shownDishId.current !== pr.dishId) {
+                    press.current = null; // the dish changed under the finger: do nothing
+                    return;
+                  }
                   pr.started = true;
                   beginAt(local({ clientX: pr.x, clientY: pr.y }));
                 }, HOLD_DELAY_MS);

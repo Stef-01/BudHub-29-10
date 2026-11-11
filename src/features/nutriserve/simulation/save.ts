@@ -114,6 +114,7 @@ function validate(state: any): string[] {
         isNum(r.tip) && r.tip >= 0 && isNum(r.points) && isNum(r.stars) && r.stars >= 0 && r.stars <= 5 &&
         typeof r.mismatchedOrder === 'boolean' && isNonNegInt(r.servedAtMs) &&
         isNum(r.contentShare) && r.contentShare >= 0 && r.contentShare <= 1 &&
+        typeof r.complete === 'boolean' && Array.isArray(r.notes) && r.notes.every((n: unknown) => typeof n === 'string') &&
         isObj(r.buildErrorG) && COMPONENTS.every((k) => r.buildErrorG[k] === null || isNum(r.buildErrorG[k])),
       'day result'
     );
@@ -238,7 +239,28 @@ export function salvageSave(text: string, reason: string): SaveSalvage {
   }
 }
 
+/**
+ * Restore a save and say what was adjusted on the way in. Upgrades that this version no longer has
+ * (retired or renamed) are removed, and repeated ids kept once, instead of losing the whole day.
+ */
+export function deserializeGameWithNotes(text: string): { state: GameState; notes: string[] } {
+  const notes: string[] = [];
+  const state = restore(text, (raw) => {
+    const p = isObj(raw) ? raw.profile : undefined;
+    if (!isObj(p) || !Array.isArray(p.upgrades) || !p.upgrades.every(isStr)) return;
+    const unique = [...new Set<string>(p.upgrades)];
+    const dropped = unique.filter((u) => !lookup(UPGRADES, u));
+    if (dropped.length) notes.push(`Retired upgrade${dropped.length === 1 ? '' : 's'} removed: ${dropped.join(', ')}`);
+    p.upgrades = unique.filter((u) => !!lookup(UPGRADES, u));
+  });
+  return { state, notes };
+}
+
 export function deserializeGame(text: string): GameState {
+  return deserializeGameWithNotes(text).state;
+}
+
+function restore(text: string, adjust: (state: any) => void): GameState {
   let file: any;
   try {
     file = JSON.parse(text);
@@ -256,6 +278,7 @@ export function deserializeGame(text: string): GameState {
     version++;
   }
   if (!isObj(state) || state.schemaVersion !== SCHEMA_VERSION) throw new SaveError('Unsupported save version');
+  adjust(state);
 
   let problems: string[];
   try {

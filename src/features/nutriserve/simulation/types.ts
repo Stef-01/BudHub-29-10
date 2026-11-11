@@ -150,6 +150,10 @@ export interface ServeResult {
   buildErrorG: { base: number | null; main: number | null; side: number | null };
   /** Share (0-1) of the ordered food that was in the katori; gates the other scores (AGGREGATION_V2). */
   contentShare: number;
+  /** Everything the ticket asked for was on the dish (economy-v2: needed for five stars and the bonus). */
+  complete: boolean;
+  /** Short reasons for the scores, most important first. */
+  notes: string[];
   servedAtMs: number;
 }
 
@@ -204,6 +208,8 @@ export type Command =
   | { type: 'startDish'; size: DishSize }
   | { type: 'beginPour'; dishId: string; component: BuildComponent; foodId: string }
   | { type: 'endPour' }
+  /** Undo the pour in progress (a touch that turned into a scroll). */
+  | { type: 'cancelPour' }
   | { type: 'releaseHolds' }
   | { type: 'finishBuild'; dishId: string }
   | { type: 'startPrep'; dishId: string; slot: number }

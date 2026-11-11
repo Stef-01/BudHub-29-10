@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   advanceGame,
   applyCommand,
-  deserializeGame,
+  deserializeGameWithNotes,
   salvageSave,
   SaveError,
   serializeGame,
@@ -34,6 +34,8 @@ export interface StoredGame {
   problem: SaveSalvage | null;
   /** True when anything is stored under the save key (so a new game would replace it). */
   exists: boolean;
+  /** Adjustments made while restoring (e.g. a retired upgrade removed), to show the player. */
+  notes: string[];
 }
 
 export function readSavedGame(userId: string): StoredGame {
@@ -41,14 +43,15 @@ export function readSavedGame(userId: string): StoredGame {
   try {
     raw = window.localStorage.getItem(saveKey(userId));
   } catch {
-    return { state: null, problem: null, exists: false };
+    return { state: null, problem: null, exists: false, notes: [] };
   }
-  if (!raw) return { state: null, problem: null, exists: false };
+  if (!raw) return { state: null, problem: null, exists: false, notes: [] };
   try {
-    return { state: deserializeGame(raw), problem: null, exists: true };
+    const { state, notes } = deserializeGameWithNotes(raw);
+    return { state, problem: null, exists: true, notes };
   } catch (error) {
     const reason = error instanceof SaveError ? error.message : `Save could not be read (${(error as Error).message})`;
-    return { state: null, problem: salvageSave(raw, reason), exists: true };
+    return { state: null, problem: salvageSave(raw, reason), exists: true, notes: [] };
   }
 }
 

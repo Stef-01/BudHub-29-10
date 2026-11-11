@@ -1,7 +1,7 @@
 // Regression tests for the first independent audit of the simulation core (2026-11-11).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceGame, createGame, deserializeGame, serializeGame, gradeIndianBuildV1, gradeFinishV1, newProfile, SaveError } from '../src/features/nutriserve/simulation/index.ts';
+import { advanceGame, createGame, deserializeGame, deserializeGameWithNotes, serializeGame, gradeIndianBuildV1, gradeFinishV1, newProfile, SaveError } from '../src/features/nutriserve/simulation/index.ts';
 import { game, cmd, reject, advanceUntil, atCounter, pour, buildPerfect } from './nutriserve-helpers.mjs';
 
 const withTicket = (seed = 42) => {
@@ -82,7 +82,6 @@ test('crafted or corrupt saves are rejected with SaveError, never a crash later'
     'slot/dish mismatch': (st) => (st.dishes.find((d) => d.id === dishId).prep.slot = 2),
     'cooking dish without prep': (st) => delete st.dishes.find((d) => d.id === dishId).prep,
     'upgrades null': (st) => (st.profile.upgrades = null),
-    'unknown upgrade': (st) => (st.profile.upgrades = ['constructor']),
     'selected missing': (st) => delete st.selected,
     'bad prep level': (st) => (st.tickets[0].order.prepLevel = 'burnt'),
     'tickets object': (st) => (st.tickets = {}),
@@ -99,6 +98,10 @@ test('crafted or corrupt saves are rejected with SaveError, never a crash later'
     assert.throws(() => deserializeGame(mutate(fn)), SaveError, name);
   }
   assert.equal(canon(deserializeGame(JSON.stringify(good))), canon(s));
+  // An upgrade id this version doesn't have is dropped on load (named), not trusted and not fatal.
+  const odd = deserializeGameWithNotes(mutate((st) => (st.profile.upgrades = ['constructor'])));
+  assert.deepEqual(odd.state.profile.upgrades, []);
+  assert.equal(odd.notes.length, 1);
 });
 
 test('schema v1 saves migrate to v2 with a run id', () => {
@@ -343,7 +346,12 @@ test('a save that cannot be restored still yields its progress', () => {
   const kept = salvageSave(JSON.stringify(retired), 'x');
   assert.deepEqual(kept.profile.upgrades, ['rice_scoop']);
   assert.deepEqual(kept.droppedUpgrades, ['retired_thing']);
-  assert.throws(() => deserializeGame(JSON.stringify(retired)), SaveError);
+  // ...and the save itself still loads: the day continues, the retired upgrade is named.
+  const current = JSON.parse(serializeGame(s));
+  current.state.profile.upgrades = ['rice_scoop', 'retired_thing', 'rice_scoop'];
+  const loaded = deserializeGameWithNotes(JSON.stringify(current));
+  assert.deepEqual(loaded.state.profile.upgrades, ['rice_scoop']);
+  assert.deepEqual(loaded.notes, ['Retired upgrade removed: retired_thing']);
   const garbage = JSON.parse(text);
   garbage.state.profile.coins = 'lots';
   assert.equal(salvageSave(JSON.stringify(garbage), 'x').profile, undefined);
@@ -417,7 +425,6 @@ test('hand-edited saves with impossible combinations are rejected', () => {
   bad('served ticket, customer still waiting', (st) => (st.tickets[0].servedAtMs = st.nowMs));
   bad('completed day not credited', (st) => (st.day.completed = true));
   bad('short drizzle grid', (st) => (st.dishes.find((d) => d.id === dishId).finish.drizzles = { curd_swirl: { cellsMg: [], insideMg: 0, spilledMg: 0 } }));
-  bad('duplicate upgrades', (st) => (st.profile.upgrades = ['rice_scoop', 'rice_scoop']));
   bad('rank does not match points', (st) => (st.profile.rank = 7));
   bad('no catalog id on a ticket', (st) => delete st.tickets[0].catalogCustomerId);
   bad('dish for a missing ticket', (st) => (st.dishes[0].forTicketId = 't999'));
@@ -448,4 +455,140 @@ test('the nutrition report never blames the player for a perfectly served order'
   assert.equal(off.changes.length, 2);
   assert.ok(off.changes.some((c) => /^60 g more .* than ordered: \+\d+ kcal$/.test(c)), off.changes.join(' | '));
   assert.ok(off.changes.some((c) => /^No .* \(side\): −\d+ kcal$/.test(c)), off.changes.join(' | '));
+});
+
+// --- Fourth audit, 2026-11-11 ------------------------------------------------------------------
+import { rewardsV2, orderComplete, ticketForNewDish } from '../src/features/nutriserve/simulation/index.ts';
+
+test('five stars and the great bonus need a complete order (economy-v2)', () => {
+  assert.deepEqual(rewardsV2(92, 'large', true), { tip: 10, points: 9, stars: 5 });
+  assert.deepEqual(rewardsV2(92, 'large', false), { tip: 7, points: 9, stars: 4 });
+  const { s, dishId, ticket } = finishing();
+  const dish = s.dishes.find((d) => d.id === dishId);
+  const finished = structuredClone(dish);
+  for (const step of ticket.order.finish) {
+    if (step.kind === 'drizzle') finished.finish.drizzles[step.id] = { cellsMg: new Array(36).fill(0), insideMg: 5000, spilledMg: 0 };
+    else for (let i = 0; i < step.count; i++) finished.finish.garnishes.push({ id: step.id, x: 0, y: 0, fell: false });
+  }
+  assert.equal(orderComplete(finished, ticket.order), true);
+  const noSide = structuredClone(finished);
+  delete noSide.build.side;
+  assert.equal(orderComplete(noSide, ticket.order), false);
+  if (ticket.order.finish.some((f) => f.kind === 'garnish')) {
+    const fell = structuredClone(finished);
+    fell.finish.garnishes.forEach((g) => (g.fell = true));
+    assert.equal(orderComplete(fell, ticket.order), false, 'fallen garnish is not on the dish');
+  }
+});
+
+test('every serve records plain reasons for its scores', () => {
+  let s = advanceUntil(game(42), atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  const ticket = s.tickets[0];
+  s = cmd(s, { type: 'startDish', size: ticket.order.size });
+  const dishId = s.dishes.at(-1).id;
+  s = pour(s, dishId, 'base', ticket.order.baseId, Math.round((ticket.order.idealG.base * 1000) / 80) + 500); // 40 g over
+  s = pour(s, dishId, 'main', ticket.order.mainId, Math.round((ticket.order.idealG.main * 1000) / 90));
+  s = cmd(s, { type: 'finishBuild', dishId }); // no side
+  s = cmd(s, { type: 'startPrep', dishId, slot: 0 });
+  s = cmd(s, { type: 'finishPrep', slot: 0 }); // raw
+  s = cmd(s, { type: 'finishDish', dishId });
+  s = cmd(s, { type: 'serve', dishId, ticketId: ticket.id });
+  const notes = s.day.results[0].notes;
+  assert.ok(notes.includes('Base +40 g'), notes.join(' | '));
+  assert.ok(notes.includes('No side'), notes.join(' | '));
+  assert.ok(notes.some((n) => /^Undercooked: 0 of \d+ prep units$/.test(n)), notes.join(' | '));
+  assert.equal(s.day.results[0].complete, false);
+  assert.ok(s.day.results[0].stars <= 4);
+});
+
+test('a cancelled touch pour leaves the portion as it was; a one-tap mis-pick can be swapped', () => {
+  let { s } = withTicket();
+  s = cmd(s, { type: 'startDish', size: 'medium' });
+  const dishId = s.dishes.at(-1).id;
+  const t = s.tickets[0].order;
+  s = pour(s, dishId, 'main', t.mainId, 300);
+  const before = s.dishes.at(-1).build.main.mg;
+  s = cmd(s, { type: 'beginPour', dishId, component: 'main', foodId: t.mainId });
+  s = advanceGame(s, 400);
+  s = cmd(s, { type: 'cancelPour' });
+  assert.equal(s.dishes.at(-1).build.main.mg, before);
+  s = cmd(s, { type: 'beginPour', dishId, component: 'side', foodId: t.sideId });
+  s = advanceGame(s, 400);
+  s = cmd(s, { type: 'cancelPour' });
+  assert.equal(s.dishes.at(-1).build.side, undefined, 'a cancelled first pour leaves no portion');
+  // A single quick tap of the wrong base can be replaced by the right one...
+  const wrongBase = t.baseId === 'rice_white' ? 'rice_brown' : 'rice_white';
+  s = cmd(s, { type: 'beginPour', dishId, component: 'base', foodId: wrongBase });
+  s = cmd(s, { type: 'endPour' });
+  s = pour(s, dishId, 'base', t.baseId, 500);
+  assert.equal(s.dishes.at(-1).build.base.foodId, t.baseId);
+  assert.equal(s.dishes.at(-1).build.base.mg, 500 * 80);
+  // ...but a real portion cannot.
+  assert.match(reject(s, { type: 'beginPour', dishId, component: 'base', foodId: wrongBase }), /trash the dish/);
+});
+
+test('boost cannot be turned on while the handi is overheated', () => {
+  let p = advanceUntil(game(11), atCounter);
+  p = cmd(p, { type: 'takeOrder' });
+  const { s: b, dishId } = buildPerfect(p, p.tickets[0]);
+  p = cmd(b, { type: 'startPrep', dishId, slot: 0 });
+  p = cmd(p, { type: 'setBoost', slot: 0, held: true });
+  p = advanceGame(p, 2_000);
+  assert.equal(p.prepSlots[0].overheated, true);
+  assert.match(reject(p, { type: 'setBoost', slot: 0, held: true }), /Too hot/);
+  cmd(p, { type: 'setBoost', slot: 0, held: false });
+});
+
+test('finish guidance follows the dish on the vessel after Done; new dishes go to tickets without one', () => {
+  let s = advanceUntil(game(42), atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  s = advanceUntil(s, atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  const [t1, t2] = s.tickets;
+  const made = [];
+  for (const t of [t1, t2]) {
+    s = cmd(s, { type: 'selectTicket', ticketId: t.id });
+    const r = buildPerfect(s, t);
+    s = r.s;
+    made.push(r.dishId);
+    assert.equal(s.dishes.find((d) => d.id === r.dishId).forTicketId, t.id);
+  }
+  made.forEach((dishId, slot) => (s = cmd(s, { type: 'startPrep', dishId, slot })));
+  s = advanceGame(s, 6_000);
+  s = cmd(s, { type: 'finishPrep', slot: 0 });
+  s = cmd(s, { type: 'finishPrep', slot: 1 });
+  s = cmd(s, { type: 'selectStation', station: 'finish' });
+  s = cmd(s, { type: 'selectDish', dishId: made[1] });
+  assert.equal(s.selected.ticketId, t2.id);
+  s = cmd(s, { type: 'finishDish', dishId: made[1] });
+  assert.equal(s.selected.ticketId, t1.id, 'after Done the paper ticket shows the dish now on the vessel');
+});
+
+test('Build suggests the oldest ticket that has no dish yet, not the one just made', () => {
+  let s = advanceUntil(game(42), atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  s = advanceUntil(s, atCounter);
+  s = cmd(s, { type: 'takeOrder' }); // #2 selected
+  const [t1, t2] = s.tickets;
+  const { s: built } = buildPerfect(s, t2);
+  s = built;
+  assert.equal(s.selected.ticketId, t2.id);
+  assert.equal(ticketForNewDish(s).id, t1.id, '#2 already has a dish, so the next one is for #1');
+  s = cmd(s, { type: 'startDish', size: t1.order.size });
+  assert.equal(s.dishes.at(-1).forTicketId, t1.id);
+});
+
+test('the nutrition report names missing, extra and unordered garnish', () => {
+  const { s, dishId, ticket } = finishing();
+  const customer = getCatalogCustomer(ticket.catalogCustomerId);
+  const order = { ...ticket.order, finish: [{ kind: 'garnish', id: 'coriander', count: 3 }] };
+  const dish = structuredClone(s.dishes.find((d) => d.id === dishId));
+  const none = serviceNutritionReport(dish, order, customer.order);
+  assert.ok(none.changes.includes('No Coriander (3 ordered)') || none.changes.some((c) => /^No .* \(3 ordered\)$/.test(c)), none.changes.join(' | '));
+  for (let i = 0; i < 12; i++) dish.finish.garnishes.push({ id: 'onion', x: 0, y: 0, fell: false });
+  dish.finish.garnishes.push({ id: 'coriander', x: 0, y: 0, fell: false });
+  const extra = serviceNutritionReport(dish, order, customer.order);
+  assert.ok(extra.changes.some((c) => /^12 unordered .*: \+\d+ kcal$/.test(c)), extra.changes.join(' | '));
+  assert.ok(extra.changes.some((c) => /^2 fewer .* than ordered$/.test(c)), extra.changes.join(' | '));
 });

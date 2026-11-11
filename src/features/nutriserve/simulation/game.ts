@@ -31,7 +31,9 @@ import {
   gradeIndianBuildV1,
   gradeIndianPrepV1,
   gradeWaitingV1,
-  rewardsV1,
+  orderComplete,
+  rewardsV2,
+  serveNotes,
 } from './scoring.ts';
 import {
   SCHEMA_VERSION,
@@ -42,6 +44,7 @@ import {
   type Dish,
   type GameState,
   type Profile,
+  type Ticket,
 } from './types.ts';
 
 export const PREP_SLOT_COUNT = 4;
@@ -207,6 +210,26 @@ function flushDrizzle(s: GameState, toX: number, toY: number): void {
   held.py = toY;
   held.pendingMg = 0;
   held.pendingMs = 0;
+}
+
+/**
+ * The ticket a new dish is started for: the selected open ticket if no dish is being made for it
+ * yet, else the oldest open ticket without one, else the selected (or oldest) open ticket.
+ */
+export function ticketForNewDish(s: GameState): Ticket | undefined {
+  const open = s.tickets.filter((t) => t.servedAtMs === undefined);
+  const live = new Set(s.dishes.filter((d) => d.stage !== 'served' && d.stage !== 'trashed').map((d) => d.forTicketId));
+  const selected = open.find((t) => t.id === s.selected.ticketId);
+  if (selected && !live.has(selected.id)) return selected;
+  return open.find((t) => !live.has(t.id)) ?? selected ?? open[0];
+}
+
+/** At Finish, point the paper ticket at the dish now shown on the vessel. */
+function followShownFinishDish(s: GameState): void {
+  if (s.selected.station !== 'finish') return;
+  const working = s.dishes.filter((d) => d.stage === 'prepped' || d.stage === 'finishing');
+  const shown = working.find((d) => d.id === s.selected.dishId) ?? working[0];
+  if (shown) followDishTicket(s, shown);
 }
 
 /** Point the ticket selection at the open ticket a dish was started for, if any. */
@@ -425,8 +448,7 @@ function run(s: GameState, c: Command): string | undefined {
 
     case 'startDish': {
       if (s.dishes.some((d) => d.stage === 'building')) return 'Finish or trash the dish on the build counter first';
-      const open = s.tickets.filter((t) => t.servedAtMs === undefined);
-      const forTicket = open.find((t) => t.id === s.selected.ticketId) ?? open[0];
+      const forTicket = ticketForNewDish(s);
       const dish: Dish = {
         id: newId(s, 'd'),
         size: c.size,
@@ -446,9 +468,27 @@ function run(s: GameState, c: Command): string | undefined {
       if (!dish || dish.stage !== 'building') return 'That dish is not on the build counter';
       if (!getFood(c.foodId)) return `Unknown food ${c.foodId}`;
       const existing = dish.build[c.component];
-      if (existing && existing.foodId !== c.foodId) return `This ${c.component} is already ${existing.foodId}; trash the dish to change it`;
+      if (existing && existing.foodId !== c.foodId) {
+        // build-v4: a mis-tap (no more than one minimum press) can be swapped for another food.
+        if (existing.mg > BUILD_V1.pourRateMgPerMs[c.component] * BUILD_V1.minPressMs) {
+          return `This ${c.component} is already ${existing.foodId}; trash the dish to change it`;
+        }
+        delete dish.build[c.component];
+      }
       dish.build[c.component] ??= { foodId: c.foodId, mg: 0 };
       s.held = { kind: 'pour', dishId: dish.id, component: c.component, foodId: c.foodId, startMg: dish.build[c.component]?.mg ?? 0 };
+      return;
+    }
+    case 'cancelPour': {
+      if (s.held?.kind !== 'pour') return 'Not pouring';
+      const held = s.held;
+      const dish = dishById(s, held.dishId);
+      const portion = dish?.build[held.component];
+      if (dish && portion) {
+        if (held.startMg === 0) delete dish.build[held.component];
+        else portion.mg = held.startMg;
+      }
+      s.held = undefined;
       return;
     }
     case 'endPour': {
@@ -486,6 +526,7 @@ function run(s: GameState, c: Command): string | undefined {
       const slot = s.prepSlots[c.slot];
       if (!slot) return 'No such prep slot';
       if (!slot.dishId && c.held) return 'Nothing is cooking in that slot';
+      if (slot.overheated && c.held) return 'Too hot to boost; wait for it to cool';
       slot.boostHeld = c.held;
       return;
     }
@@ -550,6 +591,7 @@ function run(s: GameState, c: Command): string | undefined {
       if (!dish || (dish.stage !== 'prepped' && dish.stage !== 'finishing')) return 'That dish is not at the finish counter';
       if (s.held?.kind === 'drizzle' && s.held.dishId === dish.id) endDrizzle(s);
       dish.stage = 'ready';
+      followShownFinishDish(s);
       return;
     }
 
@@ -567,7 +609,10 @@ function run(s: GameState, c: Command): string | undefined {
       const waiting = gradeWaitingV1(ticket, s.nowMs, effects);
       const share = contentShare(dish, ticket.order);
       const total = aggregateV2({ waiting, build, prep, finish }, share);
-      const reward = rewardsV1(total, ticket.order.size);
+      const complete = orderComplete(dish, ticket.order);
+      const reward = rewardsV2(total, ticket.order.size, complete);
+      const finishGrade = gradeFinishV1(dish, ticket.order, effects);
+      const notes = serveNotes(dish, ticket.order, { waiting, build, prep, finish }, share, finishGrade.penalties, s.nowMs - ticket.atCounterMs);
       ticket.servedAtMs = s.nowMs;
       ticket.servedDishId = dish.id;
       dish.stage = 'served';
@@ -584,10 +629,13 @@ function run(s: GameState, c: Command): string | undefined {
         mismatchedOrder: !dishMatchesOrder(dish, ticket.order),
         buildErrorG: buildGrade.signedErrorG,
         contentShare: share,
+        complete,
+        notes,
         servedAtMs: s.nowMs,
       });
       if (s.selected.ticketId === ticket.id) s.selected.ticketId = undefined;
       if (s.selected.dishId === dish.id) s.selected.dishId = undefined;
+      followShownFinishDish(s);
       return;
     }
     case 'trash': {
@@ -603,6 +651,7 @@ function run(s: GameState, c: Command): string | undefined {
       if (s.held && 'dishId' in s.held && s.held.dishId === dish.id) releaseHeld(s);
       dish.stage = 'trashed';
       if (s.selected.dishId === dish.id) s.selected.dishId = undefined;
+      followShownFinishDish(s);
       return;
     }
 

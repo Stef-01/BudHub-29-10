@@ -86,6 +86,8 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
                     onEnd={(short) =>
                       dispatch({ type: 'setBoost', slot: slot.index, held: short ? !latchedBefore.current[slot.index] : false }, { silent: true })
                     }
+                    // A touch hold that turned into a scroll puts the boost back how it was.
+                    onCancel={() => dispatch({ type: 'setBoost', slot: slot.index, held: !!latchedBefore.current[slot.index] }, { silent: true })}
                     onTap={() => dispatch({ type: 'setBoost', slot: slot.index, held: !slot.boostHeld })}
                   >
                     Boost

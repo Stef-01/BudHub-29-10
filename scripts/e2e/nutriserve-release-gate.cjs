@@ -3,7 +3,8 @@
 //   npm run dev                                   # in one terminal
 //   node scripts/e2e/nutriserve-release-gate.cjs [baseUrl] [outDir]
 //
-// For desktop (1280px) and phone (iPhone 13) it plays one whole day: two concurrent orders, Save &
+// For desktop (1280px), a wide desktop (1920px) and a phone (iPhone 13, played with real touch
+// events) it plays one whole day: two concurrent orders, Save &
 // exit mid-prep then Continue (progress must survive), one dish served to the wrong ticket, the rest
 // served normally, then the day summary. It also records sprite download/decoded-memory costs, and
 // first runs regression checks for the second and third audits (held controls across a layout
@@ -26,9 +27,13 @@ const check = (ok, what) => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${what}`);
 };
 
-async function runDevice(browser, name, contextOptions) {
+const HOLD_DELAY_MS = 120; // touch: a press becomes a hold after this long without moving
+
+async function runDevice(browser, name, contextOptions, { touch = false } = {}) {
   const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
+  const cdp = touch ? await context.newCDPSession(page) : null;
+  const touchAt = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !IGNORE.test(m.text()) && errors.push(m.text()));
@@ -47,13 +52,21 @@ async function runDevice(browser, name, contextOptions) {
   await page.getByRole('button', { name: 'New game' }).click();
 
   const station = (label) => page.getByRole('button', { name: new RegExp(`^${label} station`) }).click();
+  // A held press: real touch on the phone (the hold starts HOLD_DELAY_MS after contact), mouse elsewhere.
   const hold = async (locator, ms) => {
     await locator.scrollIntoViewIfNeeded();
     const b = await locator.boundingBox();
-    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-    await page.mouse.down();
-    await page.waitForTimeout(ms);
-    await page.mouse.up();
+    const [x, y] = [b.x + b.width / 2, b.y + b.height / 2];
+    if (touch) {
+      await touchAt('touchStart', x, y);
+      await page.waitForTimeout(ms + HOLD_DELAY_MS);
+      await touchAt('touchEnd', x, y);
+    } else {
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.waitForTimeout(ms);
+      await page.mouse.up();
+    }
     await page.waitForTimeout(120);
   };
   const ticketParts = async () =>
@@ -123,19 +136,31 @@ async function runDevice(browser, name, contextOptions) {
       const cx = v.x + v.width / 2;
       const cy = v.y + v.height / 2;
       const r = (v.width / 2) * 0.62;
+      const point = (a, rr) => [cx + rr * Math.cos(a), cy + rr * Math.sin(a)];
       if (!m) {
-        await page.mouse.move(cx, cy);
-        await page.mouse.down();
+        // Drizzle: press, (on touch) keep still until the hold starts, then swirl.
+        if (touch) {
+          await touchAt('touchStart', cx, cy);
+          await page.waitForTimeout(HOLD_DELAY_MS + 60);
+        } else {
+          await page.mouse.move(cx, cy);
+          await page.mouse.down();
+        }
         for (let a = 0; a < 36; a++) {
-          const rr = r * (0.25 + 0.75 * ((a % 9) / 9));
-          await page.mouse.move(cx + rr * Math.cos(a * 0.7), cy + rr * Math.sin(a * 0.7));
+          const [x, y] = point(a * 0.7, r * (0.25 + 0.75 * ((a % 9) / 9)));
+          if (touch) await touchAt('touchMove', x, y);
+          else await page.mouse.move(x, y);
           await page.waitForTimeout(30);
         }
-        await page.mouse.up();
+        if (touch) await touchAt('touchEnd', cx, cy);
+        else await page.mouse.up();
       } else {
         for (let i = 0; i < Number(m[2]); i++) {
-          const a = (i / Number(m[2])) * 2 * Math.PI;
-          await page.mouse.click(cx + r * 0.8 * Math.cos(a), cy + r * 0.8 * Math.sin(a));
+          const [x, y] = point((i / Number(m[2])) * 2 * Math.PI, r * 0.8);
+          if (touch) {
+            await touchAt('touchStart', x, y);
+            await touchAt('touchEnd', x, y);
+          } else await page.mouse.click(x, y);
           await page.waitForTimeout(40);
         }
       }
@@ -147,7 +172,7 @@ async function runDevice(browser, name, contextOptions) {
     await station('Finish');
     await page.locator('.ns-serve button', { hasText: number }).first().click();
     await page.waitForTimeout(300);
-    return page.locator('.ns-toast').innerText();
+    return page.locator('.ns-lastserve').first().innerText();
   }
 
   const targetFor = (prep) => (/QUICK/.test(prep) ? 900 : /SLOW/.test(prep) ? 2700 : 1800);
@@ -223,6 +248,12 @@ async function runDevice(browser, name, contextOptions) {
   await page.screenshot({ path: path.join(OUT, `${name}-summary.png`), fullPage: true });
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  // Stage text must follow the stage, not the window (a 1920 px window once made it 36 px).
+  const stageFont = await page.evaluate(() => {
+    const st = document.querySelector('.ns-stage');
+    return parseFloat(getComputedStyle(st).fontSize) / st.getBoundingClientRect().width;
+  });
+  check(Math.abs(stageFont - 0.019) < 0.001, `${name}: stage text is 1.9% of the stage width (${(stageFont * 100).toFixed(2)}%)`);
   check(overflow <= 0, `${name}: no horizontal scroll (${overflow}px)`);
   check(errors.length === 0, `${name}: no app errors${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
 
@@ -403,7 +434,8 @@ async function runRegressions(browser) {
   const results = {};
   await runRegressions(browser);
   results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
-  results.phone = await runDevice(browser, 'phone', { ...devices['iPhone 13'] });
+  results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });
+  results.phone = await runDevice(browser, 'phone', { ...devices['iPhone 13'] }, { touch: true });
   await browser.close();
   fs.writeFileSync(path.join(OUT, 'gate.json'), JSON.stringify({ checks, results }, null, 2));
   const failed = checks.filter((c) => !c.ok);

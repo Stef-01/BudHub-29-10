@@ -221,6 +221,60 @@ export function aggregateV2(scores: Omit<StationScores, 'total'>, share: number)
   );
 }
 
+/**
+ * Everything the ticket asked for is on the dish: the right vessel and three foods, the ordered
+ * drizzle landed, and at least the ordered number of each garnish stayed on.
+ */
+export function orderComplete(dish: Dish, order: TicketOrder): boolean {
+  if (!dishMatchesOrder(dish, order)) return false;
+  return order.finish.every((step) =>
+    step.kind === 'drizzle'
+      ? (dish.finish.drizzles[step.id]?.insideMg ?? 0) > 0
+      : dish.finish.garnishes.filter((g) => g.id === step.id && !g.fell).length >= step.count
+  );
+}
+
+/** economy-v2: the great bonus and five stars need a complete order. */
+export function rewardsV2(total: number, size: DishSize, complete: boolean): { tip: number; points: number; stars: number } {
+  const great = complete && total >= ECONOMY_V1.greatScore;
+  const tip = Math.round((ECONOMY_V1.baseTip[size] * total) / 100) + (great ? ECONOMY_V1.greatBonus : 0);
+  const stars = Math.max(0, Math.min(complete ? 5 : ECONOMY_V1.incompleteStarCap, Math.round(total / 20)));
+  return { tip, points: Math.round(total / ECONOMY_V1.pointsDivisor), stars };
+}
+
+/** Short plain-language reasons for a serve's scores, most important first (shown to the player). */
+export function serveNotes(
+  dish: Dish,
+  order: TicketOrder,
+  scores: Omit<StationScores, 'total'>,
+  share: number,
+  finishPenalties: FinishGrade['penalties'],
+  waitedMs: number
+): string[] {
+  const notes: string[] = [];
+  if (share < AGGREGATION_V2.fullCreditShare) notes.push(`Katori only ${Math.round(share * 100)}% full, so waiting, prep and finish counted less`);
+  const wanted = { base: order.baseId, main: order.mainId, side: order.sideId } as const;
+  if (dish.size !== order.size) notes.push(`${dish.size[0].toUpperCase()}${dish.size.slice(1)} vessel; the ticket wanted ${order.size}`);
+  for (const c of ['base', 'main', 'side'] as const) {
+    const portion = dish.build[c];
+    const label = `${c[0].toUpperCase()}${c.slice(1)}`;
+    if (!portion || portion.mg === 0) notes.push(`No ${c}`);
+    else if (portion.foodId !== wanted[c]) notes.push(`${label}: wrong food`);
+    else {
+      const error = portion.mg / 1000 - order.idealG[c];
+      if (Math.abs(error) >= Math.max(3, order.idealG[c] * 0.05)) notes.push(`${label} ${error > 0 ? '+' : '−'}${Math.round(Math.abs(error))} g`);
+    }
+  }
+  if (scores.prep < 90) {
+    const units = prepUnits(dish);
+    const target = prepTargetUnits(order.prepLevel);
+    notes.push(units < target ? `Undercooked: ${units} of ${target} prep units` : `Overcooked: ${units} of ${target} prep units`);
+  }
+  for (const p of [...finishPenalties].sort((a, b) => b.points - a.points).slice(0, 3)) notes.push(`${p.reason} (−${Math.round(p.points)})`);
+  if (scores.waiting < 90) notes.push(`Waited ${Math.round(waitedMs / 1000)} s`);
+  return notes;
+}
+
 export function rewardsV1(total: number, size: DishSize): { tip: number; points: number; stars: number } {
   const tip = Math.round((ECONOMY_V1.baseTip[size] * total) / 100) + (total >= ECONOMY_V1.greatScore ? ECONOMY_V1.greatBonus : 0);
   return {

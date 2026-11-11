@@ -297,6 +297,29 @@ export function serviceNutritionReport(dish: Dish, order: TicketOrder, goalsFor:
     const kcal = -drizzleKcal(orderedDrizzle, targetG);
     changes.push({ text: `No ${lookup(DRIZZLES, orderedDrizzle)?.label ?? orderedDrizzle}: ${signed(kcal, 'kcal')}`, kcal });
   }
+  // Garnish pieces that stayed on, against what was ordered (counts, and kcal for completeness).
+  const kept = new Map<string, number>();
+  for (const piece of dish.finish.garnishes) if (!piece.fell) kept.set(piece.id, (kept.get(piece.id) ?? 0) + 1);
+  const garnishKcal = (id: string, pieces: number) => {
+    const def = lookup(GARNISHES, id);
+    return def ? (def.nutrients_per_100g.calories_kcal * def.pieceG * pieces) / 100 : 0;
+  };
+  const orderedGarnish = new Map(order.finish.filter((f) => f.kind === 'garnish').map((f) => [f.id, (f as { count: number }).count]));
+  for (const id of new Set([...orderedGarnish.keys(), ...kept.keys()])) {
+    const want = orderedGarnish.get(id) ?? 0;
+    const got = kept.get(id) ?? 0;
+    if (got === want) continue;
+    const label = lookup(GARNISHES, id)?.label ?? id;
+    const kcal = garnishKcal(id, got - want);
+    const text =
+      want === 0
+        ? `${got} unordered ${label}: ${signed(kcal, 'kcal')}`
+        : got === 0
+          ? `No ${label} (${want} ordered)`
+          : `${Math.abs(got - want)} ${got > want ? 'more' : 'fewer'} ${label} than ordered`;
+    changes.push({ text, kcal });
+  }
+
   if (served.notEaten.spilledDrizzleG >= 0.5 || served.notEaten.fallenGarnishPieces > 0) {
     changes.push({
       text: `Not eaten: ${served.notEaten.spilledDrizzleG.toFixed(1)} g spilled drizzle, ${served.notEaten.fallenGarnishPieces} fallen garnish`,

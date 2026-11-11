@@ -42,7 +42,14 @@
 .ns-hud-actions { margin-left: auto; display: flex; gap: 8px; }
 
 /* Stage */
-.ns-stage { position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border: 4px solid var(--line); border-radius: 6px; container-type: inline-size; font-size: 1.9cqw; background: #ddd; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+/* The wrapper is the size container: stage text is 1.9% of the stage's width (12 px at 640 px).
+   It can't be the stage itself, because an element can't query its own size (cqw would then fall
+   back to the window and text would grow with the window, not the stage). */
+.ns-stage-wrap { container-type: inline-size; }
+/* Wide layout: keep the stage within the window's height where possible (a 1366x768 laptop), but
+   never below 720 px, where stage text would drop under about 10 px. */
+.ns-root:not(.ns-compact) .ns-stage-wrap { max-width: max(720px, calc((100svh - 200px) * 4 / 3)); margin: 0 auto; }
+.ns-stage { position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border: 4px solid var(--line); border-radius: 6px; font-size: 1.9cqw; background: #ddd; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 /* Hold controls and the drizzle surface opt out of panning themselves (.ns-hold, .ns-vessel-top). */
 .ns-stage > *, .ns-stage-content > * { position: absolute; }
 .ns-stage-content { inset: 0; }
@@ -156,15 +163,15 @@
 .ns-tool[aria-pressed='true'] { background: #ffe08a; }
 
 /* Toast and overlays */
-/* The serve result takes taps (so nothing hidden under it is pressed by accident) and can be dismissed. */
-.ns-toast { background: var(--paper); border: 3px solid var(--line); border-radius: 0.6em; padding: 0.5em 2.2em 0.5em 0.8em; box-shadow: 0.3em 0.3em 0 #0003; }
-.ns-toast-close { position: absolute; top: 0.2em; right: 0.2em; font: inherit; font-size: 1.2em; font-weight: 900; line-height: 1; width: 1.6em; height: 1.6em; border: 2px solid var(--line); border-radius: 50%; background: #fff; cursor: pointer; }
-.ns-toast p { margin: 0.2em 0; }
-.ns-toast ul { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.2em; padding: 0; margin: 0.3em 0; text-align: center; }
-.ns-toast li { display: flex; flex-direction: column; }
-.ns-toast li small { font-size: 0.75em; color: #5a5144; }
-.ns-toast li b { font-size: 1.3em; }
-.ns-toast em { color: var(--warn); font-style: normal; font-weight: 700; }
+/* Last serve: a fixed-height bar (three single lines) that never covers or moves anything. */
+.ns-lastserve { background: var(--paper); border: 2px solid var(--line); border-radius: 8px; padding: 3px 10px; margin: 0 0 8px; font-size: 14px; line-height: 18px; height: 62px; overflow: hidden; }
+.ns-lastserve p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-lastserve em { color: var(--warn); font-style: normal; font-weight: 700; }
+.ns-lastserve-notes { color: #4b4336; }
+.ns-lastserve-empty { display: flex; align-items: center; color: #574e40; }
+.ns-lastserve-empty p { white-space: normal; }
+.ns-summary-notes { display: block; font-weight: 400; color: #4b4336; max-width: 260px; white-space: normal; }
+.ns-save-notes { font-size: 14px; margin: 8px 0; padding-left: 18px; }
 .ns-overlay { inset: 0; background: #2b2620aa; display: grid; place-items: center; padding: 2%; }
 .ns-overlay-card { background: var(--paper); border: 3px solid var(--line); border-radius: 10px; padding: 14px 18px; max-height: 100%; overflow: auto; font-size: 14px; width: min(100%, 560px); }
 .ns-overlay-card h2 { margin: 0 0 6px; font-size: 20px; }
@@ -204,20 +211,9 @@
 .ns-dock .ns-dispenser { font-size: 14px; }
 .ns-dock .ns-gauge-track { height: 12px; }
 .ns-dock .ns-gauge-needle { width: 14px; height: 14px; }
-.ns-dock .ns-vessel-top { width: min(100%, 340px); aspect-ratio: 1; margin: 0 auto; position: relative; }
+.ns-dock .ns-vessel-top { width: min(100%, 340px, 75svh); aspect-ratio: 1; margin: 0 auto; position: relative; }
 .ns-dock .ns-tray .ns-btn, .ns-dock .ns-tray-label { font-size: 15px; }
-/* The serve result floats as a snackbar instead of sitting in the dock, so nothing below it jumps
-   when it appears or goes. It doesn't take pointer input, so controls under it still work. */
-.ns-dock .ns-toast { font-size: 14px; position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 50; max-width: 520px; margin: 0 auto; padding: 6px 10px; box-shadow: 0 4px 14px #0005; }
-.ns-dock .ns-toast p { margin: 0; }
-.ns-dock .ns-toast { padding-right: 56px; }
-.ns-dock .ns-toast-close { width: 44px; height: 44px; top: 50%; right: 6px; transform: translateY(-50%); font-size: 22px; }
-/* While the snackbar shows, the page can scroll its last controls clear of it. */
-.ns-compact.ns-has-snackbar { padding-bottom: 200px; }
-.ns-dock .ns-toast ul { margin: 2px 0; display: flex; flex-wrap: wrap; gap: 0 12px; }
-.ns-dock .ns-toast li { flex-direction: row; align-items: baseline; gap: 4px; }
-.ns-dock .ns-toast li small { font-size: 12px; }
-.ns-dock .ns-toast li b { font-size: 15px; }
+.ns-dock .ns-lastserve { margin: 0; }
 .ns-dock .ns-order-counter { padding: 4px 0; }
 .ns-dock .ns-provisional { font-size: 12px; }
 /* Backing plates only matter over stage scenery; in the dock the text already sits on the page. */
