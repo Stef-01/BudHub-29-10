@@ -2,7 +2,7 @@
 
 This is the NutriServe Kitchen remaster on `main`. It was developed on `claude/continue-building-j1mrs7` and ported here without that branch's unrelated `old` history, as the build track asks. Everything lives under `src/features/nutriserve/`, `tests/nutriserve-*`, `scripts/` and `docs/nutriserve/`, plus a small entry in the app shell: `App.tsx`, `types.ts`, `components/GameScreen.tsx` and `components/GamesView.tsx`. On `main` the remaster keeps saves per browser, because this app has no signed-in user id.
 
-The simulation catalog is generated from this branch's catalog sources: **49 foods and 33 customers**. Two customers referenced foods that do not exist (`brown_rice`, `red_rice`); the ids are corrected to `rice_brown` and `rice_red`.
+The simulation catalog is generated from this branch's catalog sources: **49 foods and 33 customers**. No customers referenced foods that do not exist (`brown_rice`, `red_rice`); the ids are corrected to `rice_brown` and `rice_red`.
 
 ## Task status
 
@@ -13,7 +13,7 @@ The simulation catalog is generated from this branch's catalog sources: **49 foo
 | C03 | Implemented, **provisional** | `params.ts` `PREP_V1` (`prep-v2-provisional`) | Four independent slots, held boost, heat/overheat lockout, offscreen cooking. Overheating lets go of the boost and takes the handi off the flame (nothing cooks) until it cools; in v1 overheating cost nothing. A tap latches the boost on. Unit rate, boost multiplier, heat model and the 3600-unit cap are placeholders. **Blocked on Q08 / R01** for parity. Grading uses the unchanged `gradeReferenceMix`. |
 | C04 | Implemented, **provisional** | `params.ts` `FINISH_V1` (`finish-v3-provisional`) | Held drizzle in local vessel coordinates (unit circle), spill outside the rim, coverage grid scaled to each drizzle's target, garnish count/type/fallen/balance, step order. Each drizzle has its own integer rate (about 1.7 s to a medium target), and what is poured between two pointer samples is spread along the path between them, so the score doesn't depend on the device's pointer or frame rate (tested from 8 to 60 ms sampling). Rank-locked drizzles and garnishes are refused. Garnish **rotation** is not modelled yet. **Blocked on Q09 / R02** and final vessel masks (A03). |
 | C05 | Implemented (aggregation provisional) | `game.ts` serve/day, `progression.ts` | Any ready dish to any taken ticket (wrong ticket allowed, graded and flagged). Waiting, build, prep and finish are separate scores; the total is an equal-weight mean with a content gate (`aggregation-v2-provisional`, **R02**). Waiting, prep and finish count in full only when the katori holds at least half the ordered food, so an empty katori now totals 0 instead of about 44. Five stars and the great-service bonus need a complete order: the right vessel; the right foods, each at 80% or more of its ordered grams; at least 80% of the ordered drizzle; and every ordered garnish piece on (`economy-v3`). A new dish is made for the ticket the player picked on the rail (`pickedTicketId`). Automatic follows don't count as picks; without a pick it goes to the oldest open ticket without a dish, and Build's paper ticket shows that ticket. Each serve records plain reasons for its scores (`notes`), such as "Base +40 g", "No side", "Undercooked: 0 of 1800 prep units" or "Missing onion (−12)". They appear in the last-serve bar and the day summary. A dish remembers the ticket it was started for (`forTicketId`). That is used only to guide the player (per-slot prep targets, the paper ticket at Build and Finish); scoring uses the ticket it is served to. Tips, stars, ranks, upgrades (reference furniture bonuses plus two provisional rules). Rewards are credited once per day; reports to the app are guarded by a ledger outside the save, keyed by run id. |
-| C06 | Implemented | `nutrition/nutrition.ts` | Canonical per-100g × actual grams; drizzle that landed counts, spilled drizzle and fallen garnish don't; each portion counted once. Legacy meal goals. The day report (`serviceNutritionReport`) separates two things: what the player changed (portions off the ticket, wrong foods, drizzle, missing, extra or unordered garnish, spills, each with its kcal effect) and how the customer's own order fits their meal goal. A perfectly served order is never blamed on the player; the legacy goals are full-plate targets that a three-part katori rarely meets. Catalog validation (found and fixed two customers requiring nonexistent ids). Finish ingredients use cited USDA SR Legacy values (`data/finishItems.ts`). Not medical advice. |
+| C06 | Implemented | `nutrition/nutrition.ts` | Canonical per-100g × actual grams; drizzle that landed counts, spilled drizzle and fallen garnish don't; each portion counted once. Legacy meal goals. The day report (`serviceNutritionReport`) separates two things: what the player changed (portions off the ticket, wrong foods, drizzle, missing, extra or unordered garnish, spills, each with its kcal effect) and how the customer's own order fits their meal goal. A perfectly served order is never blamed on the player; the legacy goals are full-plate targets that a three-part katori rarely meets. Catalog validation (found and fixed no customers requiring nonexistent ids). Finish ingredients use cited USDA SR Legacy values (`data/finishItems.ts`). Not medical advice. |
 | C07 | Implemented, **layout studies pending art** | `ui/**` | 640×480 stage in stage units with exact pointer transforms; sprites placed by manifest foot anchors behind a counter front; pointer/touch/keyboard (and click-only assistive input) drive the same commands; compact mode under 600 px (with hysteresis) moves controls to a full-size dock. Dialogs are modal (background inert, Tab stays inside, Escape resumes, focus returns). A save that can't be restored says why and keeps the profile; a simulation error stops the clock and says so instead of freezing. React re-renders at most every 33 ms while the simulation still steps every frame. (See the compact rules above.) Stage text is 1.9% of the stage width at every window size (the wrapper is the size container). On wide layouts the stage shrinks to fit the window height, but never below 720 px (or the kitchen's width, if that is smaller). The last serve's result sits in a fixed-height bar above the stage (on a phone, at the top of the dock), so it never covers a control and nothing moves when it changes. On touch, a press becomes a hold (pour, boost, drizzle) only after 120 ms without moving; a finger that moves first scrolls the page. A hold younger than 500 ms whose finger then moves more than 30 px, mostly up or down, was a slow scroll: it is undone, and the player is told. Later drift keeps pouring. Click-only input works at every station. At Finish, a bare click places the selected garnish at the next evenly spaced spot, or runs an automatic swirl that pours the ordered amount of drizzle. Compact layout (44 px controls) applies when:
 
 - the kitchen's content box is under 700 px wide;
@@ -26,7 +26,7 @@ In a landscape window 560 px or wider, it puts the scene, tabs, last result and 
 ## Verification
 
 ```sh
-npm run test:nutriserve            # 89 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
+npm run test:nutriserve            # 91 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
 npm run typecheck:nutriserve-sim   # strict TypeScript for simulation/nutrition/data/domain
 npx tsc -p tsconfig.nutriserve.json --noEmit
 npm run build
@@ -61,6 +61,33 @@ Independent audits (findings and fixes are below).
 ### Audit 1: simulation core
 
 Ten issues, all fixed with regression tests in `tests/nutriserve-audit.test.mjs`.
+
+### Audit 9: transitions mid-press, multi-day play, plus re-check of the audit 8 fixes
+
+The auditor's fuzzer found no false rejections, throws, chunk breaks, invariant or ledger mismatches, and no stop-at pour overshot its line. That covered 200,050 round trips, 180,033 mid-hold restores, 34,828 chunk checks and 2,750 walks continued from restored saves. It also checked:
+
+- multi-day play with every input;
+- Save & exit and Continue mid-action at every station;
+- app integration (one score and XP per day, the legacy game still loads);
+- 124 dishes on screen (p95 16.7 ms; 33 ms on a throttled phone);
+- 20 save and continue cycles (no DOM or listener growth).
+
+Findings, all addressed:
+
+| # | Finding | Fix |
+|---|---|---|
+| M1 | A touch or pen press on a disabled dispenser that re-enabled before release started a pour with no stop line | A blocked press is reported only if the control is still disabled; Build works out the reason without dispatching a real pour |
+| M2 | Side by side on landscape phones: no portion display in view while pouring | The live grams ("45/66 g") are shown on the dispenser being poured |
+| M3 | Nothing said a handi had reached its mark from another station (prep was the only score separating players) | "Prep slot N is at its mark: take it out" is announced; the Prep tab shows "Done!"; the slot is highlighted |
+| L1 | The one-line locked notice cut off the part that mattered | Two lines, shorter messages, key part first |
+| L2 | A mouse or pen garnish press released off the vessel swallowed the next click | Garnish presses capture the pointer too |
+| L3 | Serve notes named portion errors that cost no points | A portion is named only if a perfect portion would have scored higher |
+| L4 | Side by side at 560–600 px: tab labels filled their tabs; the status line moved the controls by 1–2 px | Smaller tab labels; the status line has a fixed height |
+| Suspected | Another pointer's release could end a press's timing | The window-level release listeners only end their own pointer's press |
+
+Design (new provisional versions):
+- `day-v2`: arrival gaps shrink each day, from 22–38 s down to 12–20 s, and up to 8 customers come, so later days are busier and not only longer. Under v1 the waiting score was 100 on every day for every player.
+- `progression-v2`: four upgrades at ranks 5–8 with effects a strong player still feels. Insulated handis heat 40% more slowly, the serving trolley adds 2 coins on each complete order, the chai stall gives 12 s more queue patience, and head chef's whites give +20% rank points. In v1 everything was bought by about day 6.
 
 ### Audit 8: every press type on every control, side by side, plus re-check of the audit 7 fixes
 

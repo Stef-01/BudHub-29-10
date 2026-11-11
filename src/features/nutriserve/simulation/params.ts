@@ -160,6 +160,7 @@ export const ECONOMY_V1 = {
   pointsDivisor: 10,
 } as const;
 
+/** Superseded by DAY_V2 (kept for reference). */
 export const DAY_V1 = {
   version: 'day-v1',
   firstArrivalMs: 1_500,
@@ -170,3 +171,29 @@ export const DAY_V1 = {
   perExtraDays: 2,
   maxCustomers: 7,
 } as const;
+
+/**
+ * ADAPTATION: later days get busier, not only longer. The gap between arrivals shrinks by a
+ * second (shortest) and two (longest) each day, down to 12-20 s, and up to 8 customers come. Under
+ * v1 the gaps stayed 22-38 s, so the waiting score never came under pressure.
+ */
+export const DAY_V2 = {
+  version: 'day-v2',
+  firstArrivalMs: 1_500,
+  /** Arrival gap on day 1, and how much each later day takes off, down to the floor. */
+  arrivalGapMs: [22_000, 38_000] as const,
+  gapShrinkPerDayMs: [1_000, 2_000] as const,
+  gapFloorMs: [12_000, 20_000] as const,
+  baseCustomers: 3,
+  perExtraDays: 2,
+  maxCustomers: 8,
+} as const;
+
+/** The inclusive range of gaps between arrivals on a given day (DAY_V2). */
+export function arrivalGapRange(day: number): [number, number] {
+  const d = Math.max(0, day - 1);
+  return [
+    Math.max(DAY_V2.gapFloorMs[0], DAY_V2.arrivalGapMs[0] - d * DAY_V2.gapShrinkPerDayMs[0]),
+    Math.max(DAY_V2.gapFloorMs[1], DAY_V2.arrivalGapMs[1] - d * DAY_V2.gapShrinkPerDayMs[1]),
+  ];
+}

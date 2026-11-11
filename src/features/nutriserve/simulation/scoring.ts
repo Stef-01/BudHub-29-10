@@ -188,7 +188,7 @@ export function gradeFinishV1(dish: Dish, order: TicketOrder, effects?: UpgradeE
 
 export function gradeWaitingV1(ticket: Ticket, servedAtMs: number, effects?: UpgradeEffects): number {
   const extraGrace = effects?.waitingGraceMs ?? 0;
-  const lobbyMs = Math.max(0, ticket.takenAtMs - ticket.atCounterMs - WAITING_V1.lobbyGraceMs - extraGrace);
+  const lobbyMs = Math.max(0, ticket.takenAtMs - ticket.atCounterMs - WAITING_V1.lobbyGraceMs - extraGrace - (effects?.lobbyGraceMs ?? 0));
   const prepMs = (prepTargetUnits(ticket.order.prepLevel) / PREP_V1.unitsPerSecond) * 1000;
   const ticketMs = Math.max(0, servedAtMs - ticket.takenAtMs - WAITING_V1.ticketGraceBaseMs - prepMs - extraGrace);
   return clampScore(
@@ -241,12 +241,16 @@ export function orderComplete(dish: Dish, order: TicketOrder): boolean {
   );
 }
 
-/** economy-v2: the great bonus and five stars need a complete order. */
-export function rewardsV2(total: number, size: DishSize, complete: boolean): { tip: number; points: number; stars: number } {
+/**
+ * economy-v3: the great bonus and five stars need a complete order. Upgrades (progression-v2) can
+ * add coins to complete orders and a share of extra rank points.
+ */
+export function rewardsV2(total: number, size: DishSize, complete: boolean, effects?: UpgradeEffects): { tip: number; points: number; stars: number } {
   const great = complete && total >= ECONOMY_V1.greatScore;
-  const tip = Math.round((ECONOMY_V1.baseTip[size] * total) / 100) + (great ? ECONOMY_V1.greatBonus : 0);
+  const tip = Math.round((ECONOMY_V1.baseTip[size] * total) / 100) + (great ? ECONOMY_V1.greatBonus : 0) + (complete ? effects?.completeTip ?? 0 : 0);
   const stars = Math.max(0, Math.min(complete ? 5 : ECONOMY_V1.incompleteStarCap, Math.round(total / 20)));
-  return { tip, points: Math.round(total / ECONOMY_V1.pointsDivisor), stars };
+  const points = Math.round(((total / ECONOMY_V1.pointsDivisor) * (100 + (effects?.pointsBonusPct ?? 0))) / 100);
+  return { tip, points, stars };
 }
 
 /** Short plain-language reasons for a serve's scores, most important first (shown to the player). */
@@ -270,8 +274,13 @@ export function serveNotes(
     if (!portion || portion.mg === 0) notes.push(`No ${c}`);
     else if (portion.foodId !== wanted[c]) notes.push(`${label}: wrong food`);
     else {
+      // Only portions that cost points: would a perfect portion of this component score higher?
+      // (The reference meter forgives small errors, so a few grams off is often free.)
       const error = portion.mg / 1000 - order.idealG[c];
-      if (Math.abs(error) >= Math.max(3, order.idealG[c] * 0.05)) notes.push(`${label} ${error > 0 ? '+' : '−'}${Math.round(Math.abs(error))} g`);
+      const perfect = { ...dish, build: { ...dish.build, [c]: { ...portion, mg: Math.round(order.idealG[c] * 1000) } } };
+      if (Math.abs(error) >= 1 && gradeIndianBuildV1(perfect, order).score > gradeIndianBuildV1(dish, order).score) {
+        notes.push(`${label} ${error > 0 ? '+' : '−'}${Math.round(Math.abs(error))} g`);
+      }
     }
   }
   if (scores.prep < 90) {

@@ -14,7 +14,8 @@ import { generateOrder, ORDERS_VERSION } from './orders.ts';
 import {
   AGGREGATION_V2,
   BUILD_V1,
-  DAY_V1,
+  DAY_V2,
+  arrivalGapRange,
   ECONOMY_V1,
   FINISH_V1,
   PREP_V1,
@@ -66,7 +67,7 @@ export const PARAM_VERSIONS = {
   waiting: WAITING_V1.version,
   aggregation: AGGREGATION_V2.version,
   economy: ECONOMY_V1.version,
-  day: DAY_V1.version,
+  day: DAY_V2.version,
   orders: ORDERS_VERSION,
   progression: PROGRESSION_VERSION,
 };
@@ -121,18 +122,19 @@ function newId(s: GameState, prefix: string): string {
 
 function scheduleDay(s: GameState): void {
   const rng = createRng(s.rngState);
-  const count = Math.min(DAY_V1.maxCustomers, DAY_V1.baseCustomers + Math.floor((s.day.number - 1) / DAY_V1.perExtraDays));
+  const count = Math.min(DAY_V2.maxCustomers, DAY_V2.baseCustomers + Math.floor((s.day.number - 1) / DAY_V2.perExtraDays));
+  const [gapMin, gapMax] = arrivalGapRange(s.day.number);
   // Shuffle the pool, then cycle through it, so a day repeats a customer only when it must.
   const shuffled = [...s.customerPool];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = rng.int(0, i);
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  let arrival = DAY_V1.firstArrivalMs;
+  let arrival = DAY_V2.firstArrivalMs;
   const customers: Customer[] = [];
   for (let i = 0; i < count; i++) {
     customers.push({ id: newId(s, 'c'), catalogId: shuffled[i % shuffled.length], arrivalMs: arrival, phase: 'scheduled' });
-    arrival += rng.int(DAY_V1.arrivalGapMs[0], DAY_V1.arrivalGapMs[1]);
+    arrival += rng.int(gapMin, gapMax);
   }
   s.day.customers = customers;
   s.rngState = rng.state;
@@ -253,7 +255,7 @@ function emptyDeposit(): Deposit {
 const dishById = (s: GameState, id: string | undefined) => (id ? s.dishes.find((d) => d.id === id) : undefined);
 
 /** Integrate continuous processes over [nowMs, nowMs + 1). */
-function stepOneMs(s: GameState): void {
+function stepOneMs(s: GameState, heatRisePerMs: number): void {
   const held = s.held;
   if (held?.kind === 'pour') {
     const dish = dishById(s, held.dishId);
@@ -282,7 +284,7 @@ function stepOneMs(s: GameState): void {
       dish.prep.milliUnits = Math.min(PREP_V1.maxUnits * 1000, dish.prep.milliUnits + (boosting ? boostRate : baseRate));
     }
     if (boosting) {
-      slot.heat = Math.min(PREP_V1.heatMax, slot.heat + PREP_V1.heatRisePerMs);
+      slot.heat = Math.min(PREP_V1.heatMax, slot.heat + heatRisePerMs);
       if (slot.heat >= PREP_V1.heatMax) {
         slot.overheated = true;
         slot.boostHeld = false; // a held or latched boost lets go; boosting again takes a new press
@@ -303,9 +305,11 @@ export function advanceGame(state: GameState, dtMs: number): GameState {
   const s = structuredClone(state);
   const end = s.nowMs + dtMs;
   processDiscrete(s);
+  // Owned upgrades don't change during an advance (only commands buy them).
+  const heatRisePerMs = upgradeEffects(s.profile.upgrades).heatRisePerMs ?? PREP_V1.heatRisePerMs;
   while (s.nowMs < end && !s.day.completed) {
     if (hasContinuousWork(s)) {
-      stepOneMs(s);
+      stepOneMs(s, heatRisePerMs);
       s.nowMs += 1;
     } else {
       s.nowMs = Math.min(end, nextDiscreteEventMs(s) ?? end);
@@ -647,7 +651,7 @@ function run(s: GameState, c: Command): string | undefined {
       const share = contentShare(dish, ticket.order);
       const total = aggregateV2({ waiting, build, prep, finish }, share);
       const complete = orderComplete(dish, ticket.order);
-      const reward = rewardsV2(total, ticket.order.size, complete);
+      const reward = rewardsV2(total, ticket.order.size, complete, effects);
       const finishGrade = gradeFinishV1(dish, ticket.order, effects);
       const notes = serveNotes(dish, ticket.order, { waiting, build, prep, finish }, share, finishGrade.penalties, s.nowMs - ticket.atCounterMs);
       ticket.servedAtMs = s.nowMs;

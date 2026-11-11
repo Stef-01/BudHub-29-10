@@ -5,6 +5,7 @@ import { HoldButton } from '../HoldButton.tsx';
 import { box } from '../stage.ts';
 import { Dockable } from '../Dockable.tsx';
 import { dishLabel, dishTicket } from '../TicketRail.tsx';
+import { slotsAtMark } from '../StationTabs.tsx';
 import type { Dispatch } from '../useNutriServeGame.ts';
 
 const LEVELS = [
@@ -16,6 +17,7 @@ const LEVELS = [
 export function PrepStation({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
   const built = state.dishes.filter((d) => d.stage === 'built');
   const freeSlot = state.prepSlots.findIndex((s) => !s.dishId);
+  const atMark = slotsAtMark(state);
   const dishName = (dish: Dish) => dishLabel(state, dish);
   // Whether a slot's boost was latched before the current press (a tap toggles the latch).
   const latchedBefore = useRef<boolean[]>([]);
@@ -32,7 +34,11 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
           const units = dish?.prep ? Math.floor(dish.prep.milliUnits / 1000) : 0;
           const heatPct = Math.round((slot.heat / PREP_V1.heatMax) * 100);
           return (
-            <section key={slot.index} className={`ns-prep-unit${slot.overheated ? ' ns-overheated' : ''}`} aria-label={`Prep slot ${slot.index + 1}`}>
+            <section
+              key={slot.index}
+              className={`ns-prep-unit${slot.overheated ? ' ns-overheated' : ''}${atMark.includes(slot.index) ? ' ns-at-mark' : ''}`}
+              aria-label={`Prep slot ${slot.index + 1}`}
+            >
               <h3>{slot.index + 1}</h3>
               {dish ? (
                 <>
@@ -68,10 +74,20 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
                       'Marks: quick · simmer · slow'
                     )}
                   </p>
-                  <div className="ns-heat" role="meter" aria-label={`Slot ${slot.index + 1} heat`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={heatPct}>
+                  <div
+                    className="ns-heat"
+                    role="meter"
+                    aria-label={`Slot ${slot.index + 1} heat`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={heatPct}
+                  >
                     <span style={{ width: `${heatPct}%` }} />
                   </div>
-                  <p className="ns-muted">{slot.overheated ? 'Too hot! Off the flame' : wanted ? `${units} / ${wanted}` : `${units} units`}</p>
+                  <p className="ns-muted">
+                    {slot.overheated ? 'Too hot! Off the flame' : wanted ? `${units} / ${wanted}` : `${units} units`}
+                    {atMark.includes(slot.index) && <b className="ns-take-out"> Take it out!</b>}
+                  </p>
                   <HoldButton
                     className="ns-btn ns-btn-boost"
                     disabled={slot.overheated}

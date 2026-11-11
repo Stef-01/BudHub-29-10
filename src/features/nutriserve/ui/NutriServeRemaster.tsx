@@ -14,7 +14,7 @@ import {
   type ServeResult,
 } from '../simulation/index.ts';
 import { StationBackdrop } from './LayoutStudy.tsx';
-import { STATIONS, StationTabs } from './StationTabs.tsx';
+import { slotsAtMark, STATIONS, StationTabs } from './StationTabs.tsx';
 import { TicketRail } from './TicketRail.tsx';
 import { BuildStation } from './stations/BuildStation.tsx';
 import { FinishStation } from './stations/FinishStation.tsx';
@@ -267,6 +267,10 @@ function Kitchen({
     state.prepSlots.forEach((slot, i) => {
       if (slot.overheated && !prev.prepSlots[i]?.overheated) messages.push(`Prep slot ${i + 1} overheated.`);
     });
+    // A handi reaching its mark is announced wherever the player is (it overcooks fast after).
+    const nowAtMark = slotsAtMark(state);
+    const before = new Set(slotsAtMark(prev));
+    for (const i of nowAtMark) if (!before.has(i)) messages.push(`Prep slot ${i + 1} is at its mark: take it out.`);
     if (state.day.results.length > prev.day.results.length) {
       const r = state.day.results[state.day.results.length - 1];
       messages.push(`Served ${name(r.catalogCustomerId)}: ${r.scores.total} out of 100, ${r.tip} coins tip.`);
