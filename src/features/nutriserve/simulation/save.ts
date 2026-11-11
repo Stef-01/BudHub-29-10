@@ -4,10 +4,11 @@
 // Anything wrong raises SaveError, so a damaged or crafted save is rejected up front instead of
 // crashing (or misbehaving) later.
 import { DRIZZLES, GARNISHES } from '../data/finishItems.ts';
+import { FINISH_V1 } from './params.ts';
 import { getCatalogCustomer, getFood } from './catalog.ts';
 import { PARAM_VERSIONS, PREP_SLOT_COUNT, releaseHeld } from './game.ts';
 import { lookup } from './lookup.ts';
-import { UPGRADES } from './progression.ts';
+import { rankForPoints, UPGRADES } from './progression.ts';
 import { SCHEMA_VERSION, type GameState, type Profile } from './types.ts';
 
 export const SAVE_FORMAT = 'nutriserve-remaster-save';
@@ -45,15 +46,24 @@ const isScore = (v: unknown) => isNum(v) && (v as number) >= 0 && (v as number) 
 const idNumber = (id: string) => Number(id.slice(1));
 const COMPONENTS = ['base', 'main', 'side'];
 
-function profileProblems(profile: any): boolean {
-  return !(
+/** The parts of a profile that can be carried forward even if other parts are not current. */
+function profileCoreOk(profile: any): boolean {
+  return (
     isObj(profile) &&
-    isInt(profile.rank) && profile.rank >= 1 &&
-    isNum(profile.points) && isNum(profile.coins) && profile.coins >= 0 &&
+    isNum(profile.points) && profile.points >= 0 && isNum(profile.coins) && profile.coins >= 0 &&
     isNum(profile.bestDayScore) &&
-    Array.isArray(profile.upgrades) && profile.upgrades.every((u: unknown) => !!lookup(UPGRADES, u)) &&
+    Array.isArray(profile.upgrades) && profile.upgrades.every(isStr) &&
     Array.isArray(profile.creditedDays) && profile.creditedDays.every(isInt) &&
     Array.isArray(profile.reportedDays) && profile.reportedDays.every(isInt)
+  );
+}
+
+function profileProblems(profile: any): boolean {
+  return !(
+    profileCoreOk(profile) &&
+    isInt(profile.rank) && profile.rank === rankForPoints(profile.points) &&
+    profile.upgrades.every((u: unknown) => !!lookup(UPGRADES, u)) &&
+    new Set(profile.upgrades).size === profile.upgrades.length
   );
 }
 
@@ -86,6 +96,8 @@ function validate(state: any): string[] {
   const day = state.day;
   const customers: any[] = isObj(day) && Array.isArray(day.customers) ? day.customers : [];
   need(isObj(day) && isInt(day.number) && day.number >= 1 && typeof day.completed === 'boolean' && customers.length > 0 && Array.isArray(day.results), 'day');
+  // A completed day has always been credited (completeDay does both at once).
+  if (isObj(day) && day.completed === true) need(isObj(state.profile) && Array.isArray(state.profile.creditedDays) && state.profile.creditedDays.includes(day.number), 'completed day not credited');
   for (const c of customers) {
     need(isObj(c) && isStr(c.id) && isStr(c.catalogId) && isNonNegInt(c.arrivalMs) && PHASES.includes(c.phase), 'customer');
     if (!isObj(c)) continue;
@@ -101,6 +113,7 @@ function validate(state: any): string[] {
         isObj(r.scores) && ['waiting', 'build', 'prep', 'finish', 'total'].every((k) => isScore(r.scores[k])) &&
         isNum(r.tip) && r.tip >= 0 && isNum(r.points) && isNum(r.stars) && r.stars >= 0 && r.stars <= 5 &&
         typeof r.mismatchedOrder === 'boolean' && isNonNegInt(r.servedAtMs) &&
+        isNum(r.contentShare) && r.contentShare >= 0 && r.contentShare <= 1 &&
         isObj(r.buildErrorG) && COMPONENTS.every((k) => r.buildErrorG[k] === null || isNum(r.buildErrorG[k])),
       'day result'
     );
@@ -111,7 +124,8 @@ function validate(state: any): string[] {
   for (const t of tickets) {
     const o = isObj(t) ? t.order : undefined;
     need(
-      isObj(t) && isStr(t.id) && isInt(t.number) && isStr(t.customerId) && isNonNegInt(t.takenAtMs) && isNonNegInt(t.atCounterMs) &&
+      isObj(t) && isStr(t.id) && isInt(t.number) && isStr(t.customerId) && isStr(t.catalogCustomerId) && isNonNegInt(t.takenAtMs) && isNonNegInt(t.atCounterMs) &&
+        (t.servedAtMs === undefined || isNonNegInt(t.servedAtMs)) &&
         isObj(o) && SIZES.includes(o.size) && PREP_LEVELS.includes(o.prepLevel) &&
         [o.baseId, o.mainId, o.sideId].every((id) => isStr(id) && getFood(id)) &&
         isObj(o.idealG) && COMPONENTS.every((k) => isNum(o.idealG[k]) && o.idealG[k] > 0) &&
@@ -119,7 +133,12 @@ function validate(state: any): string[] {
         o.finish.every((f: any) => isObj(f) && (f.kind === 'drizzle' ? !!lookup(DRIZZLES, f.id) : f.kind === 'garnish' && !!lookup(GARNISHES, f.id) && isInt(f.count))),
       'ticket'
     );
-    if (isObj(t)) need(customers.some((c) => isObj(c) && c.id === t.customerId), 'ticket for a missing customer');
+    if (!isObj(t)) continue;
+    const customer = customers.find((c) => isObj(c) && c.id === t.customerId);
+    need(!!customer, 'ticket for a missing customer');
+    // A served ticket's customer has left; an unserved one's is still waiting for it.
+    if (customer && t.servedAtMs !== undefined) need(customer.phase === 'walking_out' || customer.phase === 'gone', 'served ticket with a waiting customer');
+    if (customer && t.servedAtMs === undefined) need(customer.phase === 'waiting_food' && customer.ticketId === t.id, 'open ticket without its waiting customer');
   }
   for (const c of customers) {
     if (isObj(c) && c.ticketId !== undefined) need(tickets.some((t) => isObj(t) && t.id === c.ticketId), 'customer with a missing ticket');
@@ -130,12 +149,18 @@ function validate(state: any): string[] {
   for (const d of dishes) {
     need(isObj(d) && isStr(d.id) && SIZES.includes(d.size) && STAGES.includes(d.stage) && isObj(d.build) && isObj(d.finish), 'dish');
     if (!isObj(d) || !isObj(d.build) || !isObj(d.finish)) continue;
+    if (d.forTicketId !== undefined) need(tickets.some((t) => isObj(t) && t.id === d.forTicketId), 'dish for a missing ticket');
     for (const [component, portion] of Object.entries(d.build)) {
       need(COMPONENTS.includes(component) && isObj(portion) && isStr((portion as any).foodId) && !!getFood((portion as any).foodId) && isNonNegInt((portion as any).mg), 'dish portion');
     }
     need(isObj(d.finish.drizzles) && Array.isArray(d.finish.garnishes) && Array.isArray(d.finish.steps), 'dish finish');
     for (const [id, dep] of Object.entries(d.finish.drizzles ?? {})) {
-      need(!!lookup(DRIZZLES, id) && isObj(dep) && Array.isArray((dep as any).cellsMg) && (dep as any).cellsMg.every(isNonNegInt) && isNonNegInt((dep as any).insideMg) && isNonNegInt((dep as any).spilledMg), 'dish drizzle');
+      const cells = (dep as any)?.cellsMg;
+      need(
+        !!lookup(DRIZZLES, id) && isObj(dep) && Array.isArray(cells) && cells.length === FINISH_V1.gridSize * FINISH_V1.gridSize && cells.every(isNonNegInt) &&
+          isNonNegInt((dep as any).insideMg) && isNonNegInt((dep as any).spilledMg),
+        'dish drizzle'
+      );
     }
     for (const g of d.finish.garnishes ?? []) need(isObj(g) && !!lookup(GARNISHES, g.id) && isNum(g.x) && isNum(g.y) && typeof g.fell === 'boolean', 'dish garnish');
     const cooking = d.stage === 'prepping';
@@ -164,7 +189,8 @@ function validate(state: any): string[] {
   if (state.held !== undefined) {
     const h = state.held;
     const dish = isObj(h) ? dishes.find((d) => isObj(d) && d.id === h.dishId) : undefined;
-    const pourOk = isObj(h) && h.kind === 'pour' && dish?.stage === 'building' && COMPONENTS.includes(h.component) && isStr(h.foodId) && !!getFood(h.foodId);
+    const pourOk =
+      isObj(h) && h.kind === 'pour' && dish?.stage === 'building' && COMPONENTS.includes(h.component) && isStr(h.foodId) && !!getFood(h.foodId) && isNonNegInt(h.startMg);
     const drizzleOk =
       isObj(h) && h.kind === 'drizzle' && dish?.stage === 'finishing' && !!lookup(DRIZZLES, h.drizzleId) &&
       [h.x, h.y, h.px, h.py].every(isNum) && isNonNegInt(h.pendingMg) && isNonNegInt(h.pendingMs);
@@ -179,6 +205,8 @@ export interface SaveSalvage {
   /** Progress that can seed a fresh day (rank, coins, upgrades, credited days), if readable. */
   profile?: Profile;
   runId?: string;
+  /** Upgrade ids in the save that this version doesn't have (retired or renamed); not carried over. */
+  droppedUpgrades?: string[];
 }
 
 /**
@@ -190,17 +218,21 @@ export function salvageSave(text: string, reason: string): SaveSalvage {
   try {
     const file = JSON.parse(text);
     const state = isObj(file) ? file.state : undefined;
-    if (!isObj(state) || profileProblems(state.profile)) return { reason };
+    if (!isObj(state) || !profileCoreOk(state.profile)) return { reason };
+    const p = state.profile;
+    // Keep what is still meaningful: known upgrades (once each); rank recomputed from points.
+    const upgrades = [...new Set<string>(p.upgrades)].filter((u) => !!lookup(UPGRADES, u));
+    const droppedUpgrades = [...new Set<string>(p.upgrades)].filter((u) => !lookup(UPGRADES, u));
     const profile: Profile = {
-      rank: state.profile.rank,
-      points: state.profile.points,
-      coins: state.profile.coins,
-      upgrades: [...state.profile.upgrades],
-      creditedDays: [...state.profile.creditedDays],
-      reportedDays: [...state.profile.reportedDays],
-      bestDayScore: state.profile.bestDayScore,
+      rank: rankForPoints(p.points),
+      points: p.points,
+      coins: p.coins,
+      upgrades,
+      creditedDays: [...new Set<number>(p.creditedDays)],
+      reportedDays: [...new Set<number>(p.reportedDays)],
+      bestDayScore: p.bestDayScore,
     };
-    return { reason, profile, runId: isStr(state.runId) ? state.runId : undefined };
+    return { reason, profile, runId: isStr(state.runId) ? state.runId : undefined, ...(droppedUpgrades.length ? { droppedUpgrades } : {}) };
   } catch {
     return { reason };
   }

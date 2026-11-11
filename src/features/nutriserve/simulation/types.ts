@@ -81,6 +81,11 @@ export interface Dish {
   size: DishSize;
   stage: DishStage;
   createdAtMs: number;
+  /**
+   * The ticket this dish was started for (the selected or oldest open ticket), used only to guide
+   * the player (targets, finish steps). Scoring uses whichever ticket the dish is served to.
+   */
+  forTicketId?: string;
   build: Partial<Record<BuildComponent, Portion>>;
   prep?: {
     slot: number;
@@ -107,7 +112,7 @@ export interface PrepSlot {
 
 /** An action that is in progress while a control is held. */
 export type HeldAction =
-  | { kind: 'pour'; dishId: string; component: BuildComponent; foodId: string }
+  | { kind: 'pour'; dishId: string; component: BuildComponent; foodId: string; /** Portion mg when the press began. */ startMg: number }
   | {
       kind: 'drizzle';
       dishId: string;
@@ -143,6 +148,8 @@ export interface ServeResult {
   mismatchedOrder: boolean;
   /** Signed build error in grams per component (negative = under); null when the wrong food. */
   buildErrorG: { base: number | null; main: number | null; side: number | null };
+  /** Share (0-1) of the ordered food that was in the katori; gates the other scores (AGGREGATION_V2). */
+  contentShare: number;
   servedAtMs: number;
 }
 
@@ -197,7 +204,6 @@ export type Command =
   | { type: 'startDish'; size: DishSize }
   | { type: 'beginPour'; dishId: string; component: BuildComponent; foodId: string }
   | { type: 'endPour' }
-  | { type: 'pourTap'; dishId: string; component: BuildComponent; foodId: string }
   | { type: 'releaseHolds' }
   | { type: 'finishBuild'; dishId: string }
   | { type: 'startPrep'; dishId: string; slot: number }

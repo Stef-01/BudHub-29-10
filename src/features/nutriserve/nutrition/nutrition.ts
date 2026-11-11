@@ -7,11 +7,16 @@
 // - Nutrition is an educational report kept separate from the four service scores.
 // - Meal goals reuse the legacy NutriServe rules (services/nutriserveUtils.ts) so both games agree.
 //   They are general guidance for a game, not medical advice.
+// - The player doesn't choose the foods; the customer does. So the service report separates what
+//   the player changed (portions off the ticket, wrong foods, drizzle, spills) from how the order
+//   itself fits the customer's meal goal. A perfectly served order is never blamed on the player.
+//   (The legacy goals are full-plate targets: few three-part katoris meet all of them.)
 import { CATALOG_CUSTOMERS, CATALOG_FOODS } from '../data/catalog.generated.ts';
 import type { CatalogCustomer, CatalogOrder, NutrientsPer100g } from '../data/catalogTypes.ts';
 import { DRIZZLES, GARNISHES } from '../data/finishItems.ts';
-import type { Dish } from '../simulation/types.ts';
+import type { Dish, TicketOrder } from '../simulation/types.ts';
 import { lookup } from '../simulation/lookup.ts';
+import { FINISH_V1 } from '../simulation/params.ts';
 
 export type Nutrients = NutrientsPer100g;
 export const NUTRIENT_KEYS: Array<keyof Nutrients> = ['calories_kcal', 'protein_g', 'carbs_g', 'fiber_g', 'fat_g', 'sodium_mg'];
@@ -203,4 +208,102 @@ export function validateCatalog(
     volumeWithoutDensity: foods.filter((f) => f.volume_options_ml?.length && !f.density_g_per_ml).map((f) => f.id),
     withoutServings: foods.filter((f) => !f.volume_options_ml?.length && !f.portion_g?.length).map((f) => f.id),
   };
+}
+
+// --- Service report: the player's changes vs the order, and the order vs the goal ----------------
+
+/** The katori exactly as the ticket ordered it: ideal grams, the ordered drizzle on target, every garnish piece on. */
+export function orderedDish(order: TicketOrder): Dish {
+  const dish: Dish = {
+    id: 'ordered',
+    size: order.size,
+    stage: 'ready',
+    createdAtMs: 0,
+    build: {
+      base: { foodId: order.baseId, mg: Math.round(order.idealG.base * 1000) },
+      main: { foodId: order.mainId, mg: Math.round(order.idealG.main * 1000) },
+      side: { foodId: order.sideId, mg: Math.round(order.idealG.side * 1000) },
+    },
+    finish: { drizzles: {}, garnishes: [], steps: [] },
+  };
+  for (const step of order.finish) {
+    if (step.kind === 'drizzle') {
+      const targetG = lookup(FINISH_V1.drizzleTargetG, step.id)?.[order.size] ?? 0;
+      dish.finish.drizzles[step.id] = { cellsMg: [], insideMg: Math.round(targetG * 1000), spilledMg: 0 };
+    } else {
+      for (let i = 0; i < step.count; i++) dish.finish.garnishes.push({ id: step.id, x: 0, y: 0, fell: false });
+    }
+  }
+  return dish;
+}
+
+export interface ServiceNutritionReport {
+  /** What the customer actually ate. */
+  served: DishNutrition;
+  /** What the order would have provided if served exactly. */
+  ordered: Nutrients;
+  /** Plain-language differences the player made, largest energy effect first; empty = matched the ticket. */
+  changes: string[];
+  /** How the order itself sits against the customer's meal goal (the customer's choice, not the player's). */
+  orderFit: NutritionFeedback;
+}
+
+const signed = (n: number, unit: string) => `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(Math.round(n))} ${unit}`;
+
+export function serviceNutritionReport(dish: Dish, order: TicketOrder, goalsFor: Pick<CatalogOrder, 'plateSize' | 'diabetesMode'>): ServiceNutritionReport {
+  const served = dishNutrition(dish);
+  const ordered = dishNutrition(orderedDish(order)).totals;
+  const changes: Array<{ text: string; kcal: number }> = [];
+  const foodLabel = (id: string) => FOODS.get(id)?.label ?? id;
+  const kcalOf = (id: string, grams: number) => ((FOODS.get(id)?.nutrients_per_100g.calories_kcal ?? 0) * grams) / 100;
+  const wanted = { base: order.baseId, main: order.mainId, side: order.sideId } as const;
+
+  for (const c of ['base', 'main', 'side'] as const) {
+    const idealG = order.idealG[c];
+    const portion = dish.build[c];
+    const gotG = portion ? portion.mg / 1000 : 0;
+    if (!portion || gotG === 0) {
+      const kcal = -kcalOf(wanted[c], idealG);
+      changes.push({ text: `No ${foodLabel(wanted[c])} (${c}): ${signed(kcal, 'kcal')}`, kcal });
+    } else if (portion.foodId !== wanted[c]) {
+      const kcal = kcalOf(portion.foodId, gotG) - kcalOf(wanted[c], idealG);
+      changes.push({ text: `${foodLabel(portion.foodId)} instead of ${foodLabel(wanted[c])}: ${signed(kcal, 'kcal')}`, kcal });
+    } else {
+      const deltaG = gotG - idealG;
+      if (Math.abs(deltaG) >= Math.max(5, idealG * 0.05)) {
+        const kcal = kcalOf(wanted[c], deltaG);
+        changes.push({ text: `${Math.round(Math.abs(deltaG))} g ${deltaG > 0 ? 'more' : 'less'} ${foodLabel(wanted[c])} than ordered: ${signed(kcal, 'kcal')}`, kcal });
+      }
+    }
+  }
+
+  const drizzleKcal = (id: string, grams: number) => ((lookup(DRIZZLES, id)?.nutrients_per_100g.calories_kcal ?? 0) * grams) / 100;
+  const orderedDrizzle = order.finish.find((s) => s.kind === 'drizzle')?.id;
+  for (const [id, deposit] of Object.entries(dish.finish.drizzles)) {
+    const landedG = deposit.insideMg / 1000;
+    const label = lookup(DRIZZLES, id)?.label ?? id;
+    if (id !== orderedDrizzle) {
+      if (landedG > 0) changes.push({ text: `Unordered ${label}: ${signed(drizzleKcal(id, landedG), 'kcal')}`, kcal: drizzleKcal(id, landedG) });
+      continue;
+    }
+    const targetG = lookup(FINISH_V1.drizzleTargetG, id)?.[order.size] ?? 0;
+    const deltaG = landedG - targetG;
+    if (Math.abs(deltaG) >= Math.max(1, targetG * 0.2)) {
+      changes.push({ text: `${Math.round(Math.abs(deltaG))} g ${deltaG > 0 ? 'more' : 'less'} ${label} than ordered: ${signed(drizzleKcal(id, deltaG), 'kcal')}`, kcal: drizzleKcal(id, deltaG) });
+    }
+  }
+  if (orderedDrizzle && !dish.finish.drizzles[orderedDrizzle]) {
+    const targetG = lookup(FINISH_V1.drizzleTargetG, orderedDrizzle)?.[order.size] ?? 0;
+    const kcal = -drizzleKcal(orderedDrizzle, targetG);
+    changes.push({ text: `No ${lookup(DRIZZLES, orderedDrizzle)?.label ?? orderedDrizzle}: ${signed(kcal, 'kcal')}`, kcal });
+  }
+  if (served.notEaten.spilledDrizzleG >= 0.5 || served.notEaten.fallenGarnishPieces > 0) {
+    changes.push({
+      text: `Not eaten: ${served.notEaten.spilledDrizzleG.toFixed(1)} g spilled drizzle, ${served.notEaten.fallenGarnishPieces} fallen garnish`,
+      kcal: 0,
+    });
+  }
+
+  changes.sort((a, b) => Math.abs(b.kcal) - Math.abs(a.kcal));
+  return { served, ordered, changes: changes.map((c) => c.text), orderFit: nutritionFeedback(ordered, goalsFor) };
 }

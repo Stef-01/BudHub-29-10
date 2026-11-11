@@ -300,17 +300,26 @@ test('rank-locked drizzles and garnishes are rejected', () => {
   cmd(s, { type: 'placeGarnish', dishId, garnishId: 'coriander', x: 0, y: 0 });
 });
 
-test('a tap pours a fixed versioned amount, for clicks without a hold', () => {
+test('every press pours at least the minimum, added to what was there', () => {
   let { s } = withTicket();
   s = cmd(s, { type: 'startDish', size: 'medium' });
   const dishId = s.dishes.at(-1).id;
   const foodId = s.tickets[0].order.mainId;
-  s = cmd(s, { type: 'pourTap', dishId, component: 'main', foodId });
-  s = cmd(s, { type: 'pourTap', dishId, component: 'main', foodId });
-  assert.equal(s.dishes.at(-1).build.main.mg, 2 * BUILD_V1.pourRateMgPerMs.main * BUILD_V1.tapPourMs);
-  reject(s, { type: 'pourTap', dishId, component: 'main', foodId: s.tickets[0].order.baseId });
-  const held = cmd(s, { type: 'beginPour', dishId, component: 'side', foodId: s.tickets[0].order.sideId });
-  reject(held, { type: 'pourTap', dishId, component: 'main', foodId });
+  const least = BUILD_V1.pourRateMgPerMs.main * BUILD_V1.minPressMs;
+  s = cmd(s, { type: 'beginPour', dishId, component: 'main', foodId });
+  s = cmd(s, { type: 'endPour' });
+  s = cmd(s, { type: 'beginPour', dishId, component: 'main', foodId });
+  s = advanceGame(s, 30);
+  s = cmd(s, { type: 'endPour' });
+  assert.equal(s.dishes.at(-1).build.main.mg, 2 * least, 'two quick presses = two minimum pours');
+  s = cmd(s, { type: 'beginPour', dishId, component: 'main', foodId });
+  s = advanceGame(s, 500);
+  s = cmd(s, { type: 'endPour' });
+  assert.equal(s.dishes.at(-1).build.main.mg, 2 * least + 500 * 90, 'a real hold pours exactly its time');
+  // An involuntary release (station change) adds nothing and leaves no empty portion.
+  s = cmd(s, { type: 'beginPour', dishId, component: 'side', foodId: s.tickets[0].order.sideId });
+  s = cmd(s, { type: 'selectStation', station: 'order' });
+  assert.equal(s.dishes.at(-1).build.side, undefined);
 });
 
 test('a save that cannot be restored still yields its progress', () => {
@@ -328,7 +337,115 @@ test('a save that cannot be restored still yields its progress', () => {
   assert.equal(next.day.number, 3, 'starts the next uncredited day');
   assert.equal(next.profile.coins, 41);
   assert.equal(salvageSave('not json', 'x').profile, undefined);
-  const broken = JSON.parse(text);
-  broken.state.profile.upgrades = ['nope'];
-  assert.equal(salvageSave(JSON.stringify(broken), 'x').profile, undefined);
+  // A retired upgrade id is dropped (and named), not a reason to lose everything.
+  const retired = JSON.parse(text);
+  retired.state.profile.upgrades = ['rice_scoop', 'retired_thing', 'rice_scoop'];
+  const kept = salvageSave(JSON.stringify(retired), 'x');
+  assert.deepEqual(kept.profile.upgrades, ['rice_scoop']);
+  assert.deepEqual(kept.droppedUpgrades, ['retired_thing']);
+  assert.throws(() => deserializeGame(JSON.stringify(retired)), SaveError);
+  const garbage = JSON.parse(text);
+  garbage.state.profile.coins = 'lots';
+  assert.equal(salvageSave(JSON.stringify(garbage), 'x').profile, undefined);
+});
+
+// --- Third audit, 2026-11-11 -------------------------------------------------------------------
+import { contentShare, aggregateV2 } from '../src/features/nutriserve/simulation/index.ts';
+
+test('an overheated slot lets go of a latched boost and stops cooking until it cools', () => {
+  let p = advanceUntil(game(11), atCounter);
+  p = cmd(p, { type: 'takeOrder' });
+  const { s: b, dishId: d } = buildPerfect(p, p.tickets[0]);
+  p = cmd(b, { type: 'startPrep', dishId: d, slot: 0 });
+  p = cmd(p, { type: 'setBoost', slot: 0, held: true }); // a latched (clicked) boost
+  p = advanceGame(p, 2_000);
+  assert.equal(p.prepSlots[0].overheated, true);
+  p = advanceGame(p, 10_000); // long after it cooled
+  assert.equal(p.prepSlots[0].boostHeld, false);
+  assert.equal(p.prepSlots[0].overheated, false, 'it does not overheat again by itself');
+});
+
+test('an empty or wrong katori no longer earns waiting, prep and finish credit', () => {
+  let s = advanceUntil(game(42), atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  const ticket = s.tickets[0];
+  s = cmd(s, { type: 'startDish', size: ticket.order.size });
+  const dishId = s.dishes.at(-1).id;
+  s = cmd(s, { type: 'finishBuild', dishId });
+  s = cmd(s, { type: 'startPrep', dishId, slot: 0 });
+  s = cmd(s, { type: 'finishPrep', slot: 0 });
+  s = cmd(s, { type: 'finishDish', dishId });
+  s = cmd(s, { type: 'serve', dishId, ticketId: ticket.id });
+  const r = s.day.results[0];
+  assert.equal(r.contentShare, 0);
+  assert.equal(r.scores.total, 0, `empty katori total ${r.scores.total}`);
+  assert.equal(r.tip, 0);
+  // Half the ordered food or more keeps full credit; below that it scales.
+  assert.equal(aggregateV2({ waiting: 100, build: 40, prep: 100, finish: 100 }, 0.5), 85);
+  assert.equal(aggregateV2({ waiting: 100, build: 40, prep: 100, finish: 100 }, 0.25), 48);
+  const half = { size: ticket.order.size, build: { base: { foodId: ticket.order.baseId, mg: ticket.order.idealG.base * 1000 * 2 } } };
+  assert.ok(contentShare(half, ticket.order) < 0.4, 'extra of one food does not count past what was ordered');
+});
+
+test('a dish remembers the ticket it was started for, and the views follow it', () => {
+  let s = advanceUntil(game(42), atCounter);
+  s = cmd(s, { type: 'takeOrder' });
+  const first = s.tickets[0];
+  s = cmd(s, { type: 'startDish', size: first.order.size });
+  const dishId = s.dishes.at(-1).id;
+  assert.equal(s.dishes.at(-1).forTicketId, first.id);
+  s = advanceUntil(s, atCounter);
+  s = cmd(s, { type: 'takeOrder' }); // selects the new ticket
+  assert.notEqual(s.selected.ticketId, first.id);
+  s = cmd(s, { type: 'selectStation', station: 'build' });
+  assert.equal(s.selected.ticketId, first.id, 'Build shows the dish on the counter');
+  s = cmd(s, { type: 'selectTicket', ticketId: s.tickets[1].id });
+  s = cmd(s, { type: 'selectDish', dishId });
+  assert.equal(s.selected.ticketId, first.id, 'selecting a dish shows its ticket');
+  const restored = deserializeGame(serializeGame(s));
+  assert.equal(restored.dishes.find((d) => d.id === dishId).forTicketId, first.id);
+});
+
+test('hand-edited saves with impossible combinations are rejected', () => {
+  const { s, dishId } = finishing();
+  const text = serializeGame(s);
+  const bad = (what, mutate) => {
+    const f = JSON.parse(text);
+    mutate(f.state);
+    assert.throws(() => deserializeGame(JSON.stringify(f)), SaveError, what);
+  };
+  bad('served ticket, customer still waiting', (st) => (st.tickets[0].servedAtMs = st.nowMs));
+  bad('completed day not credited', (st) => (st.day.completed = true));
+  bad('short drizzle grid', (st) => (st.dishes.find((d) => d.id === dishId).finish.drizzles = { curd_swirl: { cellsMg: [], insideMg: 0, spilledMg: 0 } }));
+  bad('duplicate upgrades', (st) => (st.profile.upgrades = ['rice_scoop', 'rice_scoop']));
+  bad('rank does not match points', (st) => (st.profile.rank = 7));
+  bad('no catalog id on a ticket', (st) => delete st.tickets[0].catalogCustomerId);
+  bad('dish for a missing ticket', (st) => (st.dishes[0].forTicketId = 't999'));
+});
+
+import { serviceNutritionReport } from '../src/features/nutriserve/nutrition/nutrition.ts';
+import { getCatalogCustomer } from '../src/features/nutriserve/simulation/index.ts';
+
+test('the nutrition report never blames the player for a perfectly served order', () => {
+  const { s, dishId, ticket } = finishing();
+  const customer = getCatalogCustomer(ticket.catalogCustomerId);
+  let f = s;
+  for (const step of ticket.order.finish) {
+    if (step.kind === 'drizzle') continue; // handled below with an exact deposit
+    for (let i = 0; i < step.count; i++) f = cmd(f, { type: 'placeGarnish', dishId, garnishId: step.id, x: 0.3 * Math.cos(i), y: 0.3 * Math.sin(i) });
+  }
+  const dish = structuredClone(f.dishes.find((d) => d.id === dishId));
+  const drizzle = ticket.order.finish.find((x) => x.kind === 'drizzle');
+  if (drizzle) dish.finish.drizzles[drizzle.id] = { cellsMg: new Array(36).fill(0), insideMg: FINISH_V1.drizzleTargetG[drizzle.id][ticket.order.size] * 1000, spilledMg: 0 };
+  const perfect = serviceNutritionReport(dish, ticket.order, customer.order);
+  assert.deepEqual(perfect.changes, [], perfect.changes.join(' | '));
+  assert.ok(Math.abs(perfect.served.totals.calories_kcal - perfect.ordered.calories_kcal) < 1);
+
+  const heavy = structuredClone(dish);
+  heavy.build.base.mg += 60_000;
+  delete heavy.build.side;
+  const off = serviceNutritionReport(heavy, ticket.order, customer.order);
+  assert.equal(off.changes.length, 2);
+  assert.ok(off.changes.some((c) => /^60 g more .* than ordered: \+\d+ kcal$/.test(c)), off.changes.join(' | '));
+  assert.ok(off.changes.some((c) => /^No .* \(side\): −\d+ kcal$/.test(c)), off.changes.join(' | '));
 });

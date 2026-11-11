@@ -1,10 +1,10 @@
 // Prep station: four independent slots. Progress is in provisional prep units (PREP_V1).
-import React from 'react';
+import React, { useRef } from 'react';
 import { PREP_V1, prepTargetUnits, type Dish, type GameState } from '../../simulation/index.ts';
 import { HoldButton } from '../HoldButton.tsx';
 import { box } from '../stage.ts';
 import { Dockable } from '../Dockable.tsx';
-import { foodLabel } from '../TicketRail.tsx';
+import { dishLabel, dishTicket } from '../TicketRail.tsx';
 import type { Dispatch } from '../useNutriServeGame.ts';
 
 const LEVELS = [
@@ -13,25 +13,22 @@ const LEVELS = [
   { id: 'slow', short: 'Slow' },
 ] as const;
 
-function dishName(dish: Dish): string {
-  const main = dish.build.main?.foodId ?? dish.build.base?.foodId;
-  return `${dish.size} · ${main ? foodLabel(main) : 'empty'}`;
-}
-
 export function PrepStation({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
   const built = state.dishes.filter((d) => d.stage === 'built');
-  // Same ticket the rail highlights: the selected one, else the oldest open ticket.
-  const open = state.tickets.filter((t) => t.servedAtMs === undefined);
-  const ticket = open.find((t) => t.id === state.selected.ticketId) ?? open[0];
-  const wanted = ticket ? prepTargetUnits(ticket.order.prepLevel) : undefined;
-  const wantedLevel = ticket ? LEVELS.find((l) => l.id === ticket.order.prepLevel) : undefined;
   const freeSlot = state.prepSlots.findIndex((s) => !s.dishId);
+  const dishName = (dish: Dish) => dishLabel(state, dish);
+  // Whether a slot's boost was latched before the current press (a tap toggles the latch).
+  const latchedBefore = useRef<boolean[]>([]);
 
   return (
     <>
       <Dockable slot="main" region={box(10, 44, 470, 300)} className="ns-prep-slots">
         {state.prepSlots.map((slot) => {
           const dish = state.dishes.find((d) => d.id === slot.dishId);
+          // Each slot is guided by its own dish's ticket, not by the rail selection.
+          const ticket = dishTicket(state, dish);
+          const wanted = ticket ? prepTargetUnits(ticket.order.prepLevel) : undefined;
+          const wantedLevel = ticket ? LEVELS.find((l) => l.id === ticket.order.prepLevel) : undefined;
           const units = dish?.prep ? Math.floor(dish.prep.milliUnits / 1000) : 0;
           const heatPct = Math.round((slot.heat / PREP_V1.heatMax) * 100);
           return (
@@ -63,9 +60,9 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
                     })}
                   </div>
                   <p className="ns-prep-target">
-                    {wantedLevel ? (
+                    {wantedLevel && ticket ? (
                       <>
-                        Target <b>{wantedLevel.short}</b>
+                        #{ticket.number} wants <b>{wantedLevel.short}</b>
                       </>
                     ) : (
                       'Marks: quick · simmer · slow'
@@ -74,15 +71,21 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
                   <div className="ns-heat" role="meter" aria-label={`Slot ${slot.index + 1} heat`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={heatPct}>
                     <span style={{ width: `${heatPct}%` }} />
                   </div>
-                  <p className="ns-muted">{slot.overheated ? 'Too hot! Boost locked' : wanted ? `${units} / ${wanted}` : `${units} units`}</p>
+                  <p className="ns-muted">{slot.overheated ? 'Too hot! Off the flame' : wanted ? `${units} / ${wanted}` : `${units} units`}</p>
                   <HoldButton
                     className="ns-btn ns-btn-boost"
                     disabled={slot.overheated}
                     active={slot.boostHeld && !slot.overheated}
                     aria-label={`Hold to boost slot ${slot.index + 1}`}
-                    onStart={() => dispatch({ type: 'setBoost', slot: slot.index, held: true })}
-                    onEnd={() => dispatch({ type: 'setBoost', slot: slot.index, held: false }, { silent: true })}
-                    // A click without a hold toggles the boost on and off.
+                    aria-describedby="ns-boost-hint"
+                    onStart={() => {
+                      latchedBefore.current[slot.index] = slot.boostHeld;
+                      dispatch({ type: 'setBoost', slot: slot.index, held: true });
+                    }}
+                    // A hold boosts while held; a quick tap latches the boost on (or off again).
+                    onEnd={(short) =>
+                      dispatch({ type: 'setBoost', slot: slot.index, held: short ? !latchedBefore.current[slot.index] : false }, { silent: true })
+                    }
                     onTap={() => dispatch({ type: 'setBoost', slot: slot.index, held: !slot.boostHeld })}
                   >
                     Boost
@@ -105,6 +108,9 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
           );
         })}
       </Dockable>
+      <span id="ns-boost-hint" className="sr-only">
+        Hold to boost; a tap turns the boost on until you tap again or the handi overheats.
+      </span>
       <Dockable slot="main" region={box(10, 350, 470, 76)} className="ns-tray" aria-label="Built dishes waiting for prep">
         <span className="ns-tray-label">Ready to prep:</span>
         {built.length === 0 && <span className="ns-muted">nothing yet</span>}
@@ -119,7 +125,7 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
             {dishName(dish)}
           </button>
         ))}
-        <span className="ns-provisional" title={`Prep timing uses provisional parameters (${PREP_V1.version}), pending reference evidence Q08`}>
+        <span className="ns-provisional" title={`Prep timing uses provisional rules (${PREP_V1.version}) that may change`}>
           provisional timing
         </span>
       </Dockable>

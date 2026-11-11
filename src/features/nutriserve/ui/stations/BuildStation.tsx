@@ -15,7 +15,7 @@ import { HoldButton } from '../HoldButton.tsx';
 import { foodColor, VesselSide } from '../LayoutStudy.tsx';
 import { box } from '../stage.ts';
 import { Dockable } from '../Dockable.tsx';
-import { foodLabel } from '../TicketRail.tsx';
+import { customerName, dishTicket, foodLabel } from '../TicketRail.tsx';
 import type { Dispatch } from '../useNutriServeGame.ts';
 
 const COMPONENTS: Array<{ id: BuildComponent; label: string; categories: string[] }> = [
@@ -74,7 +74,9 @@ function Gauge({ label, actualG, idealG, kind }: { label: string; actualG: numbe
 export function BuildStation({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
   const dish = state.dishes.find((d) => d.stage === 'building');
   const open = state.tickets.filter((t) => t.servedAtMs === undefined);
-  const ticket = open.find((t) => t.id === state.selected.ticketId) ?? open[0];
+  // The dish on the counter is guided by the ticket it was started for; before that, by the
+  // selected (or oldest) open ticket, which is the one startDish will record.
+  const ticket = dish ? dishTicket(state, dish) : open.find((t) => t.id === state.selected.ticketId) ?? open[0];
   const options = useMemo(
     () => (dish ? COMPONENTS.map((c) => ({ ...c, foods: dispenserFoods(c, open, dish.id) })) : []),
     // Recompute when the dish or the set of open tickets changes, not every frame.
@@ -119,13 +121,16 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
       </div>
 
       <Dockable slot="main" region={box(10, 200, 218, 146)} className="ns-gauges">
-        <p className="ns-caption">{dish.size} vessel</p>
+        <p className="ns-caption">
+          {dish.size} vessel{ticket ? ` for #${ticket.number} ${customerName(ticket)}` : ''}
+        </p>
         {COMPONENTS.map((c) => (
           <React.Fragment key={c.id}>
             <Gauge label={c.label} actualG={grams(c.id)} idealG={ideal?.[c.id]} kind={c.id === 'base' ? 'fill' : 'meter'} />
           </React.Fragment>
         ))}
         {!ideal && ticket && <p className="ns-muted">Size differs from ticket #{ticket.number}</p>}
+        {!ticket && <p className="ns-muted">Built ahead: serve it to any ticket</p>}
       </Dockable>
 
       <Dockable slot="main" region={box(234, 40, 246, 312)} className="ns-dispensers">
@@ -134,7 +139,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
           return (
             <fieldset key={c.id} className="ns-dispenser-row">
               <legend>
-                {c.label} <small>hold to {c.id === 'base' ? 'fill' : 'ladle'} · {BUILD_V1.pourRateMgPerMs[c.id]} g/s · tap {(BUILD_V1.pourRateMgPerMs[c.id] * BUILD_V1.tapPourMs) / 1000} g</small>
+                {c.label} <small>hold to {c.id === 'base' ? 'fill' : 'ladle'} · {BUILD_V1.pourRateMgPerMs[c.id]} g/s · tap {(BUILD_V1.pourRateMgPerMs[c.id] * BUILD_V1.minPressMs) / 1000} g</small>
               </legend>
               {c.foods.map((foodId) => (
                 <React.Fragment key={foodId}>
@@ -144,10 +149,16 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                   disabled={(!!chosen && chosen !== foodId) || (!!held && !(held.component === c.id && held.foodId === foodId))}
                   active={held?.component === c.id && held.foodId === foodId}
                   aria-label={`Hold to add ${foodLabel(foodId)} as ${c.label.toLowerCase()}`}
+                  aria-describedby="ns-hold-hint"
                   onStart={() => dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId })}
                   // Silent: leaving the station mid-hold already released the pour.
                   onEnd={() => dispatch({ type: 'endPour' }, { silent: true })}
-                  onTap={() => dispatch({ type: 'pourTap', dishId: dish.id, component: c.id, foodId })}
+                  // Click-only input: the first click starts pouring, the next one stops it.
+                  onTap={() =>
+                    held?.component === c.id && held.foodId === foodId
+                      ? dispatch({ type: 'endPour' })
+                      : dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId })
+                  }
                 >
                   <i style={{ background: foodColor(foodId) }} aria-hidden="true" />
                   <span className="ns-dispenser-name">{foodLabel(foodId)}</span>
@@ -159,6 +170,9 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
         })}
       </Dockable>
 
+      <span id="ns-hold-hint" className="sr-only">
+        Press and hold to pour; a quick tap adds a little. Clicking once starts pouring and clicking again stops.
+      </span>
       <Dockable slot="main" region={box(12, 362, 468, 48)} className="ns-row ns-actions">
         <button type="button" className="ns-btn ns-btn-primary" disabled={!!held} onClick={() => dispatch({ type: 'finishBuild', dishId: dish.id })}>
           Send to prep →

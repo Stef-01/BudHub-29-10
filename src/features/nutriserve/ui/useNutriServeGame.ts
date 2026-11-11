@@ -103,8 +103,8 @@ export interface NutriServeGame {
   state: GameState;
   /** silent: don't surface a rejection in the status line (internal bookkeeping commands). */
   dispatch: Dispatch;
-  /** Last rejected command's reason, for the status line. */
-  lastError: string | null;
+  /** Last rejected command's reason, for the status line; seq changes on every rejection. */
+  lastError: { message: string; seq: number } | null;
   /** Set when the simulation threw: the clock has stopped and autosave is off. */
   fatal: string | null;
 }
@@ -112,7 +112,8 @@ export interface NutriServeGame {
 export function useNutriServeGame(initial: GameState, userId: string): NutriServeGame {
   const ref = useRef(initial);
   const [state, setState] = useState(initial);
-  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastError, setLastError] = useState<{ message: string; seq: number } | null>(null);
+  const errorSeq = useRef(0);
   const [fatal, setFatal] = useState<string | null>(null);
   const fatalRef = useRef(false);
   const carry = useRef(0);
@@ -143,7 +144,7 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
         ref.current = next;
         render(next);
       }
-      if (!options?.silent) setLastError('error' in result ? result.error : null);
+      if (!options?.silent && 'error' in result) setLastError({ message: result.error, seq: ++errorSeq.current });
       return result;
     },
     [fail, render]
@@ -154,6 +155,7 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
     let frameId = 0;
     let last = performance.now();
     const frame = (now: number) => {
+      if (fatalRef.current) return; // a failed command stops the clock too
       const elapsed = Math.min(FRAME_CAP_MS, Math.max(0, now - last)) + carry.current;
       last = now;
       const dt = Math.floor(elapsed);

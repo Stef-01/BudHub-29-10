@@ -22,12 +22,12 @@ test('holding a dispenser pours at a fixed rate; grams come from simulation time
   assert.equal(s.dishes[0].build.base.mg, 1_750 * 80);
 });
 
-test('a tap with no time poured leaves no empty portion behind', () => {
+test('a press with no time poured still pours the minimum (build-v3)', () => {
   let { s } = withTicket();
   s = cmd(s, { type: 'startDish', size: 'small' });
   s = cmd(s, { type: 'beginPour', dishId: s.dishes[0].id, component: 'main', foodId: 'palak_dal' });
   s = cmd(s, { type: 'endPour' });
-  assert.equal(s.dishes[0].build.main, undefined);
+  assert.equal(s.dishes[0].build.main.mg, 90 * 100);
 });
 
 test('perfect build scores 100 through the unchanged reference scorer', () => {
@@ -119,12 +119,16 @@ test('holding boost overheats the slot, locks boost, then unlocks after cooling'
   s = cmd(s, { type: 'setBoost', slot: 0, held: true });
   s = advanceGame(s, 2_000); // 2000 ms x 5 heat = 10000 = max
   assert.equal(s.prepSlots[0].overheated, true);
+  assert.equal(s.prepSlots[0].boostHeld, false, 'overheating lets go of the boost (prep-v2)');
   const before = units(s, dishId);
-  s = advanceGame(s, 1_000); // still held, but locked: base rate only, cooling
-  assert.equal(units(s, dishId) - before, 150);
+  s = advanceGame(s, 1_000); // off the flame: nothing cooks while it cools
+  assert.equal(units(s, dishId) - before, 0);
   assert.equal(s.prepSlots[0].heat, 10_000 - 2_000);
-  s = advanceGame(s, 2_500); // cools to 3000 -> unlocked
+  s = advanceGame(s, 2_500); // cools to 3000 -> unlocked, cooking resumes at the base rate
   assert.equal(s.prepSlots[0].overheated, false);
+  const resumed = units(s, dishId);
+  s = advanceGame(s, 1_000);
+  assert.equal(units(s, dishId) - resumed, 150);
 });
 
 test('four slots run independently with different targets, even offscreen', () => {

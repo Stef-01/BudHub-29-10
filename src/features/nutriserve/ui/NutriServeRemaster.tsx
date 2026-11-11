@@ -1,8 +1,18 @@
 // NutriServe Kitchen (remaster preview): the four-station game on a 640x480 stage.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerSprite } from '../assets/CustomerSprite.tsx';
-import { dishNutrition, nutritionFeedback } from '../nutrition/nutrition.ts';
-import { createGame, getCatalogCustomer, RANK_THRESHOLDS, seedFrom, UPGRADES, type GameState, type Profile, type ServeResult } from '../simulation/index.ts';
+import { serviceNutritionReport } from '../nutrition/nutrition.ts';
+import {
+  AGGREGATION_V2,
+  createGame,
+  getCatalogCustomer,
+  RANK_THRESHOLDS,
+  seedFrom,
+  UPGRADES,
+  type GameState,
+  type Profile,
+  type ServeResult,
+} from '../simulation/index.ts';
 import { StationBackdrop } from './LayoutStudy.tsx';
 import { STATIONS, StationTabs } from './StationTabs.tsx';
 import { TicketRail } from './TicketRail.tsx';
@@ -15,11 +25,19 @@ import { boxAuto } from './stage.ts';
 import { Dockable, LayoutContext, type DockSlot } from './Dockable.tsx';
 
 /**
- * Below this root width the stage keeps the scene and controls move to the dock. The switch has
- * hysteresis (enter below 590, leave at 610) so a scrollbar appearing near the edge can't flip it.
+ * Compact layout: the stage keeps the scene and controls move to a full-size dock below it. Used
+ * when the kitchen is narrower than 700 px (below that, stage text drops under about 9 px and
+ * dispensers under 24 px tall) or the window is shorter than 500 px (a phone held sideways can't fit
+ * the 4:3 stage). Leaving needs 720 px and 540 px, so a scrollbar or toolbar appearing near an edge
+ * can't flip it back and forth.
  */
-const COMPACT_BELOW_PX = 600;
-const COMPACT_HYSTERESIS_PX = 10;
+const COMPACT_ENTER = { width: 700, height: 500 };
+const COMPACT_LEAVE = { width: 720, height: 540 };
+function nextCompact(was: boolean, width: number, viewportHeight: number): boolean {
+  return was ? !(width >= COMPACT_LEAVE.width && viewportHeight >= COMPACT_LEAVE.height) : width < COMPACT_ENTER.width || viewportHeight < COMPACT_ENTER.height;
+}
+/** How long a status message stays in the live line. */
+const STATUS_MS = 6_000;
 import './remaster.css';
 
 export interface NutriServeRemasterProps {
@@ -84,7 +102,7 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
         </p>
         <ul className="ns-start-notes">
           <li>Six-customer pilot cast. Food, stations and reactions use plain layout studies until final art arrives.</li>
-          <li>Prep timing and finish grading are provisional house rules and may change.</li>
+          <li>Waiting, prep timing, finish grading and how the four scores add up are provisional house rules and may change.</li>
         </ul>
         {problem && (
           <div className="ns-save-problem" role="alert">
@@ -141,7 +159,18 @@ function Kitchen({
   onRestart,
 }: NutriServeRemasterProps & { initial: GameState; onRestart: (profile: Profile, runId: string) => void }) {
   const { state, dispatch, lastError, fatal } = useNutriServeGame(initial, userId);
-  const [announcement, setAnnouncement] = useState('');
+  // One live status line: the latest announcement or rejected command, cleared after STATUS_MS.
+  // seq makes an identical message (a second overheat) count as new and be read out again.
+  const [status, setStatus] = useState({ text: '', seq: 0 });
+  const say = useCallback((text: string) => setStatus((s) => ({ text, seq: s.seq + 1 })), []);
+  useEffect(() => {
+    if (!status.text) return;
+    const id = window.setTimeout(() => setStatus((s) => (s.seq === status.seq ? { ...s, text: '' } : s)), STATUS_MS);
+    return () => window.clearTimeout(id);
+  }, [status]);
+  useEffect(() => {
+    if (lastError) say(lastError.message);
+  }, [lastError, say]);
   const previous = useRef(state);
 
   // Compact layout for narrow screens (see Dockable.tsx).
@@ -150,11 +179,18 @@ function Kitchen({
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(([entry]) =>
-      setCompact((was) => entry.contentRect.width < COMPACT_BELOW_PX + (was ? COMPACT_HYSTERESIS_PX : -COMPACT_HYSTERESIS_PX)),
-    );
+    let width = el.clientWidth;
+    const update = () => setCompact((was) => nextCompact(was, width, window.innerHeight));
+    const observer = new ResizeObserver(([entry]) => {
+      width = entry.contentRect.width;
+      update();
+    });
     observer.observe(el);
-    return () => observer.disconnect();
+    window.addEventListener('resize', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
   }, []);
   // Switching layout remounts every control (portal vs stage), which kills pointer capture without
   // a release event. Let go of anything held so nothing keeps pouring with nobody pressing.
@@ -189,8 +225,8 @@ function Kitchen({
       const r = state.day.results[state.day.results.length - 1];
       messages.push(`Served ${name(r.catalogCustomerId)}: ${r.scores.total} out of 100, ${r.tip} coins tip.`);
     }
-    if (messages.length) setAnnouncement(messages.join(' '));
-  }, [state]);
+    if (messages.length) say(messages.join(' '));
+  }, [state, say]);
 
   // Report a finished day to the wider app once. The outside ledger (keyed by run id) is the guard;
   // the save's reportedDays mirrors it.
@@ -267,7 +303,8 @@ function Kitchen({
   const station = state.selected.station;
   const openTickets = state.tickets.filter((t) => t.servedAtMs === undefined).length;
   const latest = state.day.results[state.day.results.length - 1];
-  const showToast = latest && state.nowMs - latest.servedAtMs < 6_000;
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const showToast = !!latest && state.nowMs - latest.servedAtMs < 6_000 && dismissed !== latest.ticketId;
   const nextRank = RANK_THRESHOLDS[state.profile.rank];
 
   const exit = () => {
@@ -277,7 +314,7 @@ function Kitchen({
 
   return (
     <LayoutContext.Provider value={layout}>
-      <div className={`ns-root${compact ? ' ns-compact' : ''}`} ref={rootRef}>
+      <div className={`ns-root${compact ? ' ns-compact' : ''}${compact && showToast ? ' ns-has-snackbar' : ''}`} ref={rootRef}>
         <header className="ns-hud" inert={modalOpen}>
           <span>
             <b>Day {state.day.number}</b> · {Math.floor(state.nowMs / 60_000)}:{String(Math.floor((state.nowMs % 60_000) / 1000)).padStart(2, '0')}
@@ -323,7 +360,7 @@ function Kitchen({
             {station === 'prep' && <PrepStation state={state} dispatch={dispatch} />}
             {station === 'finish' && <FinishStation state={state} dispatch={dispatch} />}
             <StationTabs state={state} dispatch={dispatch} />
-            {showToast && <ServeToast result={latest} />}
+            {showToast && <ServeToast result={latest} onDismiss={() => setDismissed(latest.ticketId)} />}
           </div>
           {fatal ? (
             <FatalOverlay message={fatal} onExit={onExit} onRestart={() => onRestart(state.profile, state.runId)} />
@@ -344,13 +381,17 @@ function Kitchen({
         )}
 
         <p className="ns-status" role="status" aria-live="polite">
-          {lastError ?? announcement}
+          {status.text}
+          {/* An invisible change so an identical repeat is announced again. */}
+          {status.text && status.seq % 2 ? '\u200b' : ''}
         </p>
         <details className="ns-help" inert={modalOpen}>
           <summary>Controls</summary>
           <p>
-            <kbd>1</kbd>–<kbd>4</kbd> switch stations · <kbd>P</kbd> pause · hold a dispenser or <kbd>Space</kbd> on it to pour · on the finish vessel, arrows
-            move the cursor, hold <kbd>Space</kbd> to drizzle, <kbd>Enter</kbd> places a garnish. Everything works by touch too.
+            <kbd>1</kbd>–<kbd>4</kbd> switch stations · <kbd>P</kbd> pause · hold a dispenser or <kbd>Space</kbd> on it to pour (a quick tap adds a little; a
+            single click starts and a second click stops) · on the finish vessel, pick a tool, then arrows move the cursor, hold <kbd>Space</kbd> to drizzle,{' '}
+            <kbd>Enter</kbd> places a garnish. On a touch screen, press and keep still for a moment before dragging to drizzle or pour; a finger that moves
+            straight away scrolls the page.
           </p>
         </details>
       </div>
@@ -358,9 +399,12 @@ function Kitchen({
   );
 }
 
-function ServeToast({ result }: { result: ServeResult }) {
+function ServeToast({ result, onDismiss }: { result: ServeResult; onDismiss: () => void }) {
   return (
     <Dockable slot="toast" region={boxAuto(110, 54, 370)} className="ns-toast" role="group" aria-label="Last serve">
+      <button type="button" className="ns-toast-close" onClick={onDismiss} aria-label="Dismiss serve result">
+        ×
+      </button>
       <p>
         <b>{name(result.catalogCustomerId)}</b> <span aria-label={`${result.stars} of 5 stars`}>{stars(result.stars)}</span>
       </p>
@@ -375,6 +419,12 @@ function ServeToast({ result }: { result: ServeResult }) {
       <p>
         Total <b>{result.scores.total}</b> · tip {result.tip} coins
         {result.mismatchedOrder && <em> · not what this ticket ordered</em>}
+        {result.contentShare < AGGREGATION_V2.fullCreditShare && (
+          <em title="Waiting, prep and finish count in full only when at least half the ordered food is in the katori">
+            {' '}
+            · katori {Math.round(result.contentShare * 100)}% full
+          </em>
+        )}
       </p>
     </Dockable>
   );
@@ -515,31 +565,42 @@ function DaySummary({ state, dispatch, onExit }: { state: GameState; dispatch: D
         <summary>Nutrition report (separate from service scores)</summary>
         {results.map((r) => {
           const dish = state.dishes.find((d) => d.id === r.dishId);
-          const order = getCatalogCustomer(r.catalogCustomerId)?.order;
-          if (!dish || !order) return null;
-          const n = dishNutrition(dish);
-          const fb = nutritionFeedback(n.totals, order);
+          const ticket = state.tickets.find((t) => t.id === r.ticketId);
+          const goals = getCatalogCustomer(r.catalogCustomerId)?.order;
+          if (!dish || !ticket || !goals) return null;
+          const report = serviceNutritionReport(dish, ticket.order, goals);
+          const t = report.served.totals;
+          const who = name(r.catalogCustomerId);
           return (
             <section key={r.ticketId} className="ns-nutrition">
-              <h3>{name(r.catalogCustomerId)}</h3>
+              <h3>{who}</h3>
               <p>
-                {Math.round(n.totals.calories_kcal)} kcal · protein {Math.round(n.totals.protein_g)} g · carbs {Math.round(n.totals.carbs_g)} g · fiber{' '}
-                {Math.round(n.totals.fiber_g)} g · fat {Math.round(n.totals.fat_g)} g · sodium {Math.round(n.totals.sodium_mg)} mg
+                Ate {Math.round(t.calories_kcal)} kcal · protein {Math.round(t.protein_g)} g · carbs {Math.round(t.carbs_g)} g · fiber {Math.round(t.fiber_g)} g
+                · fat {Math.round(t.fat_g)} g · sodium {Math.round(t.sodium_mg)} mg
               </p>
+              <p className="ns-nutrition-head">Your service</p>
+              {report.changes.length === 0 ? (
+                <p>Served exactly as ordered.</p>
+              ) : (
+                <ul>
+                  {report.changes.map((change) => (
+                    <li key={change}>{change}</li>
+                  ))}
+                </ul>
+              )}
+              <p className="ns-nutrition-head">{who}'s order and their meal goal</p>
               <ul>
-                {fb.notes.map((note) => (
+                {report.orderFit.notes.map((note) => (
                   <li key={note}>{note}</li>
                 ))}
               </ul>
-              {(n.notEaten.spilledDrizzleG > 0 || n.notEaten.fallenGarnishPieces > 0) && (
-                <p className="ns-muted">
-                  Not counted: {n.notEaten.spilledDrizzleG.toFixed(1)} g spilled drizzle, {n.notEaten.fallenGarnishPieces} fallen garnish
-                </p>
-              )}
             </section>
           );
         })}
-        <p className="ns-muted">Game guidance from general meal goals, not medical advice.</p>
+        <p className="ns-muted">
+          The customer chooses the order; your service only changes how close the katori comes to it. Meal goals are general game guidance for a whole plate,
+          not medical advice.
+        </p>
       </details>
 
       <h3>Upgrades</h3>
@@ -557,8 +618,11 @@ function DaySummary({ state, dispatch, onExit }: { state: GameState; dispatch: D
               <button
                 type="button"
                 className="ns-btn ns-btn-small"
-                disabled={owned || locked || state.profile.coins < u.cost}
-                onClick={() => dispatch({ type: 'buyUpgrade', upgradeId: u.id })}
+                // aria-disabled, not disabled: buying keeps focus on the button (now "Owned").
+                aria-disabled={owned || locked || state.profile.coins < u.cost || undefined}
+                onClick={() => {
+                  if (!owned && !locked && state.profile.coins >= u.cost) dispatch({ type: 'buyUpgrade', upgradeId: u.id });
+                }}
               >
                 {owned ? 'Owned' : locked ? `Rank ${u.unlockRank}` : `${u.cost} coins`}
               </button>

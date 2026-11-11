@@ -1,7 +1,7 @@
 // Ticket rail (top) and the selected paper ticket (right). Tickets are code-native UI text.
 import React from 'react';
 import { DRIZZLES, GARNISHES } from '../data/finishItems.ts';
-import { getCatalogCustomer, getFood, type GameState, type Ticket } from '../simulation/index.ts';
+import { getCatalogCustomer, getFood, type Dish, type GameState, type Ticket } from '../simulation/index.ts';
 import type { Dispatch } from './useNutriServeGame.ts';
 import { box } from './stage.ts';
 import { Dockable } from './Dockable.tsx';
@@ -15,6 +15,19 @@ export function foodLabel(id: string): string {
 
 export function customerName(ticket: Ticket): string {
   return getCatalogCustomer(ticket.catalogCustomerId)?.name ?? ticket.catalogCustomerId;
+}
+
+/** The open ticket a dish was started for, if it is still open. */
+export function dishTicket(state: GameState, dish: Dish | undefined): Ticket | undefined {
+  if (!dish?.forTicketId) return undefined;
+  return state.tickets.find((t) => t.id === dish.forTicketId && t.servedAtMs === undefined);
+}
+
+/** "small · Sambar · #2": size, main food and the ticket it was started for. */
+export function dishLabel(state: GameState, dish: Dish): string {
+  const main = dish.build.main?.foodId ?? dish.build.base?.foodId;
+  const ticket = dishTicket(state, dish);
+  return `${dish.size} · ${main ? foodLabel(main) : 'empty'}${ticket ? ` · #${ticket.number}` : ''}`;
 }
 
 export function TicketDetails({ ticket }: { ticket: Ticket }) {

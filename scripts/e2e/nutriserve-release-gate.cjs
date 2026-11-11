@@ -6,8 +6,9 @@
 // For desktop (1280px) and phone (iPhone 13) it plays one whole day: two concurrent orders, Save &
 // exit mid-prep then Continue (progress must survive), one dish served to the wrong ticket, the rest
 // served normally, then the day summary. It also records sprite download/decoded-memory costs, and
-// first runs regression checks for the second audit (held controls across a layout switch, click
-// fallback on hold controls, dialog focus and shortcuts, and keeping progress from a rejected save).
+// first runs regression checks for the second and third audits (held controls across a layout
+// switch, click-only and quick-tap input on hold controls, phone swipes scrolling instead of
+// pouring, dialog focus and shortcuts, and keeping progress from a rejected save).
 // Requires the `playwright` package and a Chromium it can launch. Exit code 1 on any failed check.
 const { chromium, devices } = require('playwright');
 const fs = require('node:fs');
@@ -166,6 +167,11 @@ async function runDevice(browser, name, contextOptions) {
   await station('Prep');
   const busy = await page.getByRole('button', { name: /^Hold to boost slot/ }).count();
   check(busy === 2, `${name}: two prep slots cooking (${busy})`);
+  // Each slot is guided by its own dish's ticket, whichever ticket the rail has selected.
+  const want = (prep) => (/QUICK/.test(prep) ? 'Quick' : /SLOW/.test(prep) ? 'Slow' : 'Simmer');
+  const slotText = async (n) => (await page.getByRole('region', { name: `Prep slot ${n}` }).innerText()).replace(/\s+/g, ' ');
+  const [s1, s2] = [await slotText(1), await slotText(2)];
+  check(s1.includes(`#1 wants ${want(t1.prep)}`) && s2.includes(`#2 wants ${want(t2.prep)}`), `${name}: each prep slot shows its own dish's target`);
   await page.screenshot({ path: path.join(OUT, `${name}-concurrent.png`), fullPage: true });
 
   // 2. Save & exit mid-prep, then continue.
@@ -285,6 +291,7 @@ async function runRegressions(browser) {
   await storeFinishSave();
   await open();
   await page.getByRole('button', { name: /^Continue day/ }).click();
+  await page.getByRole('button', { name: 'Curd swirl', exact: true }).click(); // no tool is picked by default
   const vessel = page.locator('.ns-vessel-top');
   const v = await vessel.boundingBox();
   await page.mouse.move(v.x + v.width / 2, v.y + v.height / 2);
@@ -299,14 +306,24 @@ async function runRegressions(browser) {
   check(drizzling && released, `regressions: drizzle released across a layout switch (held ${drizzling}, released ${released})`);
   await page.setViewportSize({ width: 1000, height: 900 });
 
-  // 2. A plain click on a hold control (switch access, screen readers) still pours.
+  // 2. Click-only input (switch access, screen readers): one click starts the pour, the next stops
+  //    it. A quick real mouse click pours the minimum (9 g of a main), not nothing.
   await page.getByRole('button', { name: /^Build station/ }).click();
   await page.getByRole('button', { name: 'Medium', exact: true }).click();
   const dispenser = page.getByRole('button', { name: /^Hold to add .* as main$/ }).first();
+  const mainGrams = async () => Number(((await page.locator('.ns-gauges').innerText()).match(/Main (\d+) g/) || [])[1]);
   await dispenser.evaluate((el) => el.click());
-  await page.waitForTimeout(100);
-  const gauges = await page.locator('.ns-gauges').innerText();
-  check(/Main 9 g/.test(gauges), `regressions: a click on a dispenser pours one tap (${gauges.replace(/\s+/g, ' ').slice(0, 60)})`);
+  const latched = await dispenser.getAttribute('aria-pressed');
+  await page.waitForTimeout(400);
+  await dispenser.evaluate((el) => el.click());
+  const afterLatch = await mainGrams();
+  await page.waitForTimeout(300);
+  const stopped = (await mainGrams()) === afterLatch;
+  check(latched === 'true' && afterLatch >= 20 && stopped, `regressions: click starts and a second click stops a pour (${afterLatch} g, stopped ${stopped})`);
+  await dispenser.click();
+  await page.waitForTimeout(150);
+  const afterTap = await mainGrams();
+  check(afterTap - afterLatch === 9, `regressions: a quick mouse click pours the 9 g minimum (+${afterTap - afterLatch} g)`);
 
   // 3. The pause dialog keeps focus, resumes on Escape, and gives focus back.
   const tab = page.getByRole('button', { name: /^Prep station/ });
@@ -342,6 +359,43 @@ async function runRegressions(browser) {
 
   check(errors.length === 0, `regressions: no app errors${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   await context.close();
+
+  // 5. Phone touch: a swipe that starts on a dispenser scrolls the page and pours nothing; a quick
+  //    tap pours the minimum.
+  const phone = await browser.newContext({ ...devices['iPhone 13'] });
+  const p = await phone.newPage();
+  await p.goto(`${BASE}/?user=gate-touch-${Date.now()}`, { waitUntil: 'networkidle' });
+  await p.getByRole('button', { name: 'Games' }).first().click();
+  await p.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' }).click();
+  await p.getByRole('button', { name: 'New game' }).click();
+  await p.getByRole('button', { name: /^Build station/ }).click();
+  await p.getByRole('button', { name: 'Medium', exact: true }).click();
+  const cdp = await phone.newCDPSession(p);
+  const target = p.getByRole('button', { name: /^Hold to add .* as main$/ }).first();
+  await target.scrollIntoViewIfNeeded();
+  await p.evaluate(() => window.scrollBy(0, -120));
+  await p.waitForTimeout(200);
+  const tb = await target.boundingBox();
+  const grams = async () => Number(((await p.locator('.ns-gauges').innerText()).match(/Main (\d+) g/) || [])[1]);
+  const y0 = await p.evaluate(() => scrollY);
+  const [x, y] = [tb.x + tb.width / 2, tb.y + tb.height / 2];
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let i = 1; i <= 10; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + 12 * i }] });
+    await p.waitForTimeout(16);
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await p.waitForTimeout(400);
+  const y1 = await p.evaluate(() => scrollY);
+  const swiped = await grams();
+  check(y1 < y0 && swiped === 0, `regressions: phone swipe on a dispenser scrolls (${y0} -> ${y1}) and pours nothing (${swiped} g)`);
+  await target.scrollIntoViewIfNeeded();
+  const tb2 = await target.boundingBox();
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: tb2.x + tb2.width / 2, y: tb2.y + tb2.height / 2 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await p.waitForTimeout(400);
+  check((await grams()) === 9, `regressions: a quick phone tap pours the 9 g minimum (${await grams()} g)`);
+  await phone.close();
 }
 
 (async () => {

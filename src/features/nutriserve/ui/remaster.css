@@ -51,7 +51,7 @@
 /* Buttons */
 .ns-btn { font: inherit; font-weight: 700; border: 2px solid var(--line); background: #fff; color: var(--ink); border-radius: 0.5em; padding: 0.35em 0.7em; cursor: pointer; line-height: 1.15; }
 .ns-btn:hover:not(:disabled) { background: #fff3cf; }
-.ns-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ns-btn:disabled, .ns-btn[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
 .ns-btn[aria-pressed='true'] { background: #ffe08a; }
 .ns-btn-primary { background: var(--primary); color: var(--primary-ink); }
 .ns-btn-primary:hover:not(:disabled) { background: #156339; }
@@ -113,13 +113,14 @@
 .ns-dispenser-row { margin: 0; border: 2px solid var(--line); border-radius: 0.5em; background: #fff9ecee; padding: 0.1em 0.3em 0.3em; display: grid; grid-template-columns: 1fr 1fr; gap: 0.25em; min-width: 0; }
 .ns-dispenser-row legend { font-weight: 800; font-size: 0.8em; padding: 0 0.2em; }
 .ns-dispenser-row legend small { font-weight: 400; }
-/* No text selection or iOS callout on a long press, which would cancel the hold. */
-.ns-hold { font: inherit; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* No text selection or iOS callout on a long press, which would cancel the hold. Panning stays
+   allowed: a touch that moves before the hold starts scrolls (HoldButton.tsx). */
+.ns-hold { font: inherit; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .ns-dispenser { font-size: 0.72em; font-weight: 700; border: 2px solid var(--line); border-radius: 0.45em; background: #fff; padding: 0.35em 0.4em; cursor: pointer; display: flex; align-items: center; gap: 0.3em; min-width: 0; text-align: left; }
 .ns-dispenser-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ns-dispenser i, .ns-tool i { display: inline-block; width: 0.9em; height: 0.9em; border-radius: 50%; border: 1.5px solid var(--line); }
 .ns-dispenser[aria-pressed='true'] { background: #ffe08a; box-shadow: inset 0 0 0 0.15em #f2a30f; }
-.ns-dispenser:disabled { opacity: 0.4; cursor: not-allowed; }
+.ns-dispenser:disabled, .ns-dispenser[aria-disabled='true'] { opacity: 0.4; cursor: not-allowed; }
 .ns-actions { align-items: center; }
 
 /* Prep */
@@ -144,16 +145,20 @@
 .ns-serve { display: flex; flex-direction: column; gap: 0.3em; border-top: 2px dashed #b9a98c; padding-top: 0.3em; }
 
 /* Finish */
-.ns-vessel-top { cursor: crosshair; border-radius: 50%; touch-action: none; -webkit-touch-callout: none; }
-/* With a garnish selected the vessel is tapped, not dragged, so a swipe over it scrolls the page. */
-.ns-vessel-top.ns-tool-garnish { touch-action: manipulation; cursor: pointer; }
+/* Panning stays allowed: a touch that moves before a drizzle starts scrolls (FinishStation.tsx). */
+.ns-vessel-top { cursor: crosshair; border-radius: 50%; touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.ns-vessel-top.ns-tool-garnish { cursor: pointer; }
+.ns-vessel-top.ns-tool-none { cursor: default; }
+.ns-vessel-hint { position: absolute; left: 15%; right: 15%; top: 42%; text-align: center; font-weight: 800; font-size: 0.85em; background: #fff9ecee; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.3em; pointer-events: none; }
 .ns-tools { display: flex; flex-wrap: wrap; gap: 0.3em; align-content: flex-start; }
 .ns-tool { font: inherit; font-size: 0.75em; font-weight: 700; border: 2px solid var(--line); background: #fff; border-radius: 0.45em; padding: 0.2em 0.45em; display: inline-flex; align-items: center; gap: 0.3em; cursor: pointer; }
 .ns-tool svg { width: 1.1em; height: 1.1em; }
 .ns-tool[aria-pressed='true'] { background: #ffe08a; }
 
 /* Toast and overlays */
-.ns-toast { background: var(--paper); border: 3px solid var(--line); border-radius: 0.6em; padding: 0.5em 0.8em; box-shadow: 0.3em 0.3em 0 #0003; pointer-events: none; }
+/* The serve result takes taps (so nothing hidden under it is pressed by accident) and can be dismissed. */
+.ns-toast { background: var(--paper); border: 3px solid var(--line); border-radius: 0.6em; padding: 0.5em 2.2em 0.5em 0.8em; box-shadow: 0.3em 0.3em 0 #0003; }
+.ns-toast-close { position: absolute; top: 0.2em; right: 0.2em; font: inherit; font-size: 1.2em; font-weight: 900; line-height: 1; width: 1.6em; height: 1.6em; border: 2px solid var(--line); border-radius: 50%; background: #fff; cursor: pointer; }
 .ns-toast p { margin: 0.2em 0; }
 .ns-toast ul { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.2em; padding: 0; margin: 0.3em 0; text-align: center; }
 .ns-toast li { display: flex; flex-direction: column; }
@@ -167,6 +172,7 @@
 .ns-summary th, .ns-summary td { border-bottom: 1px solid #d8cdb5; padding: 4px; text-align: right; }
 .ns-summary th[scope='row'], .ns-summary thead th:first-child { text-align: left; }
 .ns-nutrition h3 { margin: 8px 0 2px; font-size: 14px; }
+.ns-nutrition .ns-nutrition-head { font-weight: 700; margin-top: 4px; }
 .ns-nutrition p, .ns-nutrition ul { margin: 2px 0; font-size: 13px; }
 .ns-upgrades { list-style: none; padding: 0; margin: 4px 0 10px; display: flex; flex-direction: column; gap: 6px; }
 .ns-upgrades li { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -198,12 +204,16 @@
 .ns-dock .ns-dispenser { font-size: 14px; }
 .ns-dock .ns-gauge-track { height: 12px; }
 .ns-dock .ns-gauge-needle { width: 14px; height: 14px; }
-.ns-dock .ns-vessel-top { width: min(100%, 340px); aspect-ratio: 1; margin: 0 auto; }
+.ns-dock .ns-vessel-top { width: min(100%, 340px); aspect-ratio: 1; margin: 0 auto; position: relative; }
 .ns-dock .ns-tray .ns-btn, .ns-dock .ns-tray-label { font-size: 15px; }
 /* The serve result floats as a snackbar instead of sitting in the dock, so nothing below it jumps
    when it appears or goes. It doesn't take pointer input, so controls under it still work. */
 .ns-dock .ns-toast { font-size: 14px; position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 50; max-width: 520px; margin: 0 auto; padding: 6px 10px; box-shadow: 0 4px 14px #0005; }
 .ns-dock .ns-toast p { margin: 0; }
+.ns-dock .ns-toast { padding-right: 56px; }
+.ns-dock .ns-toast-close { width: 44px; height: 44px; top: 50%; right: 6px; transform: translateY(-50%); font-size: 22px; }
+/* While the snackbar shows, the page can scroll its last controls clear of it. */
+.ns-compact.ns-has-snackbar { padding-bottom: 200px; }
 .ns-dock .ns-toast ul { margin: 2px 0; display: flex; flex-wrap: wrap; gap: 0 12px; }
 .ns-dock .ns-toast li { flex-direction: row; align-items: baseline; gap: 4px; }
 .ns-dock .ns-toast li small { font-size: 12px; }

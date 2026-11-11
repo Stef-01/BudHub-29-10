@@ -5,7 +5,7 @@ import { gradeReferenceBuild, gradeReferenceMix, MIX_TARGETS } from '../domain/r
 import { DRIZZLES } from '../data/finishItems.ts';
 import { lookup } from './lookup.ts';
 import {
-  AGGREGATION_V1,
+  AGGREGATION_V2,
   BUILD_V1,
   ECONOMY_V1,
   FINISH_V1,
@@ -194,10 +194,31 @@ export function gradeWaitingV1(ticket: Ticket, servedAtMs: number, effects?: Upg
 
 // --- Totals & rewards ------------------------------------------------------------
 
-export function aggregateV1(scores: Omit<StationScores, 'total'>): number {
-  const w = AGGREGATION_V1.weights;
+/**
+ * Share (0-1) of the ordered food that is in the katori: for each component, the grams of the
+ * ordered food up to the ordered grams, over the ordered total. A wrong food counts as none.
+ */
+export function contentShare(dish: Dish, order: TicketOrder): number {
+  const ordered = { base: order.baseId, main: order.mainId, side: order.sideId } as const;
+  let have = 0;
+  let want = 0;
+  for (const c of ['base', 'main', 'side'] as const) {
+    const ideal = order.idealG[c];
+    want += ideal;
+    const portion = dish.build[c];
+    if (portion && portion.foodId === ordered[c]) have += Math.min(ideal, portion.mg / 1000);
+  }
+  return want > 0 ? Math.round((have / want) * 100) / 100 : 0;
+}
+
+/** Equal-weight mean with the AGGREGATION_V2 content gate on waiting, prep and finish. */
+export function aggregateV2(scores: Omit<StationScores, 'total'>, share: number): number {
+  const w = AGGREGATION_V2.weights;
+  const gate = Math.max(0, Math.min(1, share / AGGREGATION_V2.fullCreditShare));
   const sum = w.waiting + w.build + w.prep + w.finish;
-  return clampScore((scores.waiting * w.waiting + scores.build * w.build + scores.prep * w.prep + scores.finish * w.finish) / sum);
+  return clampScore(
+    (scores.waiting * w.waiting * gate + scores.build * w.build + scores.prep * w.prep * gate + scores.finish * w.finish * gate) / sum
+  );
 }
 
 export function rewardsV1(total: number, size: DishSize): { tip: number; points: number; stars: number } {

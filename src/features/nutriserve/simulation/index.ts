@@ -4,7 +4,8 @@ export * from './params.ts';
 export { advanceGame, applyCommand, createGame, newProfile, PARAM_VERSIONS, PILOT_CUSTOMER_POOL, PREP_SLOT_COUNT } from './game.ts';
 export { deserializeGame, salvageSave, SaveError, serializeGame, SAVE_FORMAT, type SaveSalvage } from './save.ts';
 export {
-  aggregateV1,
+  aggregateV2,
+  contentShare,
   dishMatchesOrder,
   gradeFinishV1,
   gradeIndianBuildV1,

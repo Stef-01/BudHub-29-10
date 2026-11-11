@@ -15,13 +15,14 @@ export type PrepLevel = 'quick' | 'regular' | 'slow';
 export const SIZE_FOR_PLATE = { Light: 'small', Regular: 'medium', Hearty: 'large' } as const;
 
 export const BUILD_V1 = {
-  // v2: adds the tap pour (pourTap) so switch/screen-reader users, whose browsers send only clicks,
-  // can portion too. Hold rates are unchanged.
-  version: 'build-v2',
+  // v3: every press of a dispenser pours at least minPressMs worth, so a quick tap (mouse, touch or
+  // an assistive-tech activation) always adds a small fixed amount instead of nothing. Hold rates
+  // are unchanged.
+  version: 'build-v3',
   /** Pour rates while a dispenser is held, in milligrams per millisecond (= grams per second). */
   pourRateMgPerMs: { base: 80, main: 90, side: 50 },
-  /** A single tap (click without a hold) pours this many ms worth. */
-  tapPourMs: 100,
+  /** The least one press pours, in ms of pouring (100 ms = 8 g base, 9 g main, 5 g side). */
+  minPressMs: 100,
   /**
    * ADAPTATION: the reference build has three categories (cup, mixable, syrup). Here they are
    * vessel + base fill, main, and side. Choosing the wrong base food when the vessel size is right
@@ -33,7 +34,10 @@ export const BUILD_V1 = {
 } as const;
 
 export const PREP_V1 = {
-  version: 'prep-v1-provisional',
+  // v2: overheating lets go of the boost and takes the handi off the flame (no cooking at all)
+  // until it cools to heatUnlockLevel. In v1 overheating cost nothing: the lockout cycle gave the
+  // same boost share as never overheating, and a latched boost cycled forever.
+  version: 'prep-v2-provisional',
   /**
    * PROVISIONAL (Q08 open): reference prep quantities are internal units whose time conversion is
    * unresolved. This rate turns them into simulation time for play-testing only.
@@ -45,7 +49,7 @@ export const PREP_V1 = {
   heatMax: 10_000,
   heatRisePerMs: 5,
   heatCoolPerMs: 2,
-  /** After overheating, boost is locked until heat falls back to this level. */
+  /** After overheating, boost is locked and nothing cooks until heat falls back to this level. */
   heatUnlockLevel: 3_000,
   /** PROVISIONAL cap: the reference's static initializer declares 3600; its role is unverified. */
   maxUnits: 3_600,
@@ -115,10 +119,23 @@ export const WAITING_V1 = {
   ticketPointsPerSecond: 0.6,
 } as const;
 
-/** PROVISIONAL (R02 open): how the four station scores combine. Equal weights for now. */
+/** PROVISIONAL (R02 open): how the four station scores combine. Equal weights. Superseded by V2. */
 export const AGGREGATION_V1 = {
   version: 'aggregation-v1-provisional',
   weights: { waiting: 1, build: 1, prep: 1, finish: 1 },
+} as const;
+
+/**
+ * PROVISIONAL (R02 open): equal weights, plus a content gate. Under V1 a straight-through empty
+ * katori averaged 44 (waiting 100, prep and finish partial credit). Now the waiting, prep and
+ * finish scores count in full only when the katori holds at least fullCreditShare of the ordered
+ * food (the right foods, up to the ordered grams), and proportionally less below that. The build
+ * score is never gated.
+ */
+export const AGGREGATION_V2 = {
+  version: 'aggregation-v2-provisional',
+  weights: { waiting: 1, build: 1, prep: 1, finish: 1 },
+  fullCreditShare: 0.5,
 } as const;
 
 export const ECONOMY_V1 = {
