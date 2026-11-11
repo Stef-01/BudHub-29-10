@@ -6,7 +6,7 @@
     },
     {
       "path": "services/nutriserveCharacters.ts",
-      "sha256": "ccf3c56a14ee01e4ede80bd2a62c92d67bc91865bd79671c04e85ac10c872372"
+      "sha256": "812a3d8d2d00f33ab62697c7f6e1c10d05436fecf1889337362978d813481d11"
     }
   ],
   "method": "TypeScript AST of exact exported array initializers; unrelated tips excluded",

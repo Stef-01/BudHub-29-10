@@ -8,9 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "verify-db": "npx tsx scripts/verifyDeployment.ts",
-    "test:nutriserve": "node --experimental-strip-types --test tests/nutriserve-reference.test.mjs",
+    "test:nutriserve": "node --experimental-strip-types --test tests/nutriserve-*.test.mjs",
     "check:nutriserve-assets": "node scripts/check-nutriserve-assets.mjs",
-    "catalog:nutriserve": "node scripts/reconcile-nutriserve-catalog.mjs"
+    "catalog:nutriserve": "node scripts/reconcile-nutriserve-catalog.mjs",
+    "catalog:nutriserve-sim": "node scripts/generate-nutriserve-catalog.mjs",
+    "typecheck:nutriserve-sim": "tsc -p tsconfig.nutriserve-sim.json --noEmit"
   },
   "dependencies": {
     "@google/genai": "1.28.0",
