@@ -1,0 +1,57 @@
+# Reference-driven asset production
+
+Revision: 10 November 2026. Owner: Codex for generation and visual acceptance; Claude for consuming approved assets and implementing mechanics. This supersedes the earlier soft hand-painted art direction.
+
+## The style contract
+
+Use the **classic** Papa's Freezeria visual reference, not modern realistic food illustration or a mobile advertising portrait. Reference assets stay in the local investigation area; production art depicts original NutriServe characters and Indian food.
+
+Characters use oversized heads, hollow vertical oval eyes, a minimal mouth, narrow limbs, simplified hands, large rounded shoes, clear dark contours and restrained flat color shapes. A working head-to-full-body target of roughly 35–40% is an art direction choice inferred from reference inspection, not a recovered engine constant. Preserve individual face/hair/clothing silhouettes; do not clone the same head across the full cast. Richer character/body/age variation is still needed beyond the six-person pilot.
+
+At the 640 × 480 stage, the sprite must remain readable at 120–180 CSS pixels in a queue and at larger serving scale. Gameplay machinery needs distinct silhouettes and high-contrast controls. Use a paper order ticket at the right and compact station tabs along the bottom. Four prep slots are required. Order/build/prep/finish are green/purple/orange/blue in the review bench, matching the reference's station organization.
+
+Reject realistic skin, photographic anatomy, painterly textures, detailed irises, soft portrait lighting, glossy 3D characters, ambiguous food silhouettes, flattened alpha, or assets that only look good enlarged. Backgrounds should support customer/tool readability. The current room and bowl in the review bench are editable layout studies, not approved final station/food assets.
+
+## Repeatable production loop
+
+1. **Pin the reference.** Select the original screenshot or runtime frame relevant to the asset. Record source URL/artifact digest, exact state, and whether it is official imagery or a REA capture. Record what is visible and what is inferred.
+2. **Choose one master.** Approve a representative character, vessel or machine at native display size before expanding a family. Arjun V3 is the current idle-character master. The rejected realistic V1 and long-body V2 remain local comparison evidence, outside the shipping registry.
+3. **Write a structured prompt.** Specify subject identity, required silhouette, palette, orientation, size/padding, transparent background, style reference roles and prohibited details. Keep approved parts fixed during edits. One generation call per asset/state; do not ask a sheet of unrelated sprites to serve as individual production files.
+4. **Generate with the built-in image tool.** Use original references plus the approved master. Preserve the original output file. Copy accepted candidates into versioned repo filenames; never silently overwrite a reviewed revision.
+5. **Inspect the actual file.** Measure dimensions, alpha, opaque-like area, visible bounds and foot anchor. The tool's RGB preview can show a halo in pixels whose alpha is zero. Judge edges after compositing on cream, saturated green, dark and checkerboard backgrounds. Do not erase hidden RGB by hand unless a real render defect is established.
+6. **Render with neighbors.** Use `/nutriserve-art-lab.html`. Check the complete cast at 120/180/260px, then in the scene. Inspect cropped/occluded feet, outline weight, apparent age, face readability and visual consistency. Inspect phone and desktop widths. Avoid filtering/tinting a character to simulate another identity.
+7. **Capture the review with REA.** Use a declared browser scenario to select characters, switch station and change the alpha background. Retain the complete Evidence record, screenshots, step outcomes, console findings and cleanup status. A successful capture is not an automatic aesthetic pass.
+8. **Reject → target one defect → regenerate → rerender.** Each revision records failures and the corrective prompt. Do not propagate a failed style into the rest of the catalog. A sibling asset change triggers a family check, not a re-investigation of every unrelated subsystem.
+9. **Promote deliberately.** Set `review.status` to `accepted-pilot-idle` only after visual inspection and technical checks. Record the Evidence ID. The production registry contains accepted files only; unfinished states remain listed explicitly, never aliased to an idle image.
+10. **Integrate and verify.** Run asset integrity checks, focused typecheck, scoring tests when relevant, production build and a browser review of the actual consuming component. Re-capture only where the change or failure warrants it.
+
+## Current delivery and limits
+
+Six original transparent 1024 × 1536 PNG idle sprites: `arjun_fit`, `priya_balanced`, `rohan_light`, `maya_protein`, `vikram_lowsodium`, `ananya_breakfast`. Source RGBA interiors mostly have alpha 252–254; they render as visually solid. The validator deliberately uses an explicit opaque-like threshold of 245 and also records exact transparent-pixel counts. It never claims all interior pixels equal 255.
+
+The runtime registry is `src/features/nutriserve/assets/characters.ts`; metadata/provenance is `public/assets/nutriserve/manifest.json`; shared rendering is `CustomerSprite.tsx`. The current game header uses these six sprites when their IDs appear; other customers keep their existing visuals. Happy/sad result art is **not** replaced by idle sprites. That mixed-style transition is a known pilot limitation until reaction states are delivered.
+
+Sprite source files are approximately 1.1–1.2 MB each. This pass preserves the generated masters without lossy processing. Mobile delivery needs explicitly reviewed scaled/WebP derivatives before full-catalog expansion; keep anchors identical and compare composited derivatives to source. Do not ship 53 full-resolution masters in an eagerly loaded scene.
+
+## Production queue and dependencies
+
+| Family | Required work | Acceptance dependency |
+|---|---|---|
+| Pilot cast reactions | Happy, impatient, disappointed, taking-order poses for the six pilot IDs | Preserve identity, clothes, scale, foot anchor; do not paint emotions into UI text |
+| Animation | Walk/enter/leave and small idle motion; separate parts or authored frames | Rig/pivot test, no sliding feet, reduced-motion mode; changing expressions must not stretch the face |
+| Remaining cast | Reconcile every actual `CUSTOMER_CHARACTERS` ID on the branch being built | Unique silhouettes and full-state coverage; palette/age/body variation review |
+| Vessel master | Steel katori in three sizes, back shell/front rim/food mask | Camera pitch, fill geometry and pointer target approved together |
+| Food pilot | `rice_white`, `rice_brown`, `rice_red`, `chana_masala`, `palak_dal`, `rajma_masala`, `paneer_butter_masala`, `mixed_veg_curry`, `raita`, `roti`, `sprouts_salad`, `samosa` | Fixed camera and light; native-size identification; food IDs must exist in current main catalog |
+| Food states | Portion/pour/prepared/garnish layers only where reachable by mechanics | Vessel masks and recipe adapter locked; prepared food nutrients counted once |
+| Stations | Order background, build dispensers, four prep machines, finish shelves/tools | Placement contract and original station UI audit; no interactive text baked into images |
+| UI | Ticket icons, tool cursors, meter face, stars, buttons, upgrade icons | Code-native geometry/text where practical; keyboard focus and large touch targets |
+| Decor/progression | Shop props and placements for implemented upgrades | Only generate items reachable in the progression model |
+| Audio | Original bowl/ladle/pour/counter Foley, UI cues, ambience, music | Provenance and source project, levels/loop checks; image generation does not create audio |
+
+The TypeScript AST reconciliation of the exact current-main `FOOD_LIBRARY` and `CUSTOMER_CHARACTERS` initializers found **49 foods and 33 customers**, with six accepted idle sprites and 27 remaining idle identities. See `asset-roadmap.json` for every ID and status. Earlier 55-food/53-customer counts came from `old`. Re-run reconciliation when the catalog changes; a runtime registry must never silently claim planned IDs have accepted assets.
+
+## Prompt family
+
+The source prompts and per-character identities are retained in `asset-prompts.json`. Each uses the approved master and official screenshot 09 as references. The decisive constraints are: flat classic Flash cartoon, head roughly 36–39% of total height, small hollow oval eyes, narrow tubular arms, short legs and oversized shoes, dark uniform outlines, one hard-edged shadow at most, full-body left-facing idle, transparent padding, no realistic portrait/irises/texture/lighting.
+
+For each later pose, pass the exact approved identity as the edit target and change only pose/expression. Asset IDs, states and dimensions are part of the contract. Claude should request a missing asset by ID/state and proceed with unrelated mechanics, rather than fabricate or recolor a substitute and mark it complete.

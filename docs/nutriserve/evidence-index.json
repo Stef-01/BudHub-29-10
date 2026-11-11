@@ -1,0 +1,359 @@
+{
+  "version": 1,
+  "date": "2026-11-10",
+  "archive": {
+    "url": "https://github.com/SJRNoodles/Flash-Game-Archive",
+    "commit": "eaab9d2c23ec9b876f4fec670ce4713aa3f68a1a"
+  },
+  "implementationBase": "913c4ef8f5a41c5573b8ac722dc6d30f311ad912",
+  "outerSha256": "665cd0ec91becc26c96867765903e330a2da4480cc7890365fbe1426cd06b509",
+  "innerSha256": "143df3e9a57e038711b3442e252d14bb03946e31ad1dd7ac27a0889dca5f26de",
+  "bytecode": [
+    {
+      "method": 138,
+      "owner": "_-OW",
+      "name": "_-Oc",
+      "offset": 592344,
+      "length": 838,
+      "bodySha256": "3c5abc6e0d6cdcfdb4a1f9aeac908ff4a97785bffccf11bec2f149de881ccee4",
+      "decodedBytesMatch": true,
+      "evidenceType": "custom static AVM2 parsing; not a REA record"
+    },
+    {
+      "method": 139,
+      "owner": "_-OW",
+      "name": "_-4x",
+      "offset": 593192,
+      "length": 941,
+      "bodySha256": "5ae6d2037dada22ee7f99b8ff981037474efc5cb8ada562d115fe333a8f20023",
+      "decodedBytesMatch": true,
+      "evidenceType": "custom static AVM2 parsing; not a REA record"
+    },
+    {
+      "method": 140,
+      "owner": "_-OW",
+      "name": "_-OL",
+      "offset": 594143,
+      "length": 9331,
+      "bodySha256": "b99efb438127913183f4a4f78dcd6413a4dcda8d181f49c1b9726572d50c6608",
+      "decodedBytesMatch": true,
+      "evidenceType": "custom static AVM2 parsing; not a REA record"
+    },
+    {
+      "method": 141,
+      "owner": "_-OW",
+      "name": "_-1f",
+      "offset": 603484,
+      "length": 2207,
+      "bodySha256": "f77ec9ea9779b7a1a5ff263a819315be3dd6b4294612b86b62f4f73c020a6ab9",
+      "decodedBytesMatch": true,
+      "evidenceType": "custom static AVM2 parsing; not a REA record"
+    },
+    {
+      "method": 200,
+      "owner": "_-5A",
+      "name": "_-Tb",
+      "offset": 624460,
+      "length": 2552,
+      "bodySha256": "540a3c794455981b5cc492b28f0f00ddc11afa4283790d01aeb775b8b590e9d3",
+      "decodedBytesMatch": true,
+      "evidenceType": "custom static AVM2 parsing; not a REA record"
+    },
+    {
+      "method": 749,
+      "owner": "_-BZ",
+      "name": "$staticinit",
+      "offset": 828237,
+      "length": 118,
+      "bodySha256": "765dd050f2a889550bcade04f813e5dcd4cb81e80178596b7337364f9108b834",
+      "decodedBytesMatch": true,
+      "evidenceType": "custom static AVM2 parsing; not a REA record"
+    },
+    {
+      "method": 789,
+      "owner": "_-BZ",
+      "name": "_-Jh",
+      "offset": 844619,
+      "length": 1027,
+      "bodySha256": "9659555a78f4504b3696f4c88fa9750a65a505455b44fbfc773af309bb98d8fd",
+      "decodedBytesMatch": true,
+      "evidenceType": "custom static AVM2 parsing; not a REA record"
+    }
+  ],
+  "officialReferences": [
+    {
+      "number": "01",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_01.jpg",
+      "sha256": "fe9b5dc560cd97abbae6005957051f3dbb801d0a6a22cf68b53c538cab600290",
+      "bytes": 106238,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    },
+    {
+      "number": "02",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_02.jpg",
+      "sha256": "e5a1f88e5475acd56536e824f2857ea0df4c22be6cd66e02b19e160db14be011",
+      "bytes": 63650,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    },
+    {
+      "number": "03",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_03.jpg",
+      "sha256": "ab39b3bd0cd0f851e90a9c0a86f233a61225ff5cd2a4d05fe4be58955c0856f2",
+      "bytes": 47184,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    },
+    {
+      "number": "04",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_04.jpg",
+      "sha256": "be6f084281bdbb0cee7b3d9e200830fa5511ad13a3341fb79a3db100b3eab7e1",
+      "bytes": 56118,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    },
+    {
+      "number": "05",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_05.jpg",
+      "sha256": "54987c5efaaf0599b0b51327c7cf7d45697d1241f407787c41aedf9b5ba22bfc",
+      "bytes": 58097,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    },
+    {
+      "number": "06",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_06.jpg",
+      "sha256": "eb57f3c67b16b7b5fe3834e09dd3d6f10eb09425466b81eb089d52d4b482b3e7",
+      "bytes": 39879,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    },
+    {
+      "number": "07",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_07.jpg",
+      "sha256": "44bb978b8c8a9cf05f78c2515aacab174f95243eb0437fd9e51001dc6934be80",
+      "bytes": 43488,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    },
+    {
+      "number": "08",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_08.jpg",
+      "sha256": "887d63c28d7a280ea39887d406c8a292394b77f708ad4acf5e35e155dd910649",
+      "bytes": 70585,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    },
+    {
+      "number": "09",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_09.jpg",
+      "sha256": "183b135c47c4837d1af6c6849d3ee9cdbd152cb3ab9c808ef36f09d5b0f13146",
+      "bytes": 64984,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    },
+    {
+      "number": "10",
+      "url": "https://i.flipline.com/gamefiles/papasfreezeria/images/screenshot_10.jpg",
+      "sha256": "ba7bfa063d50b9312ee20d488f13f6dc07768ce36eab63fcf67a5bbc40c90182",
+      "bytes": 71730,
+      "type": "Official primary screenshot; not original-game runtime capture by REA"
+    }
+  ],
+  "reaRecords": [
+    {
+      "id": "ev_0c4f0dba2ef94557c6ee00296e7469263696e1dbc832af371f1b4396509bdde7",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-title-capture.json",
+      "sourceFileSha256": "0e24d8c1456f63028ae560caa49b925b8cc58980394ced2419fd46adf6d5f964",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "id": "ev_77f0995919935c2e85a1427fa81ac3f8c864fd789d0928e2f00ad756c31d3e6e",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-settled-capture.json",
+      "sourceFileSha256": "435a491e21630ee426d38430595dc6984f54657d436ad862eb64ea0d554977c2",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "id": "ev_bf55f7c4e1744737a2faf7550e1c5f4a0563dfda9a181000e9dfb9e6a0a531f7",
+      "operation": "list_browser_targets",
+      "sourceFile": "rea-targets.json",
+      "sourceFileSha256": "6bb4f15afbaabbf94ded8afaa6b3691c56b2039b85e2d72c77c8d6647720e514",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "All page targets with supported HTTP(S) URLs are listed.",
+        "CDP discovery omitted attachment state for one or more targets; attached is reported as unknown.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "passive observation; external lifecycle owned by harness"
+    },
+    {
+      "id": "ev_04c5d347a6dcc57543ea56183fc7f114fd1e94720da761db55f78a9465875ae8",
+      "operation": "capture_web_screenshot",
+      "sourceFile": "rea-title-native.json",
+      "sourceFileSha256": "631a365520b466df9cf165c0611b47bedbb4153177b31910fa89800dd65899fd",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The screenshot contains the visible viewport, including on-screen content.",
+        "REA does not scroll, evaluate JavaScript, or capture beyond the current viewport.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "passive observation; external lifecycle owned by harness"
+    },
+    {
+      "id": "ev_5196bb9eaa5e7fcb036dd66ae9d49750f7abb6eae339acd08188b8f6f0695863",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-character-audit.json",
+      "sourceFileSha256": "446ca64fa1e9207150bfb4f1148dbed61e4950674efea1200cc1a950abb8658d",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "id": "ev_656c3b33a1ab15fd71725d13023a0fd4f87aa0ae300a1573b992c4ff5e3b363b",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-cast-review.json",
+      "sourceFileSha256": "4f6d6ce0091fa908303516ab6a52e740f0c271f13cc33785eea8a76758589216",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "id": "ev_9ee460a3f330c4c4cdc77ecc827c027419cb5b145c90de10d6e0a8c8d0086437",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-mobile-review.json",
+      "sourceFileSha256": "ec549a331e11793722e641a1c9a64281a1f2415bc9bf223320bfa5e1d8a2b324",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "id": "ev_cef72128cb0b7dd684107df171e98ff21fa6b6ce08f691226fb0cdaad22e69b2",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-budhub-app.json",
+      "sourceFileSha256": "79ddefad4923fc4bc0ea817319a8791bfa6c4b1eb9ce9d55a4eba0f2c24a9b14",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "id": "ev_0c84ce501ed96fa52d2e3609a433fe16d3c83bcb594d8d504436797241820514",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-game-entry.json",
+      "sourceFileSha256": "71ef885f33da8e3390219a81d8c0fd1f8ce080cc93798e4b729ee6d3cc7b0144",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "id": "ev_0f1ff6c536bb754b262e59a441b37b771793001dd13268aa87041daf06e0c7e5",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-live-game.json",
+      "sourceFileSha256": "69dec4bb972258f8d353358aac8486703c1b64b0c8aaa1840fe986ae3ce15096",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "id": "ev_0a39e3f6e8d8327edc559dadac9d36d52b0faaf630bec3992d3bb23f2f119b3d",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-final-desktop.json",
+      "sourceFileSha256": "bd486458b6ac48feeb66c318d62fa13922a3ae2c2cdf765dd8e13b11cc7aff07",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "id": "ev_0d098dfd01dd766246efe4a8d86197afc43e669df9af838d636d6ecbbf85b0c7",
+      "operation": "capture_browser_scenario",
+      "sourceFile": "rea-final-mobile.json",
+      "sourceFileSha256": "330b7897a0b0cd1dc10b1aafb335391a43fe9fa04bcf0c4f9bda185549d08f98",
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "Event sequence records provider receipt order; simultaneous browser causality is not inferred.",
+        "Network content is retained only when selected; Playwright response-body bytes are API results and are not guaranteed to match wire bytes.",
+        "Request bytes are limited to what Playwright exposes; not_exposed does not establish body absence or multipart file coverage.",
+        "Network content reads settle within 5 seconds each and the observer does not request bodies from unfinished responses.",
+        "Playwright scenario events do not expose request initiator stacks; receipt order does not prove causality.",
+        "Storage values are hashed only after declared-secret redaction.",
+        "Browser host platform and architecture were not observed."
+      ],
+      "cleanup": "terminated-owned-process"
+    }
+  ],
+  "knownLimits": [
+    "SWF unsupported by REA artifact inspector; custom static parser used",
+    "Original gameplay interaction not established beyond title",
+    "Scoring arithmetic has not been compared to original runtime score outputs",
+    "Six pilot idle sprites only; full asset suite and game remaster incomplete"
+  ]
+}

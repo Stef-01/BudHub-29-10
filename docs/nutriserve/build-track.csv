@@ -1,0 +1,16 @@
+id,owner,task,status,dependency,acceptance
+C01,Claude,Deterministic simulation spine,ready,,Two concurrent orders four prep slots pause replay and save restore
+C02,Claude,Build station timed portion input,ready,C01,Wrong ingredient fixed penalty and signed grams; original scorer remains separate
+C03,Claude,Prep timing boost and heat,evidence-blocked,Q08,Original unit producer and boost traced; offscreen slots continue
+C04,Claude,Finish deposition and garnish,evidence-blocked,Q09,Distribution order rotation amount and spill assessed with reference cases
+C05,Claude,Serving day and progression,queued,C01 C02 C03 C04,Wrong ticket permitted and graded; no duplicate reward; aggregation verified
+C06,Claude,Canonical nutrition adapter,ready,,Prepared food counted once; required IDs validated; no medical guarantees
+C07,Claude,Accessible responsive renderer,ready,C01,Six approved idle sprites and four-slot layout; shared pointer keyboard commands
+C08,Claude,End-to-end release gate,queued,C01 C02 C03 C04 C05 C06 C07,One complete day desktop mobile reload wrong ticket and visual comparison
+A01,Codex,Six pilot idle characters,reviewed,,Native-size cast and alpha checks; source hashes recorded
+A02,Codex,Reaction and walk states,queued,A01,Preserve identities scale and anchors; no idle aliases
+A03,Codex,Vessel masks and pilot foods,queued,,Approved camera and layering; each food identifiable at native scale
+A04,Codex,Final station and equipment art,queued,C03 C04,Four machines and editable interaction hit areas; original visual comparison
+A05,Codex,Full catalog and optimized derivatives,queued,A02 A03,Current-main IDs reconciled; lazy loading and derivative visual comparison
+R01,Codex,Mix unit producer and boost trace,open,Q08,Byte ranges and original runtime timing corroborate conversion
+R02,Codex,Waiting topping and total-score trace,open,Q09,Control paths and golden original-runtime cases recorded

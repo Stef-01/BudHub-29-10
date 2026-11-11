@@ -16,6 +16,8 @@ import ResultModal from './nutriserve-ui/ResultModal';
 import ChangelogModal from './nutriserve-ui/ChangelogModal';
 import GameOverModal from '../GameOverModal';
 import { IconXCircle } from './nutriserve-ui/Icons';
+import { CustomerSprite } from '../../src/features/nutriserve/assets/CustomerSprite';
+import { getCustomerSprite } from '../../src/features/nutriserve/assets/characters';
 
 
 const MAX_ROUNDS = 20;
@@ -162,8 +164,8 @@ const NutriServeGame: React.FC<NutriServeGameProps> = ({ onExit }) => {
       {/* Food Request Header Bar */}
       <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-xl shadow-lg p-4 mb-3 animate-slide-down">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white shadow-md animate-bounce-in">
-            <CharacterVisual />
+          <div className={getCustomerSprite(gameState.customer.id) ? 'w-20 h-28 flex-shrink-0' : 'w-14 h-14 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white shadow-md animate-bounce-in'}>
+            <CustomerSprite customerId={gameState.customer.id} className="w-full h-full" decorative fallback={<CharacterVisual />} />
           </div>
           <div className="flex-grow animate-fade-in">
             <p className="text-white font-bold text-lg">{gameState.customer.name}</p>
