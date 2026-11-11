@@ -183,7 +183,7 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             description: "Pre-diabetic athlete here! Post-workout - I need Brown Rice, good carbs and won't spike my sugar!",
             plateSize: 'Hearty',
             diabetesMode: 'Low-Carb',
-            required_items: ['brown_rice'],
+            required_items: ['rice_brown'],
         },
         dialogue: {
             intro: "Post-workout and pre-diabetic - need the right carbs!",
@@ -582,7 +582,7 @@ export const CUSTOMER_CHARACTERS: Character[] = [
             description: "I'm diabetic and love whole grains! Red Rice - low GI, perfect for blood sugar!",
             plateSize: 'Regular',
             diabetesMode: 'Balanced',
-            required_items: ['red_rice'],
+            required_items: ['rice_red'],
         },
         dialogue: {
             intro: "I need diabetes-safe whole grains!",

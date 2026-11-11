@@ -24,6 +24,7 @@ const gameTitles: Record<GameMode, string> = {
     high_fiber: 'Fiber Finder',
     low_carb: 'Carb Counter',
     nutriserve: 'NutriServe Chef',
+    nutriserve_remaster: 'NutriServe Kitchen',
     unified_nutrient: 'Nutrient Challenge',
 };
 

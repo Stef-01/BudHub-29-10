@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/features/nutriserve/simulation/**/*.ts",
+    "src/features/nutriserve/nutrition/**/*.ts",
+    "src/features/nutriserve/data/**/*.ts",
+    "src/features/nutriserve/domain/**/*.ts"
+  ]
+}
