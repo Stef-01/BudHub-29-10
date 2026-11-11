@@ -6,7 +6,10 @@
   --primary: #1d7a4a;
   --primary-ink: #ffffff;
   --warn: #b4441b;
-  --focus: #163fbb;
+  /* Two-tone focus ring: a white inner ring and a dark navy outer ring, so one of the two contrasts
+     at least 3:1 with any background on the stage (paper, walls, the dark tab bar). */
+  --focus-inner: #ffffff;
+  --focus-outer: #0d1b4d;
   max-width: 980px;
   margin: 0 auto;
   padding: 12px 16px 24px;
@@ -14,7 +17,12 @@
   font-family: Arial, Helvetica, sans-serif;
 }
 .ns-root *, .ns-root *::before, .ns-root *::after { box-sizing: border-box; }
-.ns-root button:focus-visible, .ns-root [tabindex]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.ns-root button:focus-visible, .ns-root summary:focus-visible, .ns-root [tabindex]:focus-visible {
+  outline: 2px solid transparent; /* shows in forced-colors mode, where box-shadow is dropped */
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--focus-inner), 0 0 0 5px var(--focus-outer);
+}
+.ns-overlay-card:focus-visible { box-shadow: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* Start screen */
@@ -24,6 +32,9 @@
 .ns-start-card p { line-height: 1.5; }
 .ns-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 2px; margin: 0; }
 .ns-start-notes { font-size: 14px; color: #5a5144; padding-left: 18px; }
+.ns-save-problem { border: 2px solid var(--warn); background: #fff0e8; border-radius: 8px; padding: 4px 12px; margin: 12px 0; font-size: 15px; }
+.ns-save-problem p { margin: 6px 0; }
+.ns-overlay kbd { border: 1px solid #8a7d66; border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: #fff; font-size: 12px; }
 
 /* HUD */
 .ns-hud { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 4px; font-size: 15px; }
@@ -31,8 +42,10 @@
 .ns-hud-actions { margin-left: auto; display: flex; gap: 8px; }
 
 /* Stage */
-.ns-stage { position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border: 4px solid var(--line); border-radius: 6px; container-type: inline-size; font-size: 1.9cqw; background: #ddd; user-select: none; -webkit-user-select: none; touch-action: none; }
-.ns-stage > * { position: absolute; }
+.ns-stage { position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border: 4px solid var(--line); border-radius: 6px; container-type: inline-size; font-size: 1.9cqw; background: #ddd; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+/* Hold controls and the drizzle surface opt out of panning themselves (.ns-hold, .ns-vessel-top). */
+.ns-stage > *, .ns-stage-content > * { position: absolute; }
+.ns-stage-content { inset: 0; }
 .ns-backdrop { inset: 0; width: 100%; height: 100%; }
 
 /* Buttons */
@@ -51,6 +64,7 @@
 .ns-muted { color: #574e40; margin: 0; }
 .ns-center { display: grid; place-items: center; text-align: center; }
 .ns-caption { margin: 0; text-align: center; font-size: 0.85em; font-weight: 700; text-transform: capitalize; }
+.ns-plate { background: #fff9ecee; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.3em 0.6em; }
 .ns-provisional { font-size: 0.7em; color: #5b5140; border: 1px dashed #8a7d66; border-radius: 0.4em; padding: 0.1em 0.4em; background: #fffaf0cc; }
 
 /* Ticket rail and paper ticket */
@@ -76,7 +90,7 @@
 .ns-sprite-img { width: 100%; height: 100%; display: block; }
 .ns-order-counter { display: grid; place-items: center; text-align: center; }
 .ns-counter-front { inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.ns-waiting { background: #fff9ecdd; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.3em 0.5em; overflow: hidden; }
+.ns-waiting { background: #fff9ecdd; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.3em 0.5em; }
 .ns-waiting h3 { margin: 0 0 0.2em; font-size: 0.85em; }
 .ns-waiting ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.2em 0.7em; font-size: 0.85em; }
 .ns-waiting li { display: flex; align-items: center; gap: 0.2em; }
@@ -99,7 +113,8 @@
 .ns-dispenser-row { margin: 0; border: 2px solid var(--line); border-radius: 0.5em; background: #fff9ecee; padding: 0.1em 0.3em 0.3em; display: grid; grid-template-columns: 1fr 1fr; gap: 0.25em; min-width: 0; }
 .ns-dispenser-row legend { font-weight: 800; font-size: 0.8em; padding: 0 0.2em; }
 .ns-dispenser-row legend small { font-weight: 400; }
-.ns-hold { font: inherit; touch-action: none; }
+/* No text selection or iOS callout on a long press, which would cancel the hold. */
+.ns-hold { font: inherit; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .ns-dispenser { font-size: 0.72em; font-weight: 700; border: 2px solid var(--line); border-radius: 0.45em; background: #fff; padding: 0.35em 0.4em; cursor: pointer; display: flex; align-items: center; gap: 0.3em; min-width: 0; text-align: left; }
 .ns-dispenser-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ns-dispenser i, .ns-tool i { display: inline-block; width: 0.9em; height: 0.9em; border-radius: 50%; border: 1.5px solid var(--line); }
@@ -129,7 +144,9 @@
 .ns-serve { display: flex; flex-direction: column; gap: 0.3em; border-top: 2px dashed #b9a98c; padding-top: 0.3em; }
 
 /* Finish */
-.ns-vessel-top { cursor: crosshair; border-radius: 50%; touch-action: none; }
+.ns-vessel-top { cursor: crosshair; border-radius: 50%; touch-action: none; -webkit-touch-callout: none; }
+/* With a garnish selected the vessel is tapped, not dragged, so a swipe over it scrolls the page. */
+.ns-vessel-top.ns-tool-garnish { touch-action: manipulation; cursor: pointer; }
 .ns-tools { display: flex; flex-wrap: wrap; gap: 0.3em; align-content: flex-start; }
 .ns-tool { font: inherit; font-size: 0.75em; font-weight: 700; border: 2px solid var(--line); background: #fff; border-radius: 0.45em; padding: 0.2em 0.45em; display: inline-flex; align-items: center; gap: 0.3em; cursor: pointer; }
 .ns-tool svg { width: 1.1em; height: 1.1em; }
@@ -183,7 +200,10 @@
 .ns-dock .ns-gauge-needle { width: 14px; height: 14px; }
 .ns-dock .ns-vessel-top { width: min(100%, 340px); aspect-ratio: 1; margin: 0 auto; }
 .ns-dock .ns-tray .ns-btn, .ns-dock .ns-tray-label { font-size: 15px; }
-.ns-dock .ns-toast { font-size: 15px; }
+/* The serve result floats as a snackbar instead of sitting in the dock, so nothing below it jumps
+   when it appears or goes. It doesn't take pointer input, so controls under it still work. */
+.ns-dock .ns-toast { font-size: 14px; position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 50; max-width: 520px; margin: 0 auto; padding: 6px 10px; box-shadow: 0 4px 14px #0005; }
+.ns-dock .ns-toast ul { margin: 2px 0; }
 .ns-dock .ns-order-counter { padding: 4px 0; }
 .ns-dock .ns-provisional { font-size: 12px; }
 .ns-compact .ns-overlay { position: fixed; inset: 0; z-index: 60; padding: 12px; }

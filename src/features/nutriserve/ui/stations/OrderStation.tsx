@@ -4,10 +4,11 @@
 import React from 'react';
 import { CustomerSprite } from '../../assets/CustomerSprite.tsx';
 import { getSpritePlacement, spriteBoxAtFoot } from '../../assets/anchors.ts';
-import { getCatalogCustomer, type Command, type CommandResult, type GameState } from '../../simulation/index.ts';
+import { getCatalogCustomer, type GameState } from '../../simulation/index.ts';
 import { CounterFront } from '../LayoutStudy.tsx';
-import { box } from '../stage.ts';
+import { box, boxAuto } from '../stage.ts';
 import { Dockable } from '../Dockable.tsx';
+import type { Dispatch } from '../useNutriServeGame.ts';
 
 /** Feet stand behind the counter (counter top y=300); the counter front covers the legs. */
 const COUNTER_FOOT_Y = 392;
@@ -24,7 +25,7 @@ function Sprite({ catalogId, footX, footY, height, label }: { catalogId: string;
   );
 }
 
-export function OrderStation({ state, dispatch }: { state: GameState; dispatch: (c: Command) => CommandResult }) {
+export function OrderStation({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
   const queue = state.day.customers
     .filter((c) => c.phase === 'at_counter')
     .sort((a, b) => (a.atCounterMs ?? 0) - (b.atCounterMs ?? 0));
@@ -49,11 +50,11 @@ export function OrderStation({ state, dispatch }: { state: GameState; dispatch: 
 
       <Dockable slot="main" region={box(150, 340, 220, 80)} className="ns-order-counter">
         {front ? (
-          <button type="button" className="ns-btn ns-btn-primary" onClick={() => dispatch({ type: 'takeOrder' })} aria-keyshortcuts="Enter">
+          <button type="button" className="ns-btn ns-btn-primary" onClick={() => dispatch({ type: 'takeOrder' })}>
             Take {name(front.catalogId)}'s order
           </button>
         ) : (
-          <p className="ns-muted">
+          <p className="ns-muted ns-plate">
             {arriving.length > 0
               ? `${arriving.map((c) => name(c.catalogId)).join(', ')} arriving…`
               : nextArrival
@@ -64,7 +65,7 @@ export function OrderStation({ state, dispatch }: { state: GameState; dispatch: 
       </Dockable>
 
       {waiting.length > 0 && (
-        <Dockable slot="main" as="section" region={box(8, 40, 230, 92)} className="ns-waiting" aria-label="Waiting for food">
+        <Dockable slot="main" as="section" region={boxAuto(8, 40, 230)} className="ns-waiting" aria-label="Waiting for food">
           <h3>Waiting for food</h3>
           <ul>
             {waiting.map((c) => {

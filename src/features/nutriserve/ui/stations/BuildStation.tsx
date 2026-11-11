@@ -7,8 +7,6 @@ import {
   seedFrom,
   createRng,
   type BuildComponent,
-  type Command,
-  type CommandResult,
   type DishSize,
   type GameState,
   type Ticket,
@@ -18,6 +16,7 @@ import { foodColor, VesselSide } from '../LayoutStudy.tsx';
 import { box } from '../stage.ts';
 import { Dockable } from '../Dockable.tsx';
 import { foodLabel } from '../TicketRail.tsx';
+import type { Dispatch } from '../useNutriServeGame.ts';
 
 const COMPONENTS: Array<{ id: BuildComponent; label: string; categories: string[] }> = [
   { id: 'base', label: 'Base', categories: ['Grains', 'Breads & Breakfast'] },
@@ -72,7 +71,7 @@ function Gauge({ label, actualG, idealG, kind }: { label: string; actualG: numbe
   );
 }
 
-export function BuildStation({ state, dispatch }: { state: GameState; dispatch: (c: Command) => CommandResult }) {
+export function BuildStation({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
   const dish = state.dishes.find((d) => d.stage === 'building');
   const open = state.tickets.filter((t) => t.servedAtMs === undefined);
   const ticket = open.find((t) => t.id === state.selected.ticketId) ?? open[0];
@@ -135,7 +134,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
           return (
             <fieldset key={c.id} className="ns-dispenser-row">
               <legend>
-                {c.label} <small>hold to {c.id === 'base' ? 'fill' : 'ladle'} · {BUILD_V1.pourRateMgPerMs[c.id]} g/s</small>
+                {c.label} <small>hold to {c.id === 'base' ? 'fill' : 'ladle'} · {BUILD_V1.pourRateMgPerMs[c.id]} g/s · tap {(BUILD_V1.pourRateMgPerMs[c.id] * BUILD_V1.tapPourMs) / 1000} g</small>
               </legend>
               {c.foods.map((foodId) => (
                 <React.Fragment key={foodId}>
@@ -146,7 +145,9 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                   active={held?.component === c.id && held.foodId === foodId}
                   aria-label={`Hold to add ${foodLabel(foodId)} as ${c.label.toLowerCase()}`}
                   onStart={() => dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId })}
-                  onEnd={() => dispatch({ type: 'endPour' })}
+                  // Silent: leaving the station mid-hold already released the pour.
+                  onEnd={() => dispatch({ type: 'endPour' }, { silent: true })}
+                  onTap={() => dispatch({ type: 'pourTap', dishId: dish.id, component: c.id, foodId })}
                 >
                   <i style={{ background: foodColor(foodId) }} aria-hidden="true" />
                   <span className="ns-dispenser-name">{foodLabel(foodId)}</span>

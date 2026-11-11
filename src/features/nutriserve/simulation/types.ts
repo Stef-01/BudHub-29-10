@@ -108,7 +108,19 @@ export interface PrepSlot {
 /** An action that is in progress while a control is held. */
 export type HeldAction =
   | { kind: 'pour'; dishId: string; component: BuildComponent; foodId: string }
-  | { kind: 'drizzle'; dishId: string; drizzleId: string; x: number; y: number };
+  | {
+      kind: 'drizzle';
+      dishId: string;
+      drizzleId: string;
+      /** Current pointer position (local coordinates). */
+      x: number;
+      y: number;
+      /** Where the not-yet-landed drizzle started; it is spread from here to (x, y). */
+      px: number;
+      py: number;
+      pendingMg: number;
+      pendingMs: number;
+    };
 
 export interface StationScores {
   waiting: number;
@@ -185,6 +197,8 @@ export type Command =
   | { type: 'startDish'; size: DishSize }
   | { type: 'beginPour'; dishId: string; component: BuildComponent; foodId: string }
   | { type: 'endPour' }
+  | { type: 'pourTap'; dishId: string; component: BuildComponent; foodId: string }
+  | { type: 'releaseHolds' }
   | { type: 'finishBuild'; dishId: string }
   | { type: 'startPrep'; dishId: string; slot: number }
   | { type: 'setBoost'; slot: number; held: boolean }

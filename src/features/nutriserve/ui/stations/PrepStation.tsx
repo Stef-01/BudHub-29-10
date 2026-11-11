@@ -1,10 +1,11 @@
-// Prep station: four independent slots. Progress is in provisional prep units (prep-v1).
+// Prep station: four independent slots. Progress is in provisional prep units (PREP_V1).
 import React from 'react';
-import { PREP_V1, prepTargetUnits, type Command, type CommandResult, type Dish, type GameState } from '../../simulation/index.ts';
+import { PREP_V1, prepTargetUnits, type Dish, type GameState } from '../../simulation/index.ts';
 import { HoldButton } from '../HoldButton.tsx';
 import { box } from '../stage.ts';
 import { Dockable } from '../Dockable.tsx';
 import { foodLabel } from '../TicketRail.tsx';
+import type { Dispatch } from '../useNutriServeGame.ts';
 
 const LEVELS = [
   { id: 'quick', short: 'Quick' },
@@ -17,9 +18,11 @@ function dishName(dish: Dish): string {
   return `${dish.size} · ${main ? foodLabel(main) : 'empty'}`;
 }
 
-export function PrepStation({ state, dispatch }: { state: GameState; dispatch: (c: Command) => CommandResult }) {
+export function PrepStation({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
   const built = state.dishes.filter((d) => d.stage === 'built');
-  const ticket = state.tickets.find((t) => t.id === state.selected.ticketId && t.servedAtMs === undefined);
+  // Same ticket the rail highlights: the selected one, else the oldest open ticket.
+  const open = state.tickets.filter((t) => t.servedAtMs === undefined);
+  const ticket = open.find((t) => t.id === state.selected.ticketId) ?? open[0];
   const wanted = ticket ? prepTargetUnits(ticket.order.prepLevel) : undefined;
   const wantedLevel = ticket ? LEVELS.find((l) => l.id === ticket.order.prepLevel) : undefined;
   const freeSlot = state.prepSlots.findIndex((s) => !s.dishId);
@@ -78,7 +81,9 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: (
                     active={slot.boostHeld && !slot.overheated}
                     aria-label={`Hold to boost slot ${slot.index + 1}`}
                     onStart={() => dispatch({ type: 'setBoost', slot: slot.index, held: true })}
-                    onEnd={() => dispatch({ type: 'setBoost', slot: slot.index, held: false })}
+                    onEnd={() => dispatch({ type: 'setBoost', slot: slot.index, held: false }, { silent: true })}
+                    // A click without a hold toggles the boost on and off.
+                    onTap={() => dispatch({ type: 'setBoost', slot: slot.index, held: !slot.boostHeld })}
                   >
                     Boost
                   </HoldButton>
@@ -114,7 +119,7 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: (
             {dishName(dish)}
           </button>
         ))}
-        <span className="ns-provisional" title="Prep timing uses provisional parameters (prep-v1), pending reference evidence Q08">
+        <span className="ns-provisional" title={`Prep timing uses provisional parameters (${PREP_V1.version}), pending reference evidence Q08`}>
           provisional timing
         </span>
       </Dockable>

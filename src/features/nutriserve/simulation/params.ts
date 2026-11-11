@@ -15,9 +15,13 @@ export type PrepLevel = 'quick' | 'regular' | 'slow';
 export const SIZE_FOR_PLATE = { Light: 'small', Regular: 'medium', Hearty: 'large' } as const;
 
 export const BUILD_V1 = {
-  version: 'build-v1',
+  // v2: adds the tap pour (pourTap) so switch/screen-reader users, whose browsers send only clicks,
+  // can portion too. Hold rates are unchanged.
+  version: 'build-v2',
   /** Pour rates while a dispenser is held, in milligrams per millisecond (= grams per second). */
   pourRateMgPerMs: { base: 80, main: 90, side: 50 },
+  /** A single tap (click without a hold) pours this many ms worth. */
+  tapPourMs: 100,
   /**
    * ADAPTATION: the reference build has three categories (cup, mixable, syrup). Here they are
    * vessel + base fill, main, and side. Choosing the wrong base food when the vessel size is right
@@ -52,9 +56,20 @@ export const PREP_V1 = {
 export const FINISH_V1 = {
   // v2: drizzle targets moved here (versioned) and coverage scaled to each drizzle's target, so a
   // small drizzle such as ghee tadka can reach full marks (v1 needed 11 g of cover for a 5 g target).
-  version: 'finish-v2-provisional',
-  /** Drizzle deposition rate while held, mg per ms. */
-  drizzleRateMgPerMs: 12,
+  // v3: each drizzle has its own rate (about 1.7 s to a medium target for every drizzle), and the
+  // deposit is spread along the path between pointer samples, so scores don't depend on the
+  // device's pointer/refresh rate.
+  version: 'finish-v3-provisional',
+  /** Drizzle deposition rate while held, mg per ms, by drizzle. */
+  drizzleRateMgPerMs: { curd_swirl: 12, ghee_tadka: 3 } as Record<string, number>,
+  /**
+   * While the pointer stays still, the pending drizzle lands at least this often (ms). Longer than
+   * any frame or pointer-event gap (a 20 fps phone is 50 ms), so a moving pour is always spread
+   * along its path whatever the device's rate.
+   */
+  drizzleFlushMs: 100,
+  /** Spacing (local units) of the points a moved drizzle is spread over. */
+  drizzleSegmentStep: 0.12,
   /** Target drizzle in grams, by drizzle and vessel size. */
   drizzleTargetG: {
     curd_swirl: { small: 15, medium: 20, large: 25 },

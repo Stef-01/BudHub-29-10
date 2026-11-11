@@ -1,6 +1,7 @@
 // Station tabs along the bottom of the stage. Keys 1-4 switch stations (see NutriServeRemaster).
 import React from 'react';
-import type { Command, CommandResult, GameState, StationId } from '../simulation/index.ts';
+import type { GameState, StationId } from '../simulation/index.ts';
+import type { Dispatch } from './useNutriServeGame.ts';
 import { STATION_COLORS } from './LayoutStudy.tsx';
 import { box } from './stage.ts';
 import { Dockable } from './Dockable.tsx';
@@ -21,7 +22,7 @@ function badge(state: GameState, station: StationId): number {
   }
 }
 
-export function StationTabs({ state, dispatch }: { state: GameState; dispatch: (c: Command) => CommandResult }) {
+export function StationTabs({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
   return (
     <Dockable slot="tabs" as="nav" region={box(0, 436, 640, 44)} className="ns-tabs" aria-label="Stations">
       {STATIONS.map((station, i) => {

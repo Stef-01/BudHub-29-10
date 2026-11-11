@@ -5,7 +5,9 @@
 //
 // For desktop (1280px) and phone (iPhone 13) it plays one whole day: two concurrent orders, Save &
 // exit mid-prep then Continue (progress must survive), one dish served to the wrong ticket, the rest
-// served normally, then the day summary. It also records sprite download/decoded-memory costs.
+// served normally, then the day summary. It also records sprite download/decoded-memory costs, and
+// first runs regression checks for the second audit (held controls across a layout switch, click
+// fallback on hold controls, dialog focus and shortcuts, and keeping progress from a rejected save).
 // Requires the `playwright` package and a Chromium it can launch. Exit code 1 on any failed check.
 const { chromium, devices } = require('playwright');
 const fs = require('node:fs');
@@ -225,9 +227,127 @@ async function runDevice(browser, name, contextOptions) {
   return { sprites: sprites.size, bytes, decodedMB };
 }
 
+// Regression checks for the second audit's renderer findings. Game states are built in the page
+// with the real simulation module (served by the dev server) and stored as the player's save.
+async function runRegressions(browser) {
+  const context = await browser.newContext({ viewport: { width: 1000, height: 900 } });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => m.type() === 'error' && !IGNORE.test(m.text()) && errors.push(m.text()));
+  await page.goto(`${BASE}/?user=gate-regress-${Date.now()}`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Games' }).first().click();
+  const open = () => page.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' }).click();
+  await open();
+  await page.getByRole('button', { name: 'New game' }).click();
+  await page.getByRole('button', { name: 'Save & exit' }).click();
+  const key = await page.evaluate(() => Object.keys(localStorage).find((k) => k.startsWith('nutriserve.remaster.save.v1:')));
+  check(!!key, `regressions: save key found (${key})`);
+
+  /** Store a save built in the page: a dish prepped and waiting at the finish station. */
+  const storeFinishSave = (tweak) =>
+    page.evaluate(
+      async ({ key, tweak }) => {
+        const sim = await import('/src/features/nutriserve/simulation/index.ts');
+        const run = (s, c) => {
+          const r = sim.applyCommand(s, c);
+          if (!r.result.ok) throw new Error(`${c.type}: ${r.result.error}`);
+          return r.state;
+        };
+        let s = sim.createGame({ seed: 42, runId: 'run-gate-regress' });
+        while (!s.day.customers.some((c) => c.phase === 'at_counter')) s = sim.advanceGame(s, 100);
+        s = run(s, { type: 'takeOrder' });
+        const o = s.tickets[0].order;
+        s = run(s, { type: 'startDish', size: o.size });
+        const dishId = s.dishes[0].id;
+        const rate = { base: 80, main: 90, side: 50 };
+        for (const [component, foodId] of [['base', o.baseId], ['main', o.mainId], ['side', o.sideId]]) {
+          s = run(s, { type: 'beginPour', dishId, component, foodId });
+          s = sim.advanceGame(s, Math.round((o.idealG[component] * 1000) / rate[component]));
+          s = run(s, { type: 'endPour' });
+        }
+        s = run(s, { type: 'finishBuild', dishId });
+        s = run(s, { type: 'startPrep', dishId, slot: 0 });
+        s = sim.advanceGame(s, 12000);
+        s = run(s, { type: 'finishPrep', slot: 0 });
+        s = run(s, { type: 'selectStation', station: 'finish' });
+        const file = JSON.parse(sim.serializeGame(s));
+        if (tweak === 'rules-changed') {
+          file.state.paramVersions.finish = 'finish-v0';
+          Object.assign(file.state.profile, { rank: 3, coins: 41, points: 120, creditedDays: [1, 2], reportedDays: [1, 2] });
+        }
+        localStorage.setItem(key, JSON.stringify(file));
+      },
+      { key, tweak }
+    );
+
+  // 1. A drizzle held while the layout switches (wide -> compact) is released.
+  await storeFinishSave();
+  await open();
+  await page.getByRole('button', { name: /^Continue day/ }).click();
+  const vessel = page.locator('.ns-vessel-top');
+  const v = await vessel.boundingBox();
+  await page.mouse.move(v.x + v.width / 2, v.y + v.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(v.x + v.width / 2 + 10, v.y + v.height / 2);
+  const drizzling = await page.getByRole('button', { name: 'Done', exact: true }).isDisabled();
+  await page.setViewportSize({ width: 500, height: 900 });
+  await page.waitForTimeout(300);
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  const released = await page.getByRole('button', { name: 'Done', exact: true }).isEnabled();
+  check(drizzling && released, `regressions: drizzle released across a layout switch (held ${drizzling}, released ${released})`);
+  await page.setViewportSize({ width: 1000, height: 900 });
+
+  // 2. A plain click on a hold control (switch access, screen readers) still pours.
+  await page.getByRole('button', { name: /^Build station/ }).click();
+  await page.getByRole('button', { name: 'Medium', exact: true }).click();
+  const dispenser = page.getByRole('button', { name: /^Hold to add .* as main$/ }).first();
+  await dispenser.evaluate((el) => el.click());
+  await page.waitForTimeout(100);
+  const gauges = await page.locator('.ns-gauges').innerText();
+  check(/Main 9 g/.test(gauges), `regressions: a click on a dispenser pours one tap (${gauges.replace(/\s+/g, ' ').slice(0, 60)})`);
+
+  // 3. The pause dialog keeps focus, resumes on Escape, and gives focus back.
+  const tab = page.getByRole('button', { name: /^Prep station/ });
+  await tab.focus();
+  await page.keyboard.press('p');
+  const dialog = page.getByRole('dialog', { name: 'Paused' });
+  await dialog.waitFor();
+  let inside = true;
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press(i % 2 ? 'Shift+Tab' : 'Tab');
+    await page.keyboard.press('Tab');
+    inside = inside && (await page.evaluate(() => !!document.activeElement?.closest('.ns-overlay')));
+  }
+  await page.keyboard.press('1'); // must not switch station behind the dialog
+  const stationBehind = await page.locator('.ns-stage').getAttribute('aria-label');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(100);
+  const closed = (await dialog.count()) === 0;
+  const refocused = await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '');
+  check(inside, 'regressions: Tab stays inside the pause dialog');
+  check(stationBehind === 'build station', `regressions: station keys do nothing behind a dialog (${stationBehind})`);
+  check(closed && /^Prep station/.test(refocused), `regressions: Escape resumes and focus returns (${refocused})`);
+
+  // 4. A save that can't be restored says why and keeps the progress.
+  await page.getByRole('button', { name: 'Save & exit' }).click();
+  await storeFinishSave('rules-changed');
+  await open();
+  const alert = await page.getByRole('alert').innerText();
+  check(/rules were updated/.test(alert) && /rank 3, 41 coins/.test(alert), 'regressions: rejected save explains itself and offers progress');
+  await page.getByRole('button', { name: 'Start a new day with your progress' }).click();
+  const hud = await page.locator('.ns-hud').innerText();
+  check(/Day 3/.test(hud) && /Rank 3/.test(hud) && /41 coins/.test(hud), `regressions: progress carried into a new day (${hud.replace(/\s+/g, ' ').slice(0, 50)})`);
+
+  check(errors.length === 0, `regressions: no app errors${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
+  await context.close();
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
+  await runRegressions(browser);
   results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
   results.phone = await runDevice(browser, 'phone', { ...devices['iPhone 13'] });
   await browser.close();

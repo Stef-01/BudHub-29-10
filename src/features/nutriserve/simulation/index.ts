@@ -2,7 +2,7 @@
 export * from './types.ts';
 export * from './params.ts';
 export { advanceGame, applyCommand, createGame, newProfile, PARAM_VERSIONS, PILOT_CUSTOMER_POOL, PREP_SLOT_COUNT } from './game.ts';
-export { deserializeGame, SaveError, serializeGame, SAVE_FORMAT } from './save.ts';
+export { deserializeGame, salvageSave, SaveError, serializeGame, SAVE_FORMAT, type SaveSalvage } from './save.ts';
 export {
   aggregateV1,
   dishMatchesOrder,

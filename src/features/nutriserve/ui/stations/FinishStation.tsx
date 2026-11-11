@@ -1,14 +1,19 @@
 // Finish station: drizzle (hold on the vessel) and garnish (tap to place), then serve.
 // Pointer, touch and keyboard all drive the same simulation commands:
 //   pointer/touch: press + drag on the vessel to drizzle; tap to place the selected garnish
+//                  (placed on release, and only if the finger barely moved, so a swipe scrolls)
 //   keyboard:      arrows move the cursor, Space (hold) drizzles, Enter places a garnish
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DRIZZLES, GARNISHES } from '../../data/finishItems.ts';
-import { dishMatchesOrder, type Command, type CommandResult, type Dish, type GameState } from '../../simulation/index.ts';
+import { dishMatchesOrder, FINISH_V1, type Dish, type GameState } from '../../simulation/index.ts';
 import { DRIZZLE_COLORS, foodColor, GarnishGlyph, VesselTop } from '../LayoutStudy.tsx';
 import { box, clientToLocal } from '../stage.ts';
 import { Dockable } from '../Dockable.tsx';
 import { customerName, foodLabel } from '../TicketRail.tsx';
+import type { Dispatch } from '../useNutriServeGame.ts';
+
+/** A press that moves further than this (CSS px) is a swipe, not a garnish tap. */
+const TAP_SLOP_PX = 8;
 
 type Tool = { kind: 'drizzle'; id: string } | { kind: 'garnish'; id: string };
 
@@ -17,7 +22,7 @@ function dishName(dish: Dish): string {
   return `${dish.size} · ${main ? foodLabel(main) : 'empty'}`;
 }
 
-export function FinishStation({ state, dispatch }: { state: GameState; dispatch: (c: Command) => CommandResult }) {
+export function FinishStation({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
   const working = state.dishes.filter((d) => d.stage === 'prepped' || d.stage === 'finishing');
   const ready = state.dishes.filter((d) => d.stage === 'ready');
   const open = state.tickets.filter((t) => t.servedAtMs === undefined);
@@ -31,17 +36,32 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   const [cursor, setCursor] = useState({ x: 0, y: 0 });
   const vesselRef = useRef<HTMLDivElement>(null);
   const drizzling = state.held?.kind === 'drizzle';
+  const press = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
 
-  const local = (e: React.PointerEvent) => clientToLocal(vesselRef.current!.getBoundingClientRect(), e.clientX, e.clientY);
+  const local = (e: { clientX: number; clientY: number }) => clientToLocal(vesselRef.current!.getBoundingClientRect(), e.clientX, e.clientY);
 
   const startAt = (p: { x: number; y: number }) => {
     if (!dish) return;
     if (tool.kind === 'drizzle') dispatch({ type: 'beginDrizzle', dishId: dish.id, drizzleId: tool.id, x: p.x, y: p.y });
     else dispatch({ type: 'placeGarnish', dishId: dish.id, garnishId: tool.id, x: p.x, y: p.y });
   };
-  const stop = () => {
-    if (state.held?.kind === 'drizzle') dispatch({ type: 'endDrizzle' });
-  };
+  // Silent: the hold may already have been released by a station change or layout switch.
+  const stop = () => dispatch({ type: 'endDrizzle' }, { silent: true });
+
+  // Backstop: if the vessel element is replaced mid-hold (layout switch), its pointer capture dies
+  // without a lostpointercapture event; any release anywhere still ends the drizzle.
+  useEffect(() => {
+    if (!drizzling) return;
+    const end = () => dispatch({ type: 'endDrizzle' }, { silent: true });
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    return () => {
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+    };
+  }, [drizzling, dispatch]);
+  // Leaving the station or unmounting never leaves a drizzle running.
+  useEffect(() => () => void dispatch({ type: 'endDrizzle' }, { silent: true }), [dispatch]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     const step = e.shiftKey ? 0.25 : 0.1;
@@ -56,13 +76,13 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
       startAt(cursor);
     } else if (e.key === 'Enter' && tool.kind === 'garnish') {
       e.preventDefault();
-      startAt(cursor);
+      if (!e.repeat) startAt(cursor);
     }
   };
   const onKeyUp = (e: React.KeyboardEvent) => {
     if (e.key === ' ') {
       e.preventDefault();
-      stop();
+      if (drizzling) stop();
     }
   };
 
@@ -111,29 +131,43 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
             slot="main"
             region={box(164, 44, 268, 268)}
             ref={vesselRef}
-            className="ns-vessel-top"
+            className={`ns-vessel-top ns-tool-${tool.kind}`}
             tabIndex={0}
             role="application"
             aria-label={`Finish ${dishName(dish)}. Arrow keys move the cursor; hold Space to drizzle, Enter to place a garnish.`}
             onPointerDown={(e) => {
               if (e.button !== 0) return;
-              e.currentTarget.setPointerCapture(e.pointerId);
               const p = local(e);
               setCursor(p);
-              startAt(p);
+              if (tool.kind === 'drizzle') {
+                e.currentTarget.setPointerCapture(e.pointerId);
+                startAt(p);
+              } else {
+                press.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+              }
             }}
             onPointerMove={(e) => {
+              const pr = press.current;
+              if (pr && pr.id === e.pointerId && Math.hypot(e.clientX - pr.x, e.clientY - pr.y) > TAP_SLOP_PX) pr.moved = true;
               if (!drizzling) return;
               const p = local(e);
               setCursor(p);
               dispatch({ type: 'moveDrizzle', x: p.x, y: p.y });
             }}
-            onPointerUp={stop}
-            onPointerCancel={stop}
-            onLostPointerCapture={stop}
+            onPointerUp={(e) => {
+              const pr = press.current;
+              press.current = null;
+              if (pr && pr.id === e.pointerId && !pr.moved && tool.kind === 'garnish') startAt(local({ clientX: pr.x, clientY: pr.y }));
+              stop();
+            }}
+            onPointerCancel={() => {
+              press.current = null;
+              stop();
+            }}
+            onLostPointerCapture={() => drizzling && stop()}
             onKeyDown={onKeyDown}
             onKeyUp={onKeyUp}
-            onBlur={stop}
+            onBlur={() => drizzling && stop()}
           >
             <VesselTop
               label="Vessel seen from above"
@@ -167,13 +201,13 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
             <button type="button" className="ns-btn ns-btn-quiet" disabled={drizzling} onClick={() => dispatch({ type: 'trash', dishId: dish.id })}>
               Trash
             </button>
-            <span className="ns-provisional" title="Finish grading uses provisional rules (finish-v1), pending reference evidence Q09">
+            <span className="ns-provisional" title={`Finish grading uses provisional rules (${FINISH_V1.version}), pending reference evidence Q09`}>
               provisional grading
             </span>
           </Dockable>
         </>
       ) : (
-        <Dockable slot="main" as="p" region={box(164, 160, 316, 60)} className="ns-muted ns-center">
+        <Dockable slot="main" as="p" region={box(164, 160, 316, 60)} className="ns-muted ns-center ns-plate">
           {ready.length > 0 ? 'Serve a ready dish from the list.' : 'Nothing to finish yet.'}
         </Dockable>
       )}

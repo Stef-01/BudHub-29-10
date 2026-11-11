@@ -3,29 +3,57 @@
 // Background-tab policy (documented per the build track): frame deltas are capped at FRAME_CAP_MS so
 // a stalled frame can't jump the kitchen forward, and the game pauses itself when the page is hidden.
 // The simulation never reads the clock; this hook is the only place real time enters.
+//
+// The simulation advances every animation frame, but React re-renders at most every RENDER_MS
+// (commands still render at once): the scene changes slowly and re-rendering the whole kitchen at
+// 60 Hz cost far more than the simulation itself.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   advanceGame,
   applyCommand,
   deserializeGame,
+  salvageSave,
+  SaveError,
   serializeGame,
   type Command,
   type CommandResult,
   type GameState,
+  type SaveSalvage,
 } from '../simulation/index.ts';
 
 export const FRAME_CAP_MS = 250;
+export const RENDER_MS = 33;
 const AUTOSAVE_MS = 4_000;
 
 export const saveKey = (userId: string) => `nutriserve.remaster.save.v1:${userId}`;
 
-export function loadSavedGame(userId: string): GameState | null {
+export interface StoredGame {
+  /** The restored game, when the save could be read. */
+  state: GameState | null;
+  /** Set when a save exists but could not be restored; carries any progress that can be kept. */
+  problem: SaveSalvage | null;
+  /** True when anything is stored under the save key (so a new game would replace it). */
+  exists: boolean;
+}
+
+export function readSavedGame(userId: string): StoredGame {
+  let raw: string | null = null;
   try {
-    const raw = window.localStorage.getItem(saveKey(userId));
-    return raw ? deserializeGame(raw) : null;
+    raw = window.localStorage.getItem(saveKey(userId));
   } catch {
-    return null;
+    return { state: null, problem: null, exists: false };
   }
+  if (!raw) return { state: null, problem: null, exists: false };
+  try {
+    return { state: deserializeGame(raw), problem: null, exists: true };
+  } catch (error) {
+    const reason = error instanceof SaveError ? error.message : `Save could not be read (${(error as Error).message})`;
+    return { state: null, problem: salvageSave(raw, reason), exists: true };
+  }
+}
+
+export function loadSavedGame(userId: string): GameState | null {
+  return readSavedGame(userId).state;
 }
 
 export function writeSave(userId: string, state: GameState): void {
@@ -69,34 +97,56 @@ export function clearSave(userId: string): void {
   }
 }
 
+export type Dispatch = (command: Command, options?: { silent?: boolean }) => CommandResult;
+
 export interface NutriServeGame {
   state: GameState;
   /** silent: don't surface a rejection in the status line (internal bookkeeping commands). */
-  dispatch: (command: Command, options?: { silent?: boolean }) => CommandResult;
+  dispatch: Dispatch;
   /** Last rejected command's reason, for the status line. */
   lastError: string | null;
+  /** Set when the simulation threw: the clock has stopped and autosave is off. */
+  fatal: string | null;
 }
 
 export function useNutriServeGame(initial: GameState, userId: string): NutriServeGame {
   const ref = useRef(initial);
   const [state, setState] = useState(initial);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [fatal, setFatal] = useState<string | null>(null);
+  const fatalRef = useRef(false);
   const carry = useRef(0);
+  const lastRender = useRef(0);
 
-  const commit = useCallback((next: GameState) => {
-    if (next === ref.current) return;
-    ref.current = next;
+  const fail = useCallback((error: unknown) => {
+    fatalRef.current = true;
+    setFatal((error as Error)?.message ?? String(error));
+  }, []);
+
+  const render = useCallback((next: GameState) => {
+    lastRender.current = performance.now();
     setState(next);
   }, []);
 
-  const dispatch = useCallback(
-    (command: Command, options?: { silent?: boolean }): CommandResult => {
-      const { state: next, result } = applyCommand(ref.current, command);
-      commit(next);
+  const dispatch = useCallback<Dispatch>(
+    (command, options) => {
+      if (fatalRef.current) return { ok: false, error: 'The kitchen has stopped' } as CommandResult;
+      let outcome: ReturnType<typeof applyCommand>;
+      try {
+        outcome = applyCommand(ref.current, command);
+      } catch (error) {
+        fail(error);
+        return { ok: false, error: 'The kitchen has stopped' } as CommandResult;
+      }
+      const { state: next, result } = outcome;
+      if (next !== ref.current) {
+        ref.current = next;
+        render(next);
+      }
       if (!options?.silent) setLastError('error' in result ? result.error : null);
       return result;
     },
-    [commit]
+    [fail, render]
   );
 
   // Clock
@@ -108,12 +158,21 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
       last = now;
       const dt = Math.floor(elapsed);
       carry.current = elapsed - dt;
-      if (dt > 0) commit(advanceGame(ref.current, dt));
+      if (dt > 0) {
+        try {
+          ref.current = advanceGame(ref.current, dt);
+        } catch (error) {
+          // Stop the clock rather than spin on an exception every frame; the UI shows the error.
+          fail(error);
+          return;
+        }
+      }
+      if (now - lastRender.current >= RENDER_MS) render(ref.current);
       frameId = requestAnimationFrame(frame);
     };
     frameId = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(frameId);
-  }, [commit]);
+  }, [fail, render]);
 
   // Pause when hidden
   useEffect(() => {
@@ -124,9 +183,11 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [dispatch]);
 
-  // Autosave
+  // Autosave (off once the simulation has failed, so a bad state never replaces the last good save)
   useEffect(() => {
-    const save = () => writeSave(userId, ref.current);
+    const save = () => {
+      if (!fatalRef.current) writeSave(userId, ref.current);
+    };
     const id = window.setInterval(save, AUTOSAVE_MS);
     window.addEventListener('pagehide', save);
     return () => {
@@ -136,5 +197,5 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
     };
   }, [userId]);
 
-  return { state, dispatch, lastError };
+  return { state, dispatch, lastError, fatal };
 }

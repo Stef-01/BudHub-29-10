@@ -195,7 +195,7 @@ const finishOrder = (ticket, finish) => ({ ...ticket.order, finish });
 test('held drizzle deposits in local coordinates; outside the rim is spilled', () => {
   let { s, dishId } = atFinish();
   s = cmd(s, { type: 'beginDrizzle', dishId, drizzleId: 'curd_swirl', x: 0, y: 0 });
-  s = advanceGame(s, 500);
+  s = advanceGame(s, 500); // a whole number of flush periods (100 ms), so nothing is pending
   s = cmd(s, { type: 'moveDrizzle', x: 1.3, y: 0 });
   s = advanceGame(s, 200);
   s = cmd(s, { type: 'endDrizzle' });

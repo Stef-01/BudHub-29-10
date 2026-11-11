@@ -162,6 +162,8 @@ function processDiscrete(s: GameState): void {
       // instead of blocking the queue for everyone behind them.
       c.phase = getCatalogCustomer(c.catalogId) ? 'at_counter' : 'gone';
     }
+    // Restored from a save made before the catalog entry was renamed: nobody can take this order.
+    if (c.phase === 'at_counter' && !getCatalogCustomer(c.catalogId)) c.phase = 'gone';
     if (c.phase === 'walking_out' && c.leftAtMs !== undefined && s.nowMs >= c.leftAtMs + WAITING_V1.walkMs) c.phase = 'gone';
   }
   if (!s.day.completed && s.day.customers.length > 0 && s.day.customers.every((c) => c.phase === 'gone')) {
@@ -181,6 +183,38 @@ function depositAt(deposit: Deposit, x: number, y: number, mg: number): void {
   deposit.insideMg += mg;
 }
 
+/**
+ * Land the pending drizzle, spread evenly along the segment from where it started to (toX, toY).
+ * Integer milligrams; any remainder lands on the last point.
+ */
+function flushDrizzle(s: GameState, toX: number, toY: number): void {
+  const held = s.held;
+  if (held?.kind !== 'drizzle') return;
+  const dish = dishById(s, held.dishId);
+  if (dish && held.pendingMg > 0) {
+    const deposit = (dish.finish.drizzles[held.drizzleId] ??= emptyDeposit());
+    const distance = Math.hypot(toX - held.px, toY - held.py);
+    const points = Math.max(1, Math.ceil(distance / FINISH_V1.drizzleSegmentStep));
+    const each = Math.floor(held.pendingMg / points);
+    for (let i = 1; i <= points; i++) {
+      const t = i / points;
+      const mg = i === points ? held.pendingMg - each * (points - 1) : each;
+      depositAt(deposit, held.px + (toX - held.px) * t, held.py + (toY - held.py) * t, mg);
+    }
+  }
+  held.px = toX;
+  held.py = toY;
+  held.pendingMg = 0;
+  held.pendingMs = 0;
+}
+
+/** Land what is pending and let go of the drizzle (prep boosts are left alone). */
+function endDrizzle(s: GameState): void {
+  if (s.held?.kind !== 'drizzle') return;
+  flushDrizzle(s, s.held.x, s.held.y);
+  s.held = undefined;
+}
+
 function emptyDeposit(): Deposit {
   return { cellsMg: new Array(FINISH_V1.gridSize * FINISH_V1.gridSize).fill(0), insideMg: 0, spilledMg: 0 };
 }
@@ -195,11 +229,9 @@ function stepOneMs(s: GameState): void {
     const portion = dish?.build[held.component];
     if (portion) portion.mg += BUILD_V1.pourRateMgPerMs[held.component];
   } else if (held?.kind === 'drizzle') {
-    const dish = dishById(s, held.dishId);
-    if (dish) {
-      const deposit = (dish.finish.drizzles[held.drizzleId] ??= emptyDeposit());
-      depositAt(deposit, held.x, held.y, FINISH_V1.drizzleRateMgPerMs);
-    }
+    held.pendingMg += lookup(FINISH_V1.drizzleRateMgPerMs, held.drizzleId) ?? 0;
+    held.pendingMs += 1;
+    if (held.pendingMs >= FINISH_V1.drizzleFlushMs) flushDrizzle(s, held.x, held.y);
   }
 
   // N units per second is exactly N milli-units per millisecond.
@@ -276,11 +308,13 @@ export function applyCommand(state: GameState, command: Command): { state: GameS
 }
 
 /** Let go of every held control: end a pour (dropping an empty portion), a drizzle, and boosts. */
-function releaseHeld(s: GameState): void {
+export function releaseHeld(s: GameState): void {
   const held = s.held;
   if (held?.kind === 'pour') {
     const dish = dishById(s, held.dishId);
     if (dish && dish.build[held.component]?.mg === 0) delete dish.build[held.component];
+  } else if (held?.kind === 'drizzle') {
+    endDrizzle(s);
   }
   s.held = undefined;
   s.prepSlots.forEach((slot) => (slot.boostHeld = false));
@@ -295,6 +329,7 @@ function invalidValues(s: GameState, c: Command): string | undefined {
     case 'startDish':
       return SIZES.includes(c.size) ? undefined : 'Unknown vessel size';
     case 'beginPour':
+    case 'pourTap':
       return COMPONENTS.includes(c.component) ? undefined : 'Unknown component';
     case 'startPrep':
     case 'finishPrep':
@@ -309,6 +344,10 @@ function invalidValues(s: GameState, c: Command): string | undefined {
 function run(s: GameState, c: Command): string | undefined {
   const bad = invalidValues(s, c);
   if (bad) return bad;
+  if (c.type === 'releaseHolds') {
+    releaseHeld(s);
+    return;
+  }
   if (s.day.completed && !['nextDay', 'buyUpgrade', 'markDayReported', 'selectStation', 'resume'].includes(c.type)) return 'Day is over';
   if (s.paused && c.type !== 'resume' && c.type !== 'selectStation') return 'Game is paused';
   const effects = upgradeEffects(s.profile.upgrades);
@@ -386,6 +425,17 @@ function run(s: GameState, c: Command): string | undefined {
       s.held = { kind: 'pour', dishId: dish.id, component: c.component, foodId: c.foodId };
       return;
     }
+    case 'pourTap': {
+      if (s.held) return 'Already holding a control';
+      const dish = dishById(s, c.dishId);
+      if (!dish || dish.stage !== 'building') return 'That dish is not on the build counter';
+      if (!getFood(c.foodId)) return `Unknown food ${c.foodId}`;
+      const existing = dish.build[c.component];
+      if (existing && existing.foodId !== c.foodId) return `This ${c.component} is already ${existing.foodId}; trash the dish to change it`;
+      const portion = (dish.build[c.component] ??= { foodId: c.foodId, mg: 0 });
+      portion.mg += BUILD_V1.pourRateMgPerMs[c.component] * BUILD_V1.tapPourMs;
+      return;
+    }
     case 'endPour': {
       if (s.held?.kind !== 'pour') return 'Not pouring';
       const dish = dishById(s, s.held.dishId);
@@ -437,29 +487,38 @@ function run(s: GameState, c: Command): string | undefined {
       if (s.held) return 'Already holding a control';
       const dish = dishById(s, c.dishId);
       if (!dish || (dish.stage !== 'prepped' && dish.stage !== 'finishing')) return 'That dish is not at the finish counter';
-      if (!lookup(DRIZZLES, c.drizzleId)) return `Unknown drizzle ${c.drizzleId}`;
+      const drizzle = lookup(DRIZZLES, c.drizzleId);
+      if (!drizzle) return `Unknown drizzle ${c.drizzleId}`;
+      if (drizzle.unlockRank > s.profile.rank) return `${drizzle.label} unlocks at rank ${drizzle.unlockRank}`;
       if (!Number.isFinite(c.x) || !Number.isFinite(c.y)) return 'Bad position';
       dish.stage = 'finishing';
       dish.finish.drizzles[c.drizzleId] ??= emptyDeposit();
       recordStep(dish, `drizzle:${c.drizzleId}`);
-      s.held = { kind: 'drizzle', dishId: dish.id, drizzleId: c.drizzleId, x: clampLocal(c.x), y: clampLocal(c.y) };
+      const x = clampLocal(c.x);
+      const y = clampLocal(c.y);
+      s.held = { kind: 'drizzle', dishId: dish.id, drizzleId: c.drizzleId, x, y, px: x, py: y, pendingMg: 0, pendingMs: 0 };
       return;
     }
     case 'moveDrizzle': {
       if (s.held?.kind !== 'drizzle') return 'Not drizzling';
       if (!Number.isFinite(c.x) || !Number.isFinite(c.y)) return 'Bad position';
-      s.held.x = clampLocal(c.x);
-      s.held.y = clampLocal(c.y);
+      const x = clampLocal(c.x);
+      const y = clampLocal(c.y);
+      flushDrizzle(s, x, y);
+      s.held.x = x;
+      s.held.y = y;
       return;
     }
     case 'endDrizzle':
       if (s.held?.kind !== 'drizzle') return 'Not drizzling';
-      s.held = undefined;
+      endDrizzle(s);
       return;
     case 'placeGarnish': {
       const dish = dishById(s, c.dishId);
       if (!dish || (dish.stage !== 'prepped' && dish.stage !== 'finishing')) return 'That dish is not at the finish counter';
-      if (!lookup(GARNISHES, c.garnishId)) return `Unknown garnish ${c.garnishId}`;
+      const garnish = lookup(GARNISHES, c.garnishId);
+      if (!garnish) return `Unknown garnish ${c.garnishId}`;
+      if (garnish.unlockRank > s.profile.rank) return `${garnish.label} unlocks at rank ${garnish.unlockRank}`;
       if (!Number.isFinite(c.x) || !Number.isFinite(c.y)) return 'Bad position';
       dish.stage = 'finishing';
       const x = clampLocal(c.x);
@@ -471,7 +530,7 @@ function run(s: GameState, c: Command): string | undefined {
     case 'finishDish': {
       const dish = dishById(s, c.dishId);
       if (!dish || (dish.stage !== 'prepped' && dish.stage !== 'finishing')) return 'That dish is not at the finish counter';
-      if (s.held?.kind === 'drizzle' && s.held.dishId === dish.id) s.held = undefined;
+      if (s.held?.kind === 'drizzle' && s.held.dishId === dish.id) endDrizzle(s);
       dish.stage = 'ready';
       return;
     }

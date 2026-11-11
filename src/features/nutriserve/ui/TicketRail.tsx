@@ -1,7 +1,8 @@
 // Ticket rail (top) and the selected paper ticket (right). Tickets are code-native UI text.
 import React from 'react';
 import { DRIZZLES, GARNISHES } from '../data/finishItems.ts';
-import { getCatalogCustomer, getFood, type Command, type CommandResult, type GameState, type Ticket } from '../simulation/index.ts';
+import { getCatalogCustomer, getFood, type GameState, type Ticket } from '../simulation/index.ts';
+import type { Dispatch } from './useNutriServeGame.ts';
 import { box } from './stage.ts';
 import { Dockable } from './Dockable.tsx';
 
@@ -44,7 +45,7 @@ export function TicketDetails({ ticket }: { ticket: Ticket }) {
   );
 }
 
-export function TicketRail({ state, dispatch }: { state: GameState; dispatch: (c: Command) => CommandResult }) {
+export function TicketRail({ state, dispatch }: { state: GameState; dispatch: Dispatch }) {
   const open = state.tickets.filter((t) => t.servedAtMs === undefined);
   const selected = open.find((t) => t.id === state.selected.ticketId) ?? open[0];
   return (
