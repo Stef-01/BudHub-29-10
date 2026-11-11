@@ -7,10 +7,14 @@
 //   keyboard: arrows move the cursor (one step per press, then a steady glide while held, the same
 //             on every computer whatever its key-repeat settings); hold Space to drizzle; Enter
 //             places a garnish.
+//   click-only (switch access, a screen reader's default action, voice "click"): a click with no
+//             press behind it places the selected garnish at the next evenly spaced spot, or runs
+//             an automatic swirl that pours the ordered amount of the selected drizzle (another
+//             click stops it early).
 // No tool is picked until the player picks one, so a stray touch never drizzles.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { DRIZZLES, GARNISHES } from '../../data/finishItems.ts';
-import { dishMatchesOrder, FINISH_V1, type Dish, type GameState } from '../../simulation/index.ts';
+import { dishMatchesOrder, drizzleTargetG, FINISH_V1, type Dish, type GameState } from '../../simulation/index.ts';
 import { DRIZZLE_COLORS, foodColor, GarnishGlyph, VesselTop } from '../LayoutStudy.tsx';
 import { box, clientToLocal } from '../stage.ts';
 import { Dockable } from '../Dockable.tsx';
@@ -61,6 +65,9 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   };
   const vesselEl = useRef<HTMLElement | null>(null);
   const drizzling = state.held?.kind === 'drizzle';
+  const lastPressAt = useRef(-Infinity);
+  const [live, setLive] = useState('');
+  const auto = useRef<{ frame: number } | null>(null);
   const drizzlingRef = useRef(drizzling);
   drizzlingRef.current = drizzling;
   const press = useRef<Press | null>(null);
@@ -195,8 +202,95 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
 
   const hint = !tool ? 'Pick a drizzle or garnish below' : undefined;
 
+  // --- Click-only input -------------------------------------------------------------------
+  const stopAuto = useCallback(() => {
+    if (!auto.current) return;
+    cancelAnimationFrame(auto.current.frame);
+    auto.current = null;
+    stop();
+  }, [stop]);
+  useEffect(() => stopAuto, [stopAuto]);
+  const autoSwirl = (drizzleId: string) => {
+    if (!dish) return;
+    const label = DRIZZLES[drizzleId]?.label ?? drizzleId;
+    const targetG = drizzleTargetG(drizzleId, dish.size) ?? 0;
+    const rate = FINISH_V1.drizzleRateMgPerMs[drizzleId] ?? 1;
+    const duration = (targetG * 1000) / rate;
+    // Five passes across the vessel (the evenest simple path measured for keyboard play).
+    const rows = [-0.64, -0.32, 0, 0.32, 0.64];
+    const points: Array<[number, number]> = [];
+    rows.forEach((y, i) => {
+      const w = Math.sqrt(1 - y * y) * 0.8;
+      points.push(i % 2 ? [w, y] : [-w, y], i % 2 ? [-w, y] : [w, y]);
+    });
+    const lengths = points.slice(1).map((p, i) => Math.hypot(p[0] - points[i][0], p[1] - points[i][1]));
+    const total = lengths.reduce((a, b) => a + b, 0);
+    const at = (f: number): [number, number] => {
+      let d = f * total;
+      for (let i = 0; i < lengths.length; i++) {
+        if (d <= lengths[i]) {
+          const t = d / lengths[i];
+          return [points[i][0] + (points[i + 1][0] - points[i][0]) * t, points[i][1] + (points[i + 1][1] - points[i][1]) * t];
+        }
+        d -= lengths[i];
+      }
+      return points[points.length - 1];
+    };
+    const [x0, y0] = at(0);
+    if (!dispatch({ type: 'beginDrizzle', dishId: dish.id, drizzleId, x: x0, y: y0 }).ok) return;
+    setLive(`Drizzling ${label}. Click again to stop.`);
+    const t0 = performance.now();
+    const frame = (now: number) => {
+      if (!auto.current) return;
+      const f = (now - t0) / duration;
+      if (f >= 1 || !drizzlingRef.current) {
+        auto.current = null;
+        stop();
+        setLive(`${label} done.`);
+        return;
+      }
+      const [x, y] = at(f);
+      setCursor({ x, y });
+      dispatch({ type: 'moveDrizzle', x, y }, { silent: true });
+      auto.current.frame = requestAnimationFrame(frame);
+    };
+    auto.current = { frame: requestAnimationFrame(frame) };
+  };
+  const onClickOnly = (e: React.MouseEvent) => {
+    // Mouse, touch and pen clicks follow a press (handled above); only a bare activation counts.
+    if (e.detail !== 0 || performance.now() - lastPressAt.current < 600) return;
+    if (auto.current) {
+      stopAuto();
+      setLive('Drizzle stopped.');
+      return;
+    }
+    if (!dish || !tool) {
+      setLive('Pick a drizzle or garnish first.');
+      return;
+    }
+    if (tool.kind === 'drizzle') {
+      autoSwirl(tool.id);
+      return;
+    }
+    // Garnish: the next of the ordered number of evenly spaced spots on a ring, so the pieces end up
+    // balanced; six spots when the ticket didn't order this garnish.
+    const placed = dish.finish.garnishes.filter((g) => g.id === tool.id).length;
+    const ordered = forTicket?.order.finish.find((f) => f.kind === 'garnish' && f.id === tool.id);
+    const spots = ordered && ordered.kind === 'garnish' ? ordered.count : 6;
+    const angle = -Math.PI / 2 + (placed % spots) * ((2 * Math.PI) / spots) + Math.floor(placed / spots) * (Math.PI / spots);
+    const p = { x: 0.5 * Math.cos(angle), y: 0.5 * Math.sin(angle) };
+    setCursor(p);
+    if (dispatch({ type: 'placeGarnish', dishId: dish.id, garnishId: tool.id, x: p.x, y: p.y }).ok) {
+      const label = GARNISHES[tool.id]?.label ?? tool.id;
+      setLive(`${label} placed: ${placed + 1}${ordered ? ` of ${spots}` : ''}.`);
+    }
+  };
+
   return (
     <>
+      <span className="sr-only" role="status" aria-live="polite">
+        {live}
+      </span>
       <Dockable slot="main" as="aside" region={box(8, 40, 148, 384)} className="ns-tray ns-tray-column" aria-label="Dishes at the finish counter">
         <span className="ns-tray-label">To finish</span>
         {working.length === 0 && <span className="ns-muted">Prep a dish first</span>}
@@ -252,7 +346,9 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
             aria-label={`Finish ${name(dish)}${forTicket ? ` for ${customerName(forTicket)}` : ''}. ${
               hint ? `${hint}. ` : ''
             }Arrow keys move the cursor; hold Space to drizzle, Enter to place a garnish.`}
+            onClick={onClickOnly}
             onPointerDown={(e) => {
+              lastPressAt.current = performance.now();
               if (e.button !== 0 || !e.isPrimary || press.current || !tool) return;
               const p = local(e);
               setCursor(p);

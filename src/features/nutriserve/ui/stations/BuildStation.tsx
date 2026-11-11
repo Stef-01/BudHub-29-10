@@ -93,7 +93,8 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
 
   // Click-only (latched) pours are announced: started, at the line, past it. A sighted player
   // watches the gauge; a screen-reader user hears when to click again.
-  const latch = useRef<{ component: BuildComponent; said: 'start' | 'line' | 'over' } | null>(null);
+  const latch = useRef<{ component: BuildComponent; said: 'start' | 'near' | 'line' | 'over' } | null>(null);
+  const pressOnLatched = useRef(false);
   const [live, setLive] = useState('');
   const latchedPour = state.held?.kind === 'pour' ? state.held : undefined;
   const latchedG = dish && latchedPour ? (dish.build[latchedPour.component]?.mg ?? 0) / 1000 : 0;
@@ -102,7 +103,11 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
     const l = latch.current;
     if (!l || !latchedPour || latchedPour.component !== l.component || !latchedIdeal) return;
     const label = foodLabel(latchedPour.foodId);
-    if (l.said === 'start' && latchedG >= latchedIdeal) {
+    // A cue at three quarters leaves time to react (pouring runs at 50-90 g a second).
+    if (l.said === 'start' && latchedG >= latchedIdeal * 0.75 && latchedG < latchedIdeal) {
+      l.said = 'near';
+      setLive(`${label} nearly at the line, ${Math.round(latchedG)} of ${latchedIdeal} grams.`);
+    } else if ((l.said === 'start' || l.said === 'near') && latchedG >= latchedIdeal) {
       l.said = 'line';
       setLive(`${label} at the line, ${Math.round(latchedG)} grams. Click again to stop.`);
     } else if (l.said === 'line' && latchedG >= latchedIdeal * 1.25) {
@@ -185,7 +190,8 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                     aria-describedby="ns-hold-hint"
                     onStart={() => {
                       // Pressing a dispenser that is already pouring (latched by a click) just stops it on release.
-                      if (held?.component === c.id && held.foodId === foodId) return;
+                      pressOnLatched.current = held?.component === c.id && held.foodId === foodId;
+                      if (pressOnLatched.current) return;
                       dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId });
                     }}
                     // Silent: leaving the station mid-hold already released the pour.
@@ -195,8 +201,16 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                     }}
                     onCancel={() => {
                       latch.current = null;
+                      if (pressOnLatched.current) {
+                        // The press only meant to stop a latched pour: keep what was poured.
+                        dispatch({ type: 'endPour' }, { silent: true });
+                        return;
+                      }
                       dispatch({ type: 'cancelPour' }, { silent: true });
+                      setLive(`Pour cancelled: that looked like a scroll.`);
                     }}
+                    // A locked dispenser says why (the simulation's own reason, in the status line).
+                    onBlocked={() => dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId })}
                     // Click-only input: the first click starts pouring, the next one stops it.
                     onTap={() => {
                       if (held?.component === c.id && held.foodId === foodId) {
@@ -204,7 +218,11 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                         dispatch({ type: 'endPour' });
                       } else if (dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId }).ok) {
                         latch.current = { component: c.id, said: 'start' };
-                        setLive(`Pouring ${foodLabel(foodId)}. Click again to stop.`);
+                        setLive(
+                          ideal
+                            ? `Pouring ${foodLabel(foodId)}, line at ${ideal[c.id]} grams. Click again to stop.`
+                            : `Pouring ${foodLabel(foodId)}. No fill line: this vessel size isn't the ticket's. Click again to stop.`,
+                        );
                       }
                     }}
                   >

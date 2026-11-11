@@ -5,9 +5,11 @@
 //   unmount always ends it, so a hold can never get stuck on.
 // - Touch and pen: a press only becomes a hold once the finger has stayed put for HOLD_DELAY_MS.
 //   A finger that moves first is a scroll: nothing happens and the page scrolls. Once the hold has
-//   started the page is kept still, unless the finger then travels more than CANCEL_DRAG_PX (a slow
-//   scroll): the hold is cancelled (onCancel undoes it) and the page scrolls again. A quick tap is a
-//   short press. Only the finger that started the hold can end it.
+//   started the page is kept still. A young hold (under CANCEL_WINDOW_MS from contact) whose finger
+//   then travels more than CANCEL_DRAG_PX, mostly up or down, was a slow scroll after all: it is
+//   cancelled (onCancel undoes it) and the page scrolls again. An older hold that drifts keeps
+//   pouring. A quick tap is a short press. Only the finger that started the hold can end it.
+// - Pressing a disabled control calls onBlocked, so the player can be told why.
 // - Keyboard: Space or Enter down starts it, up ends it. Repeats are ignored (and never scroll).
 // - Switch access, screen-reader browse mode and voice control send only a click, never a press and
 //   release: a click that isn't the tail of a hold calls onTap.
@@ -24,8 +26,10 @@ import React, { useEffect, useRef } from 'react';
 export const HOLD_DELAY_MS = 120;
 /** Movement (CSS px) that turns a touch press into a scroll before the hold starts. */
 export const TOUCH_SLOP_PX = 10;
-/** Travel (CSS px) after a touch hold started that means the player is scrolling after all. */
+/** Travel (CSS px), mostly vertical, that means a young touch hold was a slow scroll after all. */
 export const CANCEL_DRAG_PX = 30;
+/** Only a hold this young (ms from contact) can turn out to be a scroll. */
+export const CANCEL_WINDOW_MS = 500;
 /** A press shorter than this, from first contact, is reported as a short press. */
 export const SHORT_PRESS_MS = 180;
 /** A click this soon after a hold ended is that hold's own click, not a separate tap. */
@@ -38,6 +42,8 @@ interface HoldButtonProps {
   onCancel?: () => void;
   /** Called for a click that wasn't a press (assistive tech, element.click()). */
   onTap?: () => void;
+  /** Called when a disabled control is pressed or clicked. */
+  onBlocked?: () => void;
   disabled?: boolean;
   className?: string;
   children: React.ReactNode;
@@ -55,7 +61,7 @@ interface Touching {
   at: number;
 }
 
-export function HoldButton({ onStart, onEnd, onCancel, onTap, disabled, className = '', children, active, ...rest }: HoldButtonProps) {
+export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disabled, className = '', children, active, ...rest }: HoldButtonProps) {
   const button = useRef<HTMLButtonElement>(null);
   const holding = useRef(false);
   /** The pointer that owns the hold (undefined for keyboard). */
@@ -125,7 +131,7 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, disabled, classNam
         cb.current.onEnd(false);
       }
     },
-    []
+    [],
   );
 
   const isOwner = (id: number) => owner.current === undefined || owner.current === id;
@@ -141,7 +147,8 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, disabled, classNam
       aria-describedby={rest['aria-describedby']}
       title={rest.title}
       onPointerDown={(e) => {
-        if (e.button !== 0 || !e.isPrimary || disabled || holding.current || touch.current) return;
+        if (e.button !== 0 || !e.isPrimary) return;
+        if (disabled || holding.current || touch.current) return; // a press on a disabled control is reported by its click
         if (e.pointerType === 'mouse') {
           e.currentTarget.setPointerCapture(e.pointerId);
           start(e.pointerId);
@@ -158,9 +165,12 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, disabled, classNam
       onPointerMove={(e) => {
         const t = touch.current;
         if (!t || t.id !== e.pointerId) return;
-        const moved = Math.hypot(e.clientX - t.x, e.clientY - t.y);
-        if (t.timer && moved > TOUCH_SLOP_PX) clearTouch(); // moved before the hold began: a scroll
-        else if (!t.timer && holding.current && moved > CANCEL_DRAG_PX) {
+        const dx = e.clientX - t.x;
+        const dy = e.clientY - t.y;
+        const moved = Math.hypot(dx, dy);
+        if (t.timer && moved > TOUCH_SLOP_PX)
+          clearTouch(); // moved before the hold began: a scroll
+        else if (!t.timer && holding.current && moved > CANCEL_DRAG_PX && Math.abs(dy) > 2 * Math.abs(dx) && performance.now() - t.at < CANCEL_WINDOW_MS) {
           clearTouch(); // a slow scroll after all: undo, and let the page scroll again
           cancel();
         }
@@ -189,7 +199,9 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, disabled, classNam
       onKeyDown={(e) => {
         if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault();
-          if (!e.repeat) start();
+          if (e.repeat) return;
+          if (disabled) onBlocked?.();
+          else start();
         }
       }}
       onKeyUp={(e) => {
@@ -200,7 +212,8 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, disabled, classNam
       }}
       onClick={() => {
         if (holding.current || touch.current || performance.now() - lastHoldEnd.current < CLICK_AFTER_HOLD_MS) return;
-        if (!disabled) onTap?.();
+        if (disabled) onBlocked?.();
+        else onTap?.();
       }}
       onBlur={() => {
         clearTouch();

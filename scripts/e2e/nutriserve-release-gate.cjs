@@ -388,6 +388,44 @@ async function runRegressions(browser) {
   const hud = await page.locator('.ns-hud').innerText();
   check(/Day 3/.test(hud) && /Rank 3/.test(hud) && /41 coins/.test(hud), `regressions: progress carried into a new day (${hud.replace(/\s+/g, ' ').slice(0, 50)})`);
 
+  // 5. Click-only input can finish a whole order: a bare click places a garnish at the next spot
+  //    and runs an automatic swirl for the ordered amount of drizzle. "Why?" lists every reason.
+  await page.getByRole('button', { name: 'Save & exit' }).click();
+  await storeFinishSave();
+  await open();
+  await page.getByRole('button', { name: /^Continue day/ }).click();
+  const steps = await page.locator('.ns-ticket-finish li').allInnerTexts();
+  const clickVessel = () => page.locator('.ns-vessel-top').evaluate((el) => el.click());
+  for (const step of steps) {
+    const m = step.trim().match(/^(.*) ×(\d+)$/);
+    if (/^No finish$/.test(step.trim())) continue;
+    await page.getByRole('button', { name: m ? m[1] : step.trim(), exact: true }).click();
+    if (m) for (let i = 0; i < Number(m[2]); i++) await clickVessel();
+    else {
+      await clickVessel();
+      await page.waitForTimeout(2600); // the automatic swirl pours the ordered amount (about 1.7 s)
+    }
+  }
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.locator('.ns-serve button').first().click();
+  await page.waitForTimeout(300);
+  const bar = await page.locator('.ns-lastserve').first().innerText();
+  check(!/No (Curd|Ghee)|Missing/.test(bar), `regressions: click-only input finishes the order (${bar.replace(/\s+/g, ' ').slice(0, 90)})`);
+  const why = page.getByRole('button', { name: 'Why?' });
+  if (await why.count()) {
+    await why.click();
+    const items = await page.locator('.ns-why-panel li').count();
+    await page.keyboard.press('Escape');
+    const closed = (await page.locator('.ns-why-panel').count()) === 0;
+    check(items > 0 && closed, `regressions: Why? lists every reason (${items}) and Escape closes it`);
+  }
+
+  // 6. A short laptop window keeps the station tabs on screen.
+  await page.setViewportSize({ width: 1366, height: 657 });
+  await page.waitForTimeout(300);
+  const tabsBottom = await page.evaluate(() => document.querySelector('.ns-tabs').getBoundingClientRect().bottom + scrollY);
+  check(tabsBottom <= 657, `regressions: station tabs fit a 1366x657 window (bottom ${Math.round(tabsBottom)} px)`);
+
   check(errors.length === 0, `regressions: no app errors${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   await context.close();
 
@@ -426,6 +464,20 @@ async function runRegressions(browser) {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await p.waitForTimeout(400);
   check((await grams()) === 9, `regressions: a quick phone tap pours the 9 g minimum (${await grams()} g)`);
+  // A long touch pour whose finger drifts keeps what it poured (only a young, vertical drag is a scroll).
+  await target.scrollIntoViewIfNeeded();
+  const tb3 = await target.boundingBox();
+  const [hx, hy] = [tb3.x + tb3.width / 2, tb3.y + tb3.height / 2];
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: hx, y: hy }] });
+  await p.waitForTimeout(900);
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: hx + i, y: hy + 5 * i }] });
+    await p.waitForTimeout(40);
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await p.waitForTimeout(300);
+  const kept = (await grams()) - 9;
+  check(kept >= 60, `regressions: a long phone pour that drifts 40 px keeps its pour (+${kept} g)`);
   await phone.close();
 }
 

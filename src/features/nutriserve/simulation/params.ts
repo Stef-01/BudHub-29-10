@@ -144,7 +144,11 @@ export const ECONOMY_V1 = {
   // v2: five stars and the great-service bonus need a complete order (the right vessel and foods,
   // and every ordered drizzle and garnish piece on the dish). In v1 a katori with no side, or no
   // garnish at all, still earned five stars and the bonus.
-  version: 'economy-v2',
+  // v3: "complete" also needs each food and the drizzle at completeShare of the ordered amount, so
+  // a katori of half portions no longer counts (in v2 it earned five stars and the bonus).
+  version: 'economy-v3',
+  /** A food or drizzle counts as served once at least this share of the ordered amount is there. */
+  completeShare: 0.8,
   /** Stars without a complete order are capped here. */
   incompleteStarCap: 4,
   /** Base tip in coins by vessel size, scaled by the overall score. */

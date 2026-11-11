@@ -164,7 +164,13 @@
 
 /* Toast and overlays */
 /* Last serve: a fixed-height bar (three single lines) that never covers or moves anything. */
-.ns-lastserve { background: var(--paper); border: 2px solid var(--line); border-radius: 8px; padding: 3px 10px; margin: 0 0 8px; font-size: 14px; line-height: 18px; height: 62px; overflow: hidden; }
+.ns-lastserve-wrap { position: relative; margin: 0 0 8px; }
+.ns-lastserve { background: var(--paper); border: 2px solid var(--line); border-radius: 8px; padding: 3px 10px; font-size: 14px; line-height: 18px; height: 62px; overflow: hidden; }
+.ns-why { font: inherit; font-size: 13px; font-weight: 800; line-height: 16px; padding: 0 8px; margin-right: 8px; border: 2px solid var(--line); border-radius: 999px; background: #ffe08a; color: var(--ink); cursor: pointer; }
+.ns-why[aria-expanded='true'] { background: #fff; }
+/* Every reason, over the stage (it doesn't push anything down); closes with Close or Escape. */
+.ns-why-panel { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40; background: var(--paper); border: 2px solid var(--line); border-radius: 8px; padding: 6px 12px 10px; box-shadow: 0 6px 18px #0004; font-size: 14px; max-height: 55vh; overflow: auto; }
+.ns-why-panel ul { margin: 4px 0 8px; padding-left: 18px; }
 .ns-lastserve p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ns-lastserve em { color: var(--warn); font-style: normal; font-weight: 700; }
 .ns-lastserve-notes { color: #4b4336; }
@@ -213,7 +219,15 @@
 .ns-dock .ns-gauge-needle { width: 14px; height: 14px; }
 .ns-dock .ns-vessel-top { width: min(100%, 340px, 75svh); aspect-ratio: 1; margin: 0 auto; position: relative; }
 .ns-dock .ns-tray .ns-btn, .ns-dock .ns-tray-label { font-size: 15px; }
-.ns-dock .ns-lastserve { margin: 0; }
+.ns-dock .ns-lastserve-wrap { margin: 0; }
+/* Fixed height on phones too (nothing below moves); the middle line is tall enough for a touch-sized Why? button. */
+.ns-dock .ns-lastserve { height: 74px; }
+.ns-dock .ns-lastserve p:nth-child(2) { line-height: 30px; }
+.ns-dock .ns-why { min-height: 28px; padding: 0 14px; }
+/* Landscape phones: the scene would be taller than the screen; keep it to about half the height. */
+.ns-compact .ns-stage-wrap { max-width: calc(48svh * 4 / 3); margin: 0 auto; }
+/* At 320 px the count badge sits under the label instead of over it. */
+.ns-dock .ns-tab em { position: static; margin: 2px auto 0; }
 .ns-dock .ns-order-counter { padding: 4px 0; }
 .ns-dock .ns-provisional { font-size: 12px; }
 /* Backing plates only matter over stage scenery; in the dock the text already sits on the page. */
@@ -226,4 +240,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ns-root *, .ns-root *::before, .ns-root *::after { transition: none !important; animation: none !important; }
+}
+
+/* Short windows on a wide layout (a 1366x768 laptop): a tighter HUD and a two-line result bar
+   (every reason is still one tap away under "Why?"), so the station tabs stay on screen. */
+@media (max-height: 720px) {
+  .ns-root:not(.ns-compact) .ns-hud { padding: 2px 4px; }
+  .ns-root:not(.ns-compact) .ns-hud .ns-btn { min-height: 34px; }
+  .ns-root:not(.ns-compact) .ns-lastserve { height: 44px; }
+  .ns-root:not(.ns-compact) .ns-lastserve-notes { display: none; }
+  .ns-root:not(.ns-compact) .ns-lastserve-wrap { margin-bottom: 4px; }
 }

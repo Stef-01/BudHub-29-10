@@ -2,7 +2,7 @@
 // separate report (../nutrition). Build and Prep wrap the unchanged recovered reference functions
 // through named Indian-food adapters; finish and waiting are provisional and versioned.
 import { gradeReferenceBuild, gradeReferenceMix, MIX_TARGETS } from '../domain/referenceScoring.ts';
-import { DRIZZLES } from '../data/finishItems.ts';
+import { DRIZZLES, GARNISHES } from '../data/finishItems.ts';
 import { lookup } from './lookup.ts';
 import {
   AGGREGATION_V2,
@@ -138,11 +138,12 @@ export function gradeFinishV1(dish: Dish, order: TicketOrder, effects?: UpgradeE
   if (ordered) {
     const deposit = dish.finish.drizzles[ordered.id];
     const target = drizzleTargetG(ordered.id, order.size);
-    if (!deposit || deposit.insideMg + deposit.spilledMg === 0) add(`No ${lookup(DRIZZLES, ordered.id)?.label ?? ordered.id}`, p.missingDrizzle);
+    const label = lookup(DRIZZLES, ordered.id)?.label ?? ordered.id;
+    if (!deposit || deposit.insideMg + deposit.spilledMg === 0) add(`No ${label}`, p.missingDrizzle);
     else if (target) {
       const offPct = (Math.abs(grams(deposit.insideMg) - target) / target) * 100;
-      add('Drizzle amount', Math.max(0, offPct - p.drizzleTolerancePct) * p.drizzleAmountPerPct);
-      add('Drizzle spread', (1 - coverage(deposit, target)) * p.drizzleCoverage);
+      add(`Too ${grams(deposit.insideMg) > target ? 'much' : 'little'} ${label}`, Math.max(0, offPct - p.drizzleTolerancePct) * p.drizzleAmountPerPct);
+      add(`${label} not spread evenly`, (1 - coverage(deposit, target)) * p.drizzleCoverage);
     }
   }
   for (const [id, deposit] of applied) {
@@ -158,11 +159,14 @@ export function gradeFinishV1(dish: Dish, order: TicketOrder, effects?: UpgradeE
   const onDish = dish.finish.garnishes.filter((g) => !g.fell);
   for (const step of garnishSteps) {
     const placed = onDish.filter((g) => g.id === step.id).length;
-    add(`Missing ${step.id}`, Math.max(0, step.count - placed) * p.missingGarnishPiece);
-    add(`Extra ${step.id}`, Math.max(0, placed - step.count) * p.extraGarnishPiece);
+    const label = lookup(GARNISHES, step.id)?.label ?? step.id;
+    const missing = Math.max(0, step.count - placed);
+    const extra = Math.max(0, placed - step.count);
+    add(`Missing ${missing} ${label}`, missing * p.missingGarnishPiece);
+    add(`${extra} extra ${label}`, extra * p.extraGarnishPiece);
   }
-  const wrongTypes = new Set(onDish.filter((g) => !garnishSteps.some((s) => s.id === g.id)).map((g) => g.id));
-  add('Unordered garnish', wrongTypes.size * p.wrongGarnishType);
+  const wrongTypes = [...new Set(onDish.filter((g) => !garnishSteps.some((s) => s.id === g.id)).map((g) => g.id))];
+  add(`Unordered ${wrongTypes.map((id) => lookup(GARNISHES, id)?.label ?? id).join(', ')}`, wrongTypes.length * p.wrongGarnishType);
   add('Garnish fell off', dish.finish.garnishes.filter((g) => g.fell).length * p.fallenGarnishPiece);
   if (onDish.length > 0) {
     const cx = onDish.reduce((s, g) => s + g.x, 0) / onDish.length;
@@ -222,14 +226,17 @@ export function aggregateV2(scores: Omit<StationScores, 'total'>, share: number)
 }
 
 /**
- * Everything the ticket asked for is on the dish: the right vessel and three foods, the ordered
- * drizzle landed, and at least the ordered number of each garnish stayed on.
+ * Everything the ticket asked for is on the dish (economy-v3): the right vessel and three foods,
+ * each at least completeShare of its ordered grams; at least completeShare of the ordered drizzle
+ * landed; and at least the ordered number of each garnish stayed on.
  */
 export function orderComplete(dish: Dish, order: TicketOrder): boolean {
   if (!dishMatchesOrder(dish, order)) return false;
+  const enough = ECONOMY_V1.completeShare;
+  if ((['base', 'main', 'side'] as const).some((c) => (dish.build[c]?.mg ?? 0) / 1000 < order.idealG[c] * enough)) return false;
   return order.finish.every((step) =>
     step.kind === 'drizzle'
-      ? (dish.finish.drizzles[step.id]?.insideMg ?? 0) > 0
+      ? (dish.finish.drizzles[step.id]?.insideMg ?? 0) / 1000 >= (drizzleTargetG(step.id, order.size) ?? 0) * enough
       : dish.finish.garnishes.filter((g) => g.id === step.id && !g.fell).length >= step.count
   );
 }
@@ -252,7 +259,9 @@ export function serveNotes(
   waitedMs: number
 ): string[] {
   const notes: string[] = [];
-  if (share < AGGREGATION_V2.fullCreditShare) notes.push(`Katori only ${Math.round(share * 100)}% full, so waiting, prep and finish counted less`);
+  if (share < AGGREGATION_V2.fullCreditShare) {
+    notes.push(`Only ${Math.round(share * 100)}% of the ordered food is in the katori, so waiting, prep and finish counted less`);
+  }
   const wanted = { base: order.baseId, main: order.mainId, side: order.sideId } as const;
   if (dish.size !== order.size) notes.push(`${dish.size[0].toUpperCase()}${dish.size.slice(1)} vessel; the ticket wanted ${order.size}`);
   for (const c of ['base', 'main', 'side'] as const) {
@@ -270,7 +279,10 @@ export function serveNotes(
     const target = prepTargetUnits(order.prepLevel);
     notes.push(units < target ? `Undercooked: ${units} of ${target} prep units` : `Overcooked: ${units} of ${target} prep units`);
   }
-  for (const p of [...finishPenalties].sort((a, b) => b.points - a.points).slice(0, 3)) notes.push(`${p.reason} (−${Math.round(p.points)})`);
+  // Finish penalties that cost at least a point after rounding, largest first.
+  for (const p of [...finishPenalties].sort((a, b) => b.points - a.points).filter((p) => Math.round(p.points) >= 1).slice(0, 3)) {
+    notes.push(`${p.reason} (−${Math.round(p.points)})`);
+  }
   if (scores.waiting < 90) notes.push(`Waited ${Math.round(waitedMs / 1000)} s`);
   return notes;
 }

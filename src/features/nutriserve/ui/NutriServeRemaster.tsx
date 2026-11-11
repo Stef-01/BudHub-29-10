@@ -32,8 +32,12 @@ import { LayoutContext, type DockSlot } from './Dockable.tsx';
  */
 const COMPACT_ENTER = { width: 700, height: 500 };
 const COMPACT_LEAVE = { width: 720, height: 540 };
-function nextCompact(was: boolean, width: number, viewportHeight: number): boolean {
-  return was ? !(width >= COMPACT_LEAVE.width && viewportHeight >= COMPACT_LEAVE.height) : width < COMPACT_ENTER.width || viewportHeight < COMPACT_ENTER.height;
+/** Touch-first screens (tablets) use the dock below this width: stage targets there are ~26 px. */
+const COMPACT_TOUCH = { enter: 1100, leave: 1120 };
+function nextCompact(was: boolean, width: number, viewportHeight: number, coarse: boolean): boolean {
+  const enterW = coarse ? COMPACT_TOUCH.enter : COMPACT_ENTER.width;
+  const leaveW = coarse ? COMPACT_TOUCH.leave : COMPACT_LEAVE.width;
+  return was ? !(width >= leaveW && viewportHeight >= COMPACT_LEAVE.height) : width < enterW || viewportHeight < COMPACT_ENTER.height;
 }
 /** How long a status message stays in the live line. */
 const STATUS_MS = 6_000;
@@ -204,7 +208,8 @@ function Kitchen({
     const el = rootRef.current;
     if (!el) return;
     let width = el.clientWidth;
-    const update = () => setCompact((was) => nextCompact(was, width, window.innerHeight));
+    const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    const update = () => setCompact((was) => nextCompact(was, width, window.innerHeight, coarse()));
     const observer = new ResizeObserver(([entry]) => {
       width = entry.contentRect.width;
       update();
@@ -315,6 +320,37 @@ function Kitchen({
     };
     el.addEventListener('focusin', onFocusIn);
     return () => el.removeEventListener('focusin', onFocusIn);
+  }, []);
+  // When the focused control goes away (Take order, Send to prep, Done, Serve all remove their
+  // button), focus moves to the next sensible control instead of dropping to the page.
+  const modalRef = useRef(modalOpen);
+  modalRef.current = modalOpen;
+  // Only for keyboard (and screen-reader) users: moving focus after a tap would scroll the page.
+  const keyboardUser = useRef(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const onKey = () => (keyboardUser.current = true);
+    const onPointer = () => (keyboardUser.current = false);
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('pointerdown', onPointer, true);
+    const onFocusOut = (e: FocusEvent) => {
+      const lost = e.target as HTMLElement;
+      requestAnimationFrame(() => {
+        if (!keyboardUser.current || lost.isConnected || modalRef.current) return;
+        const active = document.activeElement;
+        if (active && active !== document.body) return;
+        const usable = (q: string) =>
+          [...el.querySelectorAll<HTMLElement>(q)].find((b) => !b.closest('[inert]') && b.getClientRects().length > 0 && !(b as HTMLButtonElement).disabled);
+        (usable('.ns-btn-suggested') ?? usable('.ns-btn-primary:not([aria-disabled="true"])') ?? usable('.ns-tab[aria-pressed="true"]'))?.focus();
+      });
+    };
+    el.addEventListener('focusout', onFocusOut);
+    return () => {
+      el.removeEventListener('focusout', onFocusOut);
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('pointerdown', onPointer, true);
+    };
   }, []);
   const wasModal = useRef(modalOpen);
   useEffect(() => {
@@ -433,34 +469,81 @@ function Kitchen({
  * The full breakdown is in the day summary.
  */
 function LastServe({ result, inert }: { result: ServeResult | undefined; inert?: boolean }) {
+  // "Why?" opens every reason in a panel over the stage: the bar's fixed height (so nothing moves)
+  // can't show them all, and the day summary comes too late to learn from.
+  const [open, setOpen] = useState(false);
+  const whyRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => setOpen(false), [result?.ticketId]);
   if (!result) {
     return (
-      <section className="ns-lastserve ns-lastserve-empty" aria-label="Last serve" inert={inert}>
-        <p>Serve results appear here: each station's score and what cost points.</p>
-      </section>
+      <div className="ns-lastserve-wrap">
+        <section className="ns-lastserve ns-lastserve-empty" aria-label="Last serve" inert={inert}>
+          <p>Serve results appear here: each station's score and what cost points.</p>
+        </section>
+      </div>
     );
   }
   const flags = [
     result.mismatchedOrder ? 'not what this ticket ordered' : '',
-    result.contentShare < AGGREGATION_V2.fullCreditShare ? `katori ${Math.round(result.contentShare * 100)}% full` : '',
+    result.contentShare < AGGREGATION_V2.fullCreditShare ? `only ${Math.round(result.contentShare * 100)}% of the order in the katori` : '',
     !result.complete && !result.mismatchedOrder ? 'order incomplete (no five stars or bonus)' : '',
   ].filter(Boolean);
+  // The content note repeats the flag on the first line; the panel and summary keep it.
+  const barNotes = result.notes.filter((n) => !/^Only \d+% of the ordered food/.test(n));
+  const close = () => {
+    setOpen(false);
+    whyRef.current?.focus();
+  };
   return (
-    <section className="ns-lastserve" aria-label="Last serve" inert={inert}>
-      <p>
-        <b>{name(result.catalogCustomerId)}</b> <span aria-label={`${result.stars} of 5 stars`}>{stars(result.stars)}</span> · total{' '}
-        <b>{result.scores.total}</b> · tip {result.tip} coins{flags.length ? <em> · {flags.join(' · ')}</em> : null}
-      </p>
-      <p>
-        {SCORE_LABELS.map(([key, label], i) => (
-          <React.Fragment key={key}>
-            {i > 0 && ' · '}
-            {label} <b>{result.scores[key]}</b>
-          </React.Fragment>
-        ))}
-      </p>
-      <p className="ns-lastserve-notes">{result.notes.length ? result.notes.join(' · ') : 'No points lost.'}</p>
-    </section>
+    <div className="ns-lastserve-wrap" inert={inert}>
+      <section className="ns-lastserve" aria-label="Last serve">
+        <p>
+          <b>{name(result.catalogCustomerId)}</b> <span aria-label={`${result.stars} of 5 stars`}>{stars(result.stars)}</span> · total{' '}
+          <b>{result.scores.total}</b> · tip {result.tip} coins{flags.length ? <em> · {flags.join(' · ')}</em> : null}
+        </p>
+        <p>
+          {(result.notes.length > 0 || flags.length > 0) && (
+            <button ref={whyRef} type="button" className="ns-why" aria-expanded={open} aria-controls="ns-why-panel" onClick={() => setOpen((o) => !o)}>
+              Why?
+            </button>
+          )}
+          {SCORE_LABELS.map(([key, label], i) => (
+            <React.Fragment key={key}>
+              {i > 0 && ' · '}
+              {label} <b>{result.scores[key]}</b>
+            </React.Fragment>
+          ))}
+        </p>
+        <p className="ns-lastserve-notes">{barNotes.length ? barNotes.join(' · ') : result.notes.length ? '' : 'No points lost.'}</p>
+      </section>
+      {open && (
+        <div
+          id="ns-why-panel"
+          className="ns-why-panel"
+          role="region"
+          aria-label={`Why ${name(result.catalogCustomerId)}'s scores`}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              close();
+            }
+          }}
+        >
+          <ul>
+            {flags.map((f) => (
+              <li key={f}>{f[0].toUpperCase() + f.slice(1)}</li>
+            ))}
+            {result.notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+            {result.notes.length === 0 && <li>No points lost.</li>}
+          </ul>
+          <button type="button" className="ns-btn ns-btn-small" onClick={close}>
+            Close
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -458,7 +458,7 @@ test('the nutrition report never blames the player for a perfectly served order'
 });
 
 // --- Fourth audit, 2026-11-11 ------------------------------------------------------------------
-import { rewardsV2, orderComplete, ticketForNewDish } from '../src/features/nutriserve/simulation/index.ts';
+import { rewardsV2, orderComplete, ticketForNewDish, serveNotes } from '../src/features/nutriserve/simulation/index.ts';
 
 test('five stars and the great bonus need a complete order (economy-v2)', () => {
   assert.deepEqual(rewardsV2(92, 'large', true), { tip: 10, points: 9, stars: 5 });
@@ -573,10 +573,33 @@ test('Build suggests the oldest ticket that has no dish yet, not the one just ma
   const [t1, t2] = s.tickets;
   const { s: built } = buildPerfect(s, t2);
   s = built;
+  assert.equal(s.selected.ticketId, t1.id, 'sending #2 to prep moves the selection to #1, which has no dish yet');
+  assert.equal(ticketForNewDish(s).id, t1.id);
+  // The player's own pick is always honoured, and the paper ticket follows the new dish.
+  s = cmd(s, { type: 'selectTicket', ticketId: t2.id });
+  assert.equal(ticketForNewDish(s).id, t2.id);
+  s = cmd(s, { type: 'startDish', size: t2.order.size });
+  assert.equal(s.dishes.at(-1).forTicketId, t2.id);
   assert.equal(s.selected.ticketId, t2.id);
-  assert.equal(ticketForNewDish(s).id, t1.id, '#2 already has a dish, so the next one is for #1');
-  s = cmd(s, { type: 'startDish', size: t1.order.size });
-  assert.equal(s.dishes.at(-1).forTicketId, t1.id);
+});
+
+test('half portions are not a complete order (economy-v3)', () => {
+  const { s, dishId, ticket } = finishing();
+  const dish = structuredClone(s.dishes.find((d) => d.id === dishId));
+  for (const step of ticket.order.finish) {
+    if (step.kind === 'drizzle') dish.finish.drizzles[step.id] = { cellsMg: new Array(36).fill(0), insideMg: 50_000, spilledMg: 0 };
+    else for (let i = 0; i < step.count; i++) dish.finish.garnishes.push({ id: step.id, x: 0, y: 0, fell: false });
+  }
+  assert.equal(orderComplete(dish, ticket.order), true);
+  const half = structuredClone(dish);
+  for (const c of ['base', 'main', 'side']) half.build[c].mg = Math.round(half.build[c].mg / 2);
+  assert.equal(orderComplete(half, ticket.order), false);
+  const drizzle = ticket.order.finish.find((f) => f.kind === 'drizzle');
+  if (drizzle) {
+    const thin = structuredClone(dish);
+    thin.finish.drizzles[drizzle.id].insideMg = 1_000; // a dab, not the ordered drizzle
+    assert.equal(orderComplete(thin, ticket.order), false);
+  }
 });
 
 test('the nutrition report names missing, extra and unordered garnish', () => {
@@ -591,4 +614,21 @@ test('the nutrition report names missing, extra and unordered garnish', () => {
   const extra = serviceNutritionReport(dish, order, customer.order);
   assert.ok(extra.changes.some((c) => /^12 unordered .*: \+\d+ kcal$/.test(c)), extra.changes.join(' | '));
   assert.ok(extra.changes.some((c) => /^2 fewer .* than ordered$/.test(c)), extra.changes.join(' | '));
+});
+
+// --- Fifth audit, 2026-11-11 -------------------------------------------------------------------
+test('score notes use labels, say which way a drizzle was off, and skip rounding-zero penalties', () => {
+  const { s, dishId, ticket } = finishing(42, 4);
+  const dish = structuredClone(s.dishes.find((d) => d.id === dishId));
+  const order = { ...ticket.order, finish: [{ kind: 'drizzle', id: 'curd_swirl' }, { kind: 'garnish', id: 'green_chilli', count: 2 }] };
+  dish.finish.drizzles.curd_swirl = { cellsMg: new Array(36).fill(0), insideMg: 60_000, spilledMg: 0 };
+  dish.finish.garnishes.push({ id: 'onion', x: 0.01, y: 0, fell: false });
+  const grade = gradeFinishV1(dish, order);
+  const reasons = grade.penalties.map((p) => p.reason);
+  assert.ok(reasons.includes('Missing 2 Green chilli') || reasons.some((r) => /^Missing 2 Green/.test(r)), reasons.join(' | '));
+  assert.ok(reasons.some((r) => /^Too much Curd swirl$/.test(r)), reasons.join(' | '));
+  assert.ok(reasons.some((r) => /^Unordered Onion/.test(r)), reasons.join(' | '));
+  assert.ok(!reasons.some((r) => /green_chilli|onion\b/.test(r)), 'no raw ids');
+  const notes = serveNotes(dish, order, { waiting: 100, build: 100, prep: 100, finish: grade.score }, 1, grade.penalties, 0);
+  assert.ok(notes.every((n) => !/\(−0\)/.test(n)), notes.join(' | '));
 });

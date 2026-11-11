@@ -213,15 +213,16 @@ function flushDrizzle(s: GameState, toX: number, toY: number): void {
 }
 
 /**
- * The ticket a new dish is started for: the selected open ticket if no dish is being made for it
- * yet, else the oldest open ticket without one, else the selected (or oldest) open ticket.
+ * The ticket a new dish is started for: the selected open ticket (the player's pick is always
+ * honoured; finishBuild moves the selection on to the next ticket without a dish), else the
+ * oldest open ticket without a dish, else the oldest open ticket.
  */
 export function ticketForNewDish(s: GameState): Ticket | undefined {
   const open = s.tickets.filter((t) => t.servedAtMs === undefined);
-  const live = new Set(s.dishes.filter((d) => d.stage !== 'served' && d.stage !== 'trashed').map((d) => d.forTicketId));
   const selected = open.find((t) => t.id === s.selected.ticketId);
-  if (selected && !live.has(selected.id)) return selected;
-  return open.find((t) => !live.has(t.id)) ?? selected ?? open[0];
+  if (selected) return selected;
+  const live = new Set(s.dishes.filter((d) => d.stage !== 'served' && d.stage !== 'trashed').map((d) => d.forTicketId));
+  return open.find((t) => !live.has(t.id)) ?? open[0];
 }
 
 /** At Finish, point the paper ticket at the dish now shown on the vessel. */
@@ -458,6 +459,7 @@ function run(s: GameState, c: Command): string | undefined {
         build: {},
         finish: { drizzles: {}, garnishes: [], steps: [] },
       };
+      if (forTicket) s.selected.ticketId = forTicket.id; // the paper ticket shows what the gauges follow
       s.dishes.push(dish);
       s.selected.dishId = dish.id;
       return;
@@ -507,6 +509,12 @@ function run(s: GameState, c: Command): string | undefined {
       if (!dish || dish.stage !== 'building') return 'That dish is not on the build counter';
       if (s.held && 'dishId' in s.held && s.held.dishId === dish.id) releaseHeld(s);
       dish.stage = 'built';
+      // That ticket now has its dish: point the selection at the next ticket still waiting for
+      // one, so the next dish is suggested for it (the player can still pick any ticket).
+      if (s.selected.ticketId === dish.forTicketId) {
+        const next = ticketForNewDish({ ...s, selected: { ...s.selected, ticketId: undefined } });
+        if (next) s.selected.ticketId = next.id;
+      }
       return;
     }
 

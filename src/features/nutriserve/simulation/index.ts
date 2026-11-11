@@ -7,6 +7,7 @@ export {
   aggregateV2,
   contentShare,
   dishMatchesOrder,
+  drizzleTargetG,
   gradeFinishV1,
   gradeIndianBuildV1,
   gradeIndianPrepV1,
