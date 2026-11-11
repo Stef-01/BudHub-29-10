@@ -36,6 +36,8 @@ Independent audits: the first (simulation core) found ten issues, all fixed with
 
 With three customers on screen: 3 sprite files, about 3.6 MB downloaded and about 19 MB of decoded RGBA (each 1024×1536 master decodes to 6.3 MB whatever its display size). A full six-customer day would be about 7 MB and 38 MB. Sprites are displayed at 120–290 CSS px. This is the main mobile cost and needs the A05 derivatives below.
 
+Frame timing with four prep slots cooking (3 s sample): desktop 1280 px median 16.7 ms, p95 16.7 ms; iPhone 13 emulation with 4× CPU throttling median 16.7 ms, p95 33.3 ms. The legacy NutriServe Chef and the art lab still load without errors.
+
 ## Asset requests (by id and state)
 
 Nothing below is faked in code; until it arrives the game uses idle art plus code-native layout studies and says so.
