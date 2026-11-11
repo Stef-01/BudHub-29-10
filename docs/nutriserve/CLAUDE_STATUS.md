@@ -20,7 +20,7 @@ The catalog on this branch has **55 foods and 53 customers** (main has 49 and 33
 ## Verification
 
 ```sh
-npm run test:nutriserve            # 75 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
+npm run test:nutriserve            # 82 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
 npm run typecheck:nutriserve-sim   # strict TypeScript for simulation/nutrition/data/domain
 npx tsc -p tsconfig.nutriserve.json --noEmit
 npm run build
@@ -28,7 +28,7 @@ npm run dev   # then, in another terminal:
 node scripts/e2e/nutriserve-release-gate.cjs http://localhost:5173   # needs the playwright package
 ```
 
-Release gate (browser, desktop 1280 px and iPhone 13): two concurrent orders cooking in two slots; Save & exit mid-prep then Continue with progress intact; a dish served to the wrong ticket is flagged and graded; the rest of the day served; day summary reached; no horizontal scroll; no app errors. Each prep slot must show its own dish's target. The gate first runs browser regression checks for the second and third audits:
+Release gate (browser; full days at 1280 px, at 1920 px, and on an iPhone 13 played with real touch events): two concurrent orders cooking in two slots; Save & exit mid-prep then Continue with progress intact; a dish served to the wrong ticket is flagged and graded; the rest of the day served; day summary reached; no horizontal scroll; no app errors. Each prep slot must show its own dish's target. The gate first runs browser regression checks for the second and third audits:
 
 - a drizzle held across a layout switch is released;
 - one click starts and a second click stops a pour, and a quick mouse click pours the 9 g minimum;
@@ -36,7 +36,7 @@ Release gate (browser, desktop 1280 px and iPhone 13): two concurrent orders coo
 - Tab stays inside the pause dialog, station keys do nothing behind it, and Escape resumes and returns focus;
 - a save under changed rules explains itself and carries rank, coins and credited days into a new day.
 
-28/28 checks passed. The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
+Each run also checks that stage text is 1.9% of the stage width. 39/39 checks passed. The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
 
 Independent audits (findings and fixes are below).
 
