@@ -272,5 +272,15 @@
 
 /* A locked dispenser's reason: over the row's legend, so the dispenser grid never moves. */
 .ns-dispenser-row { position: relative; }
-.ns-blocked-msg { position: absolute; left: 0.3em; right: 0.3em; top: -0.9em; z-index: 5; margin: 0; padding: 0 0.5em; font-size: 0.7em; line-height: 1.5; font-weight: 700; color: #6b2208; background: #fff0e8; border: 2px solid var(--warn); border-radius: 0.4em; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-blocked-msg { position: absolute; left: 0.3em; right: 0.3em; top: -0.9em; z-index: 5; margin: 0; padding: 0 0.5em; font-size: 0.7em; line-height: 1.4; font-weight: 700; color: #6b2208; background: #fff0e8; border: 2px solid var(--warn); border-radius: 0.4em; pointer-events: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ns-dock .ns-blocked-msg { font-size: 12px; top: -12px; }
+
+/* The portion being poured, on its own dispenser (the gauges can be off screen on a phone held sideways). */
+.ns-dispenser-live { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 900; background: #ffe08a; border-radius: 0.3em; padding: 0 0.3em; white-space: nowrap; }
+/* A handi at its mark: on its slot and on the Prep tab. */
+.ns-at-mark { border-color: #1d7a4a; box-shadow: 0 0 0 0.2em #1d7a4a66; }
+.ns-take-out { color: #1d7a4a; }
+.ns-tab .ns-tab-alert { background: #1d7a4a; min-width: auto; padding: 0 0.4em; font-size: 0.7em; }
+/* Side by side at 560-600 px: tab labels fit, and the status line never changes height. */
+.ns-side-dock .ns-dock .ns-tab { font-size: 13px; }
+.ns-side-dock > .ns-status { height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

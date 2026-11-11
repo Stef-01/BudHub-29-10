@@ -74,6 +74,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   // A click is a bare (click-only) activation only when no press is down and none ended within
   // CLICK_AFTER_PRESS_MS: the click that ends a long press (any length) is that press's own.
   const pressDown = useRef(false);
+  const pressPointerId = useRef<number | undefined>(undefined);
   const lastPressEnd = useRef(-Infinity);
   const endPressTiming = () => {
     pressDown.current = false;
@@ -81,8 +82,8 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   };
   // A press released anywhere (it may have left the vessel) ends the press timing.
   useEffect(() => {
-    const end = () => {
-      if (pressDown.current) endPressTiming();
+    const end = (e: PointerEvent) => {
+      if (pressDown.current && e.pointerId === pressPointerId.current) endPressTiming();
     };
     window.addEventListener('pointerup', end, true);
     window.addEventListener('pointercancel', end, true);
@@ -412,12 +413,17 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
             onClick={onClickOnly}
             onPointerDown={(e) => {
               pressDown.current = true;
+              pressPointerId.current = e.pointerId;
               if (e.button !== 0 || !e.isPrimary || press.current || !tool) return;
               const p = local(e);
               setCursor(p);
               const pr: Press = { id: e.pointerId, x: e.clientX, y: e.clientY, kind: tool.kind, moved: false, started: false, dishId: dish.id };
               press.current = pr;
-              if (tool.kind !== 'drizzle') return;
+              if (tool.kind !== 'drizzle') {
+                // Captured, so a press released off the vessel still ends here (it places nothing).
+                if (e.pointerType !== 'touch') e.currentTarget.setPointerCapture(e.pointerId);
+                return;
+              }
               if (e.pointerType === 'mouse') {
                 e.currentTarget.setPointerCapture(e.pointerId);
                 pr.started = true;

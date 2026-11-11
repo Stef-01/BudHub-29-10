@@ -74,6 +74,8 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
   /** A touch/pen press: waiting to become a hold (timer set), or holding (timer cleared). */
   const touch = useRef<(Touching & { timer?: number }) | null>(null);
   const pressDown = useRef(false);
+  /** The pointer whose press is down: another pointer's release must not end its timing. */
+  const pressPointer = useRef<number | undefined>(undefined);
   const lastPressEnd = useRef(-Infinity);
   const endPress = () => {
     if (!pressDown.current) return;
@@ -128,7 +130,9 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
 
   // A press released anywhere (it may have left the button) ends the press timing.
   useEffect(() => {
-    const up = () => endPress();
+    const up = (e: PointerEvent) => {
+      if (e.pointerId === pressPointer.current) endPress();
+    };
     window.addEventListener('pointerup', up, true);
     window.addEventListener('pointercancel', up, true);
     return () => {
@@ -172,6 +176,7 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
       onPointerDown={(e) => {
         if (e.button !== 0 || !e.isPrimary) return;
         pressDown.current = true; // every press, so its trailing click is never taken for a click-only tap
+        pressPointer.current = e.pointerId;
         if (disabled) {
           if (e.pointerType === 'mouse') onBlocked?.();
           else blockedTouch.current = { id: e.pointerId, x: e.clientX, y: e.clientY, at: performance.now() };
@@ -210,7 +215,9 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
         endPress();
         if (blockedTouch.current?.id === e.pointerId) {
           blockedTouch.current = null;
-          onBlocked?.();
+          // Only if it is still disabled: a control that came back on during the press just ends it.
+          if (cb.current.disabled) onBlocked?.();
+          return;
         }
         const t = touch.current;
         if (t && t.id === e.pointerId) {

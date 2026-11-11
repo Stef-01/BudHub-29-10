@@ -2,7 +2,9 @@
 // Upgrade effects either switch on the reference's "furniture" bonuses (which the recovered
 // Build/Mix functions already support) or adjust provisional rules, and say which.
 
-export const PROGRESSION_VERSION = 'progression-v1';
+// v2: four upgrades at ranks 5-8 with effects a strong player still feels (in v1 everything was
+// bought by about day 6 and ranks 5-10 unlocked nothing).
+export const PROGRESSION_VERSION = 'progression-v2';
 
 /** Cumulative points needed for each rank (index 0 = rank 1). */
 export const RANK_THRESHOLDS = [0, 40, 100, 180, 280, 400, 550, 720, 920, 1150];
@@ -26,7 +28,11 @@ export interface UpgradeDef {
     | { kind: 'buildFurniture'; categories: Array<'cup' | 'mixable' | 'syrup'> }
     | { kind: 'prepFurniture' }
     | { kind: 'waitingGraceMs'; ms: number }
-    | { kind: 'finishBonus'; points: number };
+    | { kind: 'finishBonus'; points: number }
+    | { kind: 'heatRisePerMs'; heat: number }
+    | { kind: 'completeTip'; coins: number }
+    | { kind: 'lobbyGraceMs'; ms: number }
+    | { kind: 'pointsBonusPct'; pct: number };
 }
 
 export const UPGRADES: Record<string, UpgradeDef> = {
@@ -75,6 +81,42 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     unlockRank: 2,
     effect: { kind: 'finishBonus', points: 3 },
   },
+  insulated_handis: {
+    id: 'insulated_handis',
+    label: 'Insulated handis',
+    hi: 'मोटी तली की हांडी',
+    description: 'Handis heat up 40% more slowly while boosting, so a boost lasts longer before they overheat.',
+    cost: 70,
+    unlockRank: 5,
+    effect: { kind: 'heatRisePerMs', heat: 3 },
+  },
+  serving_trolley: {
+    id: 'serving_trolley',
+    label: 'Serving trolley',
+    hi: 'परोसने की ट्रॉली',
+    description: 'Every complete order earns 2 extra coins.',
+    cost: 90,
+    unlockRank: 6,
+    effect: { kind: 'completeTip', coins: 2 },
+  },
+  chai_stall: {
+    id: 'chai_stall',
+    label: 'Chai stall by the queue',
+    hi: 'चाय की दुकान',
+    description: 'Customers queuing at the counter stay patient 12 seconds longer.',
+    cost: 110,
+    unlockRank: 7,
+    effect: { kind: 'lobbyGraceMs', ms: 12_000 },
+  },
+  head_chef_whites: {
+    id: 'head_chef_whites',
+    label: "Head chef's whites",
+    hi: 'मुख्य रसोइये की वर्दी',
+    description: 'Every serve earns 20% more rank points.',
+    cost: 140,
+    unlockRank: 8,
+    effect: { kind: 'pointsBonusPct', pct: 20 },
+  },
 };
 
 export interface UpgradeEffects {
@@ -82,6 +124,11 @@ export interface UpgradeEffects {
   prepFurniture: boolean;
   waitingGraceMs: number;
   finishBonus: number;
+  /** Heat added per boosting millisecond, if an upgrade lowers it (else PREP_V1.heatRisePerMs). */
+  heatRisePerMs?: number;
+  completeTip: number;
+  lobbyGraceMs: number;
+  pointsBonusPct: number;
 }
 
 export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
@@ -90,6 +137,9 @@ export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
     prepFurniture: false,
     waitingGraceMs: 0,
     finishBonus: 0,
+    completeTip: 0,
+    lobbyGraceMs: 0,
+    pointsBonusPct: 0,
   };
   for (const id of owned) {
     const effect = Object.hasOwn(UPGRADES, id) ? UPGRADES[id].effect : undefined;
@@ -98,6 +148,10 @@ export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
     else if (effect.kind === 'prepFurniture') effects.prepFurniture = true;
     else if (effect.kind === 'waitingGraceMs') effects.waitingGraceMs += effect.ms;
     else if (effect.kind === 'finishBonus') effects.finishBonus += effect.points;
+    else if (effect.kind === 'heatRisePerMs') effects.heatRisePerMs = Math.min(effects.heatRisePerMs ?? Infinity, effect.heat);
+    else if (effect.kind === 'completeTip') effects.completeTip += effect.coins;
+    else if (effect.kind === 'lobbyGraceMs') effects.lobbyGraceMs += effect.ms;
+    else if (effect.kind === 'pointsBonusPct') effects.pointsBonusPct += effect.pct;
   }
   return effects;
 }

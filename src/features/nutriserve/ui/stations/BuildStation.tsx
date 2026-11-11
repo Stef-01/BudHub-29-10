@@ -215,15 +215,14 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                       setLive(`Pour cancelled: that looked like a scroll.`);
                     }}
                     // A locked dispenser says why, beside the dispensers.
+                    // Says why this dispenser is locked; works the reason out without touching the game.
                     onBlocked={() => {
-                      if (held && !(held.component === c.id && held.foodId === foodId)) {
-                        const text = `${foodLabel(held.foodId)} is still pouring: stop it first`;
-                        setBlocked({ component: c.id, text });
-                        setLive(text);
-                        return;
-                      }
-                      const result = dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId });
-                      if ('error' in result) setBlocked({ component: c.id, text: result.error });
+                      let text: string | undefined;
+                      if (held && !(held.component === c.id && held.foodId === foodId)) text = `Stop ${foodLabel(held.foodId)} first: it is still pouring`;
+                      else if (chosen && chosen !== foodId && locked(c.id)) text = `${c.label} is ${foodLabel(chosen)}: trash the dish to change it`;
+                      if (!text) return;
+                      setBlocked({ component: c.id, text });
+                      setLive(text);
                     }}
                     // Click-only input: the first click starts pouring, the next one stops it.
                     onTap={() => {
@@ -234,7 +233,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                       }
                       const haveG = (dish.build[c.id]?.foodId === foodId ? (dish.build[c.id]?.mg ?? 0) : 0) / 1000;
                       if (ideal && haveG >= ideal[c.id]) {
-                        const text = `${foodLabel(foodId)} is already at the line: ${Math.round(haveG)} of ${ideal[c.id]} g`;
+                        const text = `At the line: ${Math.round(haveG)} of ${ideal[c.id]} g ${foodLabel(foodId)}`;
                         setLive(`${text}.`);
                         setBlocked({ component: c.id, text }); // visible too, for sighted switch and voice users
                         return;
@@ -259,6 +258,13 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                   >
                     <i style={{ background: foodColor(foodId) }} aria-hidden="true" />
                     <span className="ns-dispenser-name">{foodLabel(foodId)}</span>
+                    {/* The live portion on the dispenser being poured, so it is in view wherever the gauges are. */}
+                    {held?.component === c.id && held.foodId === foodId && (
+                      <span className="ns-dispenser-live" aria-hidden="true">
+                        {Math.round(grams(c.id))}
+                        {ideal ? `/${ideal[c.id]}` : ''} g
+                      </span>
+                    )}
                   </HoldButton>
                 </React.Fragment>
               ))}

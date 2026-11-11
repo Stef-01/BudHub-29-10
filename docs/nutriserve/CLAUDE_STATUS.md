@@ -1,5 +1,7 @@
 # Claude engineering track: status
 
+**On `main`:** the remaster is on `main` (ported without this branch's unrelated `old` history). Later NutriServe changes are synced to `main` with the same port: export the NutriServe paths from this branch, adapt them to `main`'s app shell, and regenerate the catalog from `main`'s sources.
+
 Branch `claude/continue-building-j1mrs7`. The build track asked for a dedicated `claude/nutriserve-mechanics` branch from `main`; this session may only push to `claude/continue-building-j1mrs7`, which is based on the default branch `old`. `origin/main` (the reference audit and pilot art) was merged in at `a04d905`. Every NutriServe change after that lives under `src/features/nutriserve/`, `tests/nutriserve-*`, `scripts/`, `docs/nutriserve/` and a small entry point in the app shell, so it can be cherry-picked onto `main`.
 
 The catalog on this branch has **55 foods and 53 customers** (main has 49 and 33). `asset-roadmap.json` was re-reconciled for this branch.
@@ -26,7 +28,7 @@ In a landscape window 560 px or wider, it puts the scene, tabs, last result and 
 ## Verification
 
 ```sh
-npm run test:nutriserve            # 89 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
+npm run test:nutriserve            # 91 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
 npm run typecheck:nutriserve-sim   # strict TypeScript for simulation/nutrition/data/domain
 npx tsc -p tsconfig.nutriserve.json --noEmit
 npm run build
@@ -61,6 +63,33 @@ Independent audits (findings and fixes are below).
 ### Audit 1: simulation core
 
 Ten issues, all fixed with regression tests in `tests/nutriserve-audit.test.mjs`.
+
+### Audit 9: transitions mid-press, multi-day play, plus re-check of the audit 8 fixes
+
+The auditor's fuzzer found no false rejections, throws, chunk breaks, invariant or ledger mismatches, and no stop-at pour overshot its line. That covered 200,050 round trips, 180,033 mid-hold restores, 34,828 chunk checks and 2,750 walks continued from restored saves. It also checked:
+
+- multi-day play with every input;
+- Save & exit and Continue mid-action at every station;
+- app integration (one score and XP per day, the legacy game still loads);
+- 124 dishes on screen (p95 16.7 ms; 33 ms on a throttled phone);
+- 20 save and continue cycles (no DOM or listener growth).
+
+Findings, all addressed:
+
+| # | Finding | Fix |
+|---|---|---|
+| M1 | A touch or pen press on a disabled dispenser that re-enabled before release started a pour with no stop line | A blocked press is reported only if the control is still disabled; Build works out the reason without dispatching a real pour |
+| M2 | Side by side on landscape phones: no portion display in view while pouring | The live grams ("45/66 g") are shown on the dispenser being poured |
+| M3 | Nothing said a handi had reached its mark from another station (prep was the only score separating players) | "Prep slot N is at its mark: take it out" is announced; the Prep tab shows "Done!"; the slot is highlighted |
+| L1 | The one-line locked notice cut off the part that mattered | Two lines, shorter messages, key part first |
+| L2 | A mouse or pen garnish press released off the vessel swallowed the next click | Garnish presses capture the pointer too |
+| L3 | Serve notes named portion errors that cost no points | A portion is named only if a perfect portion would have scored higher |
+| L4 | Side by side at 560–600 px: tab labels filled their tabs; the status line moved the controls by 1–2 px | Smaller tab labels; the status line has a fixed height |
+| Suspected | Another pointer's release could end a press's timing | The window-level release listeners only end their own pointer's press |
+
+Design (new provisional versions):
+- `day-v2`: arrival gaps shrink each day, from 22–38 s down to 12–20 s, and up to 8 customers come, so later days are busier and not only longer. Under v1 the waiting score was 100 on every day for every player.
+- `progression-v2`: four upgrades at ranks 5–8 with effects a strong player still feels. Insulated handis heat 40% more slowly, the serving trolley adds 2 coins on each complete order, the chai stall gives 12 s more queue patience, and head chef's whites give +20% rank points. In v1 everything was bought by about day 6.
 
 ### Audit 8: every press type on every control, side by side, plus re-check of the audit 7 fixes
 

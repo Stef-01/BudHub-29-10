@@ -708,3 +708,36 @@ test('a stop-at-line pour stopped early never goes past its line through the min
   s = cmd(s, { type: 'endPour' });
   assert.equal(s.dishes.at(-1).build.main.mg, 4_000);
 });
+
+// --- Ninth audit, 2026-11-11 -------------------------------------------------------------------
+import { arrivalGapRange, DAY_V2 } from '../src/features/nutriserve/simulation/params.ts';
+import { upgradeEffects, UPGRADES } from '../src/features/nutriserve/simulation/index.ts';
+
+test('later days get busier: arrival gaps shrink to a floor (day-v2)', () => {
+  assert.deepEqual(arrivalGapRange(1), [22_000, 38_000]);
+  assert.deepEqual(arrivalGapRange(5), [18_000, 30_000]);
+  assert.deepEqual(arrivalGapRange(30), [12_000, 20_000]);
+  const day9 = createGame({ seed: 3, day: 9 });
+  const gaps = day9.day.customers.slice(1).map((c, i) => c.arrivalMs - day9.day.customers[i].arrivalMs);
+  const [lo, hi] = arrivalGapRange(9);
+  assert.ok(gaps.every((g) => g >= lo && g <= hi), gaps.join(','));
+  assert.equal(createGame({ seed: 3, day: 15 }).day.customers.length, DAY_V2.maxCustomers);
+});
+
+test('rank 5-8 upgrades have effects a strong player still feels (progression-v2)', () => {
+  for (const id of ['insulated_handis', 'serving_trolley', 'chai_stall', 'head_chef_whites']) assert.ok(UPGRADES[id].unlockRank >= 5);
+  const e = upgradeEffects(['insulated_handis', 'serving_trolley', 'chai_stall', 'head_chef_whites']);
+  assert.equal(e.heatRisePerMs, 3);
+  assert.deepEqual(rewardsV2(100, 'medium', true, e), { tip: 6 + 3 + 2, points: 12, stars: 5 });
+  assert.deepEqual(rewardsV2(100, 'medium', false, e).tip, 6, 'the trolley pays only for complete orders');
+  // Insulated handis: boosting from cold overheats after 3333 ms instead of 2000 ms.
+  let p = advanceUntil(game(11, { profile: { ...newProfile(), rank: 5, points: 280, upgrades: ['insulated_handis'] } }), atCounter);
+  p = cmd(p, { type: 'takeOrder' });
+  const { s: b, dishId } = buildPerfect(p, p.tickets[0]);
+  p = cmd(b, { type: 'startPrep', dishId, slot: 0 });
+  p = cmd(p, { type: 'setBoost', slot: 0, held: true });
+  p = advanceGame(p, 2_500);
+  assert.equal(p.prepSlots[0].overheated, false);
+  p = advanceGame(p, 1_000);
+  assert.equal(p.prepSlots[0].overheated, true);
+});
