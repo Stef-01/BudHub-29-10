@@ -41,9 +41,12 @@ Each run also checks that stage text is 1.9% of the stage width. The regressions
 - click-only finishing completes an order;
 - "Why?" lists every reason and Escape closes it;
 - a long phone pour that drifts 40 px keeps its pour;
-- the station tabs fit a 1366×657 window.
+- the station tabs fit a 1366×657 window;
+- a second click-only swirl doesn't double the drizzle;
+- pausing closes the Why? panel;
+- a 1280×600 window puts the controls beside the scene.
 
-43/43 checks passed. The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
+45/45 checks passed. The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
 
 Independent audits (findings and fixes are below).
 
