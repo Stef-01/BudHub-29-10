@@ -257,17 +257,20 @@
    station's controls. The dock's slots become grid items of the root so they can go either side. */
 .ns-root.ns-side-dock { max-width: 1280px; display: grid; grid-template-columns: minmax(0, 5fr) minmax(320px, 6fr); column-gap: 16px; row-gap: 8px; align-items: start; }
 .ns-side-dock > .ns-hud { grid-column: 1 / -1; grid-row: 1; }
-.ns-side-dock > .ns-stage-wrap { grid-column: 1; grid-row: 2; max-width: max(200px, calc((100svh - 330px) * 4 / 3)); width: 100%; margin: 0; }
+/* The status line sits under the HUD so messages are on screen. */
+.ns-side-dock > .ns-status { grid-column: 1 / -1; grid-row: 2; margin: 0; }
+.ns-side-dock > .ns-stage-wrap { grid-column: 1; grid-row: 3; max-width: max(200px, calc((100svh - 330px) * 4 / 3)); width: 100%; margin: 0; }
 .ns-side-dock > .ns-dock { display: contents; }
-.ns-side-dock > .ns-dock > :nth-child(1) { grid-column: 1; grid-row: 3; } /* station tabs */
-.ns-side-dock > .ns-dock > :nth-child(2) { grid-column: 1; grid-row: 4; } /* last serve */
-.ns-side-dock > .ns-dock > :nth-child(3) { grid-column: 1; grid-row: 5; } /* ticket rail and ticket */
-.ns-side-dock > .ns-dock > :nth-child(4) { grid-column: 2; grid-row: 2 / span 5; } /* station controls */
-.ns-side-dock > .ns-status, .ns-side-dock > .ns-help { grid-column: 1 / -1; }
-/* Side by side, Prep and Finish keep their (empty) scene, small, so the column above the tabs isn't blank. */
-.ns-side-dock .ns-stage.ns-scene-empty { aspect-ratio: 4 / 3; height: auto; border-width: 4px; }
+.ns-side-dock > .ns-dock > :nth-child(1) { grid-column: 1; grid-row: 4; } /* station tabs */
+.ns-side-dock > .ns-dock > :nth-child(2) { grid-column: 1; grid-row: 5; } /* last serve */
+.ns-side-dock > .ns-dock > :nth-child(3) { grid-column: 1; grid-row: 6; } /* ticket rail and ticket */
+.ns-side-dock > .ns-dock > :nth-child(4) { grid-column: 2; grid-row: 3 / span 5; } /* station controls */
+.ns-side-dock > .ns-help { grid-column: 1 / -1; }
+/* Prep and Finish have no scene: it collapses (as on phones), so the tabs and tickets lead the left column. */
+/* The vessel fits beside its tools on a short window. */
+.ns-side-dock .ns-vessel-top { width: min(100%, 340px, 45svh); }
 
 /* A locked dispenser's reason: over the row's legend, so the dispenser grid never moves. */
 .ns-dispenser-row { position: relative; }
-.ns-blocked-msg { position: absolute; left: 0.3em; right: 0.3em; top: -0.9em; z-index: 5; margin: 0; padding: 0.15em 0.5em; font-size: 0.75em; font-weight: 700; color: #6b2208; background: #fff0e8; border: 2px solid var(--warn); border-radius: 0.4em; pointer-events: none; }
-.ns-dock .ns-blocked-msg { font-size: 13px; top: -14px; }
+.ns-blocked-msg { position: absolute; left: 0.3em; right: 0.3em; top: -0.9em; z-index: 5; margin: 0; padding: 0 0.5em; font-size: 0.7em; line-height: 1.5; font-weight: 700; color: #6b2208; background: #fff0e8; border: 2px solid var(--warn); border-radius: 0.4em; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-dock .ns-blocked-msg { font-size: 12px; top: -12px; }

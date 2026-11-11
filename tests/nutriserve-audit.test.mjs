@@ -697,3 +697,14 @@ test('a rail pick of the ticket being built is used up when that dish goes to pr
   s = cmd(s, { type: 'startDish', size: t2.order.size });
   assert.equal(s.dishes.at(-1).forTicketId, t2.id, 'the next dish goes to the ticket without one');
 });
+
+// --- Eighth audit, 2026-11-11 ------------------------------------------------------------------
+test('a stop-at-line pour stopped early never goes past its line through the minimum pour', () => {
+  let { s } = withTicket();
+  s = cmd(s, { type: 'startDish', size: 'medium' });
+  const dishId = s.dishes.at(-1).id;
+  const foodId = s.tickets[0].order.mainId;
+  s = cmd(s, { type: 'beginPour', dishId, component: 'main', foodId, stopAtMg: 4_000 }); // line 4 g, under one press (9 g)
+  s = cmd(s, { type: 'endPour' });
+  assert.equal(s.dishes.at(-1).build.main.mg, 4_000);
+});

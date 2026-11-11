@@ -10,6 +10,9 @@
 //   cancelled (onCancel undoes it) and the page scrolls again. An older hold that drifts keeps
 //   pouring. A quick tap is a short press. Only the finger that started the hold can end it.
 // - Pressing a disabled control calls onBlocked, so the player can be told why.
+// - A click counts as a click-only activation (onTap) only when no press is down and none ended in
+//   the last CLICK_AFTER_HOLD_MS, whatever became of that press (a hold, a quick tap, a scroll that
+//   wiggled, a press on a disabled control). Browsers send a click after many such presses.
 // - Keyboard: Space or Enter down starts it, up ends it. Repeats are ignored (and never scroll).
 // - Switch access, screen-reader browse mode and voice control send only a click, never a press and
 //   release: a click that isn't the tail of a hold calls onTap.
@@ -70,6 +73,15 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
   const lastHoldEnd = useRef(-Infinity);
   /** A touch/pen press: waiting to become a hold (timer set), or holding (timer cleared). */
   const touch = useRef<(Touching & { timer?: number }) | null>(null);
+  const pressDown = useRef(false);
+  const lastPressEnd = useRef(-Infinity);
+  const endPress = () => {
+    if (!pressDown.current) return;
+    pressDown.current = false;
+    lastPressEnd.current = performance.now();
+  };
+  /** A touch press on a disabled control: told why on release, unless it turned into a scroll. */
+  const blockedTouch = useRef<Touching | null>(null);
   const cb = useRef({ onStart, onEnd, onCancel, disabled });
   cb.current = { onStart, onEnd, onCancel, disabled };
 
@@ -114,6 +126,17 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
     return () => el.removeEventListener('touchmove', block);
   }, []);
 
+  // A press released anywhere (it may have left the button) ends the press timing.
+  useEffect(() => {
+    const up = () => endPress();
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    return () => {
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', up, true);
+    };
+  }, []);
+
   // A control that becomes disabled mid-hold lets go (never as a tap).
   useEffect(() => {
     if (disabled) {
@@ -148,7 +171,13 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
       title={rest.title}
       onPointerDown={(e) => {
         if (e.button !== 0 || !e.isPrimary) return;
-        if (disabled || holding.current || touch.current) return; // a press on a disabled control is reported by its click
+        pressDown.current = true; // every press, so its trailing click is never taken for a click-only tap
+        if (disabled) {
+          if (e.pointerType === 'mouse') onBlocked?.();
+          else blockedTouch.current = { id: e.pointerId, x: e.clientX, y: e.clientY, at: performance.now() };
+          return;
+        }
+        if (holding.current || touch.current) return;
         if (e.pointerType === 'mouse') {
           e.currentTarget.setPointerCapture(e.pointerId);
           start(e.pointerId);
@@ -163,6 +192,8 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
         touch.current = pressed;
       }}
       onPointerMove={(e) => {
+        const bt = blockedTouch.current;
+        if (bt && bt.id === e.pointerId && Math.hypot(e.clientX - bt.x, e.clientY - bt.y) > TOUCH_SLOP_PX) blockedTouch.current = null;
         const t = touch.current;
         if (!t || t.id !== e.pointerId) return;
         const dx = e.clientX - t.x;
@@ -176,6 +207,11 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
         }
       }}
       onPointerUp={(e) => {
+        endPress();
+        if (blockedTouch.current?.id === e.pointerId) {
+          blockedTouch.current = null;
+          onBlocked?.();
+        }
         const t = touch.current;
         if (t && t.id === e.pointerId) {
           const waiting = !!t.timer;
@@ -190,6 +226,8 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
         if (isOwner(e.pointerId)) end();
       }}
       onPointerCancel={(e) => {
+        endPress();
+        blockedTouch.current = null;
         if (touch.current?.id === e.pointerId) clearTouch(); // the browser took the gesture (a scroll)
         if (isOwner(e.pointerId)) end(true);
       }}
@@ -211,7 +249,10 @@ export function HoldButton({ onStart, onEnd, onCancel, onTap, onBlocked, disable
         }
       }}
       onClick={() => {
-        if (holding.current || touch.current || performance.now() - lastHoldEnd.current < CLICK_AFTER_HOLD_MS) return;
+        const now = performance.now();
+        if (holding.current || touch.current || pressDown.current) return;
+        // The click that ends any press (held, tapped, wiggled, scrolled, or on a disabled control) is that press's own.
+        if (now - lastHoldEnd.current < CLICK_AFTER_HOLD_MS || now - lastPressEnd.current < CLICK_AFTER_HOLD_MS) return;
         if (disabled) onBlocked?.();
         else onTap?.();
       }}

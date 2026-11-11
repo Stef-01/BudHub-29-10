@@ -228,7 +228,13 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
     }
   };
 
-  const hint = !tool ? 'Pick a drizzle or garnish below' : undefined;
+  const [tapHint, setTapHint] = useState(false);
+  useEffect(() => {
+    if (!tapHint) return;
+    const id = window.setTimeout(() => setTapHint(false), 2_500);
+    return () => window.clearTimeout(id);
+  }, [tapHint]);
+  const hint = !tool ? 'Pick a drizzle or garnish below' : tapHint && tool.kind === 'drizzle' ? 'Press and hold, then drag' : undefined;
 
   // --- Click-only input -------------------------------------------------------------------
   const stopAuto = useCallback(() => {
@@ -450,6 +456,11 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
               clearPress();
               if (pr.kind === 'garnish' && !pr.moved) beginAt(local({ clientX: pr.x, clientY: pr.y }));
               if (pr.started) stop();
+              // A quick touch tap with a drizzle tool does nothing: say how drizzling works.
+              else if (pr.kind === 'drizzle' && !pr.moved) {
+                setTapHint(true);
+                setLive('Press and hold, then drag, to drizzle.');
+              }
             }}
             onPointerCancel={(e) => {
               endPressTiming();

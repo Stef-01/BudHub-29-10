@@ -517,6 +517,19 @@ async function runRegressions(browser) {
   await p.waitForTimeout(300);
   const kept = (await grams()) - 9;
   check(kept >= 60, `regressions: a long phone pour that drifts 40 px keeps its pour (+${kept} g)`);
+  // A touch that wiggles past the slop is a scroll: the browser's trailing click must not start a
+  // click-only pour to the line.
+  const beforeWiggle = await grams();
+  await target.scrollIntoViewIfNeeded();
+  const tb4 = await target.boundingBox();
+  const [wx, wy] = [tb4.x + tb4.width / 2, tb4.y + tb4.height / 2];
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: wx, y: wy }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: wx + 12, y: wy }] });
+  await p.waitForTimeout(60);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await p.waitForTimeout(1500);
+  const afterWiggle = await grams();
+  check(afterWiggle === beforeWiggle, `regressions: a wiggled touch on a dispenser pours nothing (${beforeWiggle} -> ${afterWiggle} g)`);
   await phone.close();
 }
 

@@ -43,7 +43,7 @@ function nextCompact(was: boolean, kitchenWidth: number, windowWidth: number, wi
   return kitchenWidth < COMPACT_ENTER.width || windowHeight < COMPACT_ENTER.height || (coarse && windowWidth < COMPACT_TOUCH.enter);
 }
 /** A landscape window this wide (phones held sideways, tablets, short desktops) in the compact layout puts the scene and the controls side by side. */
-const SIDE_DOCK_MIN_WIDTH = 640;
+const SIDE_DOCK_MIN_WIDTH = 560;
 /** How long a status message stays in the live line. */
 const STATUS_MS = 6_000;
 import './remaster.css';
@@ -216,7 +216,10 @@ function Kitchen({
     let width = el.clientWidth;
     const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
     const update = () => {
-      width = el.clientWidth; // current, not the last ResizeObserver value (diagonal resizes flapped)
+      // The current content width (as the ResizeObserver reports it), not a cached value: diagonal
+      // resizes flapped. clientWidth includes the root's padding, so take it off.
+      const cs = getComputedStyle(el);
+      width = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       setCompact((was) => nextCompact(was, width, window.innerWidth, window.innerHeight, coarse()));
       setSideDock(window.innerWidth >= SIDE_DOCK_MIN_WIDTH && window.innerWidth > window.innerHeight);
     };
@@ -226,9 +229,13 @@ function Kitchen({
     });
     observer.observe(el);
     window.addEventListener('resize', update);
+    // A 2-in-1 that switches between touch and mouse without resizing.
+    const pointerQuery = window.matchMedia?.('(pointer: coarse)');
+    pointerQuery?.addEventListener?.('change', update);
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', update);
+      pointerQuery?.removeEventListener?.('change', update);
     };
   }, []);
   // Switching layout remounts every control (portal vs stage), which kills pointer capture without
@@ -307,7 +314,8 @@ function Kitchen({
         return;
       }
       const target = e.target as HTMLElement;
-      if (target.closest('input, textarea, select, [role="application"]')) return;
+      // The finish vessel (role=application) uses arrows, Space and Enter only, so P and 1-4 work there too.
+      if (target.closest('input, textarea, select')) return;
       const index = ['1', '2', '3', '4'].indexOf(e.key);
       if (index >= 0) dispatch({ type: 'selectStation', station: STATIONS[index] });
       else if (isP) dispatch({ type: 'pause' });
@@ -486,10 +494,11 @@ function Kitchen({
         <details className="ns-help" inert={modalOpen}>
           <summary>Controls</summary>
           <p>
-            <kbd>1</kbd>–<kbd>4</kbd> switch stations · <kbd>P</kbd> pause · hold a dispenser or <kbd>Space</kbd> on it to pour (a quick tap adds a little; a
-            single click pours to the fill line and stops by itself) · on the finish vessel, pick a tool, then arrows move the cursor, hold <kbd>Space</kbd> to
-            drizzle, <kbd>Enter</kbd> places a garnish (a single click places a garnish, or drizzles the ordered amount). On a touch screen, press and keep
-            still for a moment before dragging to drizzle or pour; a finger that moves straight away scrolls the page.
+            <kbd>1</kbd>–<kbd>4</kbd> switch stations · <kbd>P</kbd> pause · hold a dispenser or <kbd>Space</kbd> on it to pour (a quick tap adds a little) · on
+            the finish vessel, pick a tool, then drag (or hold <kbd>Space</kbd> and use the arrows) to drizzle, and click (or press <kbd>Enter</kbd>) to place a
+            garnish. With switch, voice or screen-reader activation: one activation on a dispenser pours to the fill line and stops by itself, and one on the
+            vessel places a garnish or drizzles the ordered amount. On a touch screen, press and keep still for a moment before dragging to drizzle or pour; a
+            finger that moves straight away scrolls the page.
           </p>
         </details>
       </div>

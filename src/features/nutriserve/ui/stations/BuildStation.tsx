@@ -200,21 +200,28 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                     }}
                     // Silent: leaving the station mid-hold already released the pour.
                     onEnd={() => {
-                      latch.current = null;
+                      // A press that stopped a latched pour keeps the latch, so the grams are announced.
+                      if (!pressOnLatched.current) latch.current = null;
                       dispatch({ type: 'endPour' }, { silent: true });
                     }}
                     onCancel={() => {
-                      latch.current = null;
                       if (pressOnLatched.current) {
-                        // The press only meant to stop a latched pour: keep what was poured.
+                        // The press only meant to stop a latched pour: keep what was poured (announced).
                         dispatch({ type: 'endPour' }, { silent: true });
                         return;
                       }
+                      latch.current = null;
                       dispatch({ type: 'cancelPour' }, { silent: true });
                       setLive(`Pour cancelled: that looked like a scroll.`);
                     }}
-                    // A locked dispenser says why (the simulation's own reason, in the status line).
+                    // A locked dispenser says why, beside the dispensers.
                     onBlocked={() => {
+                      if (held && !(held.component === c.id && held.foodId === foodId)) {
+                        const text = `${foodLabel(held.foodId)} is still pouring: stop it first`;
+                        setBlocked({ component: c.id, text });
+                        setLive(text);
+                        return;
+                      }
                       const result = dispatch({ type: 'beginPour', dishId: dish.id, component: c.id, foodId });
                       if ('error' in result) setBlocked({ component: c.id, text: result.error });
                     }}
@@ -227,7 +234,9 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                       }
                       const haveG = (dish.build[c.id]?.foodId === foodId ? (dish.build[c.id]?.mg ?? 0) : 0) / 1000;
                       if (ideal && haveG >= ideal[c.id]) {
-                        setLive(`${foodLabel(foodId)} is already at the line: ${Math.round(haveG)} of ${ideal[c.id]} grams.`);
+                        const text = `${foodLabel(foodId)} is already at the line: ${Math.round(haveG)} of ${ideal[c.id]} g`;
+                        setLive(`${text}.`);
+                        setBlocked({ component: c.id, text }); // visible too, for sighted switch and voice users
                         return;
                       }
                       if (
@@ -262,7 +271,8 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
         {live}
       </span>
       <span id="ns-hold-hint" className="sr-only">
-        Press and hold to pour; a quick tap adds a little. A single click pours to the fill line and stops by itself (click again to stop sooner).
+        Press and hold to pour; a quick tap adds a little. With switch, voice or screen-reader activation, one activation pours to the fill line and stops by
+        itself (activate again to stop sooner).
       </span>
       <Dockable slot="main" region={box(12, 362, 468, 48)} className="ns-row ns-actions">
         <button type="button" className="ns-btn ns-btn-primary" disabled={!!held} onClick={() => dispatch({ type: 'finishBuild', dishId: dish.id })}>

@@ -526,7 +526,8 @@ function run(s: GameState, c: Command): string | undefined {
       const portion = dish?.build[held.component];
       // build-v3: a press pours at least minPressMs worth, however quick the tap was.
       const least = BUILD_V1.pourRateMgPerMs[held.component] * BUILD_V1.minPressMs;
-      if (portion && portion.mg - held.startMg < least) portion.mg = held.startMg + least;
+      // ...but never past the line of a pour that stops at one.
+      if (portion && portion.mg - held.startMg < least) portion.mg = Math.min(held.startMg + least, held.stopAtMg ?? Infinity);
       s.held = undefined;
       return;
     }
