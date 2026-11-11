@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "verify-db": "npx tsx scripts/verifyDeployment.ts"
+    "verify-db": "npx tsx scripts/verifyDeployment.ts",
+    "test:nutriserve": "node --experimental-strip-types --test tests/nutriserve-reference.test.mjs",
+    "check:nutriserve-assets": "node scripts/check-nutriserve-assets.mjs",
+    "catalog:nutriserve": "node scripts/reconcile-nutriserve-catalog.mjs"
   },
   "dependencies": {
     "@google/genai": "1.28.0",

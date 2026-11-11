@@ -52,6 +52,9 @@ const GamesView: React.FC<GamesViewProps> = ({ onPlay }) => {
                     highScore={highScores.nutriserve}
                     onPlay={onPlay}
                 />
+                <a href="/nutriserve-art-lab.html" className="inline-block mt-3 text-sm font-semibold text-emerald-800 underline underline-offset-4">
+                    Preview the NutriServe remaster art
+                </a>
             </div>
 
             <div className="mb-8">

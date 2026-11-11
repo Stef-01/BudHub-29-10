@@ -30,6 +30,7 @@ const GameCard: React.FC<GameCardProps> = ({ gameMode, title, description, icon,
                 </div>
                 <button
                     onClick={() => onPlay(gameMode)}
+                    aria-label={`Play ${title}`}
                     className="px-6 py-2 bg-green-600 text-white font-semibold rounded-full hover:bg-green-700 transition-colors"
                 >
                     Play

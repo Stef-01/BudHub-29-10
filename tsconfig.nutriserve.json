@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/features/nutriserve/**/*.ts", "src/features/nutriserve/**/*.tsx", "components/games/nutriserve-ui/CustomerDisplay.tsx"],
+  "exclude": ["node_modules", "dist"]
+}

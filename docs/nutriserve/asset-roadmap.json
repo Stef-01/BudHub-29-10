@@ -1,0 +1,743 @@
+{
+  "sourceFiles": [
+    {
+      "path": "services/nutriServeFoodData.ts",
+      "sha256": "e172b9b2054eb62183e6e328e49298d275ba87480bc8122c7d42a08ae5ebbdb6"
+    },
+    {
+      "path": "services/nutriserveCharacters.ts",
+      "sha256": "96329f2727b8991ffea34d263651a23dcc8cca91541842032d575736ec201707"
+    }
+  ],
+  "method": "TypeScript AST of exact exported array initializers; unrelated tips excluded",
+  "counts": {
+    "foodIds": 49,
+    "customerIds": 33,
+    "acceptedIdleSprites": 6
+  },
+  "foods": [
+    {
+      "id": "rice_white",
+      "label": "White Rice",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "rice_brown",
+      "label": "Brown Rice",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "rice_red",
+      "label": "Red Rice",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "veg_biryani",
+      "label": "Veg Biryani",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "lemon_rice",
+      "label": "Lemon Rice",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "chana_masala",
+      "label": "Chana Masala",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "chickpea_curry",
+      "label": "Chickpea Curry",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "palak_dal",
+      "label": "Palak Dal",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "masoor_dal",
+      "label": "Masoor Dal",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "moong_dal_tadka",
+      "label": "Moong Dal Tadka",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "rajma_masala",
+      "label": "Rajma Masala",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "dal_tadka",
+      "label": "Dal Tadka",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "paneer_butter_masala",
+      "label": "Paneer Butter Masala",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "chicken_curry",
+      "label": "Chicken Curry",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "kerala_parippu_curry",
+      "label": "Kerala Parippu Curry (Moong Dal)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "kadala_curry",
+      "label": "Kadala Curry (Brown Chickpea)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "mathi_sardine_curry",
+      "label": "Mathi Kerala Sardine Curry",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "kerala_lamb_curry",
+      "label": "Keralan Lamb Curry",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "kerala_beef_curry",
+      "label": "Keralan Beef Curry",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "baingan_bharta",
+      "label": "Baingan Bharta",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "bhindi_masala",
+      "label": "Bhindi Masala",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "palak_paneer",
+      "label": "Palak Paneer",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "mixed_veg_curry",
+      "label": "Mixed Veg Curry",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "aloo_gobi",
+      "label": "Aloo Gobi",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "beans_carrot_thoran",
+      "label": "Beans & Carrot Thoran",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "moringa_leaf_thoran",
+      "label": "Moringa Leaf Thoran (Drumstick Leaves)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "banana_flower_thoran",
+      "label": "Banana Flower Thoran",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "jackfruit_seeds_thoran",
+      "label": "Jackfruit Seeds Thoran (Chakkakuru)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "roti",
+      "label": "Roti / Chapati",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "paratha",
+      "label": "Paratha",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "naan_plain",
+      "label": "Plain Naan",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "garlic_naan",
+      "label": "Garlic Naan",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "cheese_naan",
+      "label": "Cheese Naan",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "poha",
+      "label": "Poha",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "upma",
+      "label": "Upma",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "masala_dosa",
+      "label": "Masala Dosa",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "tapioca_kappa",
+      "label": "Tapioca (Kappa)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "dosa_plain",
+      "label": "Dosa (Plain)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "idli_plain",
+      "label": "Idli (Plain)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "sambar",
+      "label": "Sambar",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "raita",
+      "label": "Cucumber Raita",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "sprouts_salad",
+      "label": "Sprouts Salad",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "okra_pachadi",
+      "label": "Okra Pachadi",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "moru_curry_pulissery",
+      "label": "Moru Curry (Pulissery)",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "samosa",
+      "label": "Samosa",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "laddu",
+      "label": "Laddu",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "jalebi",
+      "label": "Jalebi",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "dal_makhani",
+      "label": "Dal Makhani",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    },
+    {
+      "id": "butter_chicken",
+      "label": "Butter Chicken",
+      "status": "planned-remaster",
+      "requiredStates": [
+        "library-icon",
+        "recipe-dependent-serving-layers"
+      ],
+      "note": "Existing legacy art is not counted as accepted remaster art"
+    }
+  ],
+  "customers": [
+    {
+      "id": "arjun_fit",
+      "label": "Arjun",
+      "idleStatus": "accepted-pilot-idle",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "priya_balanced",
+      "label": "Priya",
+      "idleStatus": "accepted-pilot-idle",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "rohan_light",
+      "label": "Rohan",
+      "idleStatus": "accepted-pilot-idle",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "maya_protein",
+      "label": "Maya",
+      "idleStatus": "accepted-pilot-idle",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "vikram_lowsodium",
+      "label": "Vikram",
+      "idleStatus": "accepted-pilot-idle",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "ananya_breakfast",
+      "label": "Ananya",
+      "idleStatus": "accepted-pilot-idle",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "raj_vegetarian",
+      "label": "Raj",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "divya_fiber",
+      "label": "Divya",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "karan_athletic",
+      "label": "Karan",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "meera_kerala",
+      "label": "Meera",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "aditya_balanced",
+      "label": "Aditya",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "sneha_light",
+      "label": "Sneha",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "rahul_diabetic",
+      "label": "Rahul",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "lakshmi_traditional",
+      "label": "Lakshmi",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "aryan_spicy",
+      "label": "Aryan",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "pooja_wellness",
+      "label": "Pooja",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "sanjay_seafood",
+      "label": "Sanjay",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "kavya_careful",
+      "label": "Kavya",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "nikhil_hungry",
+      "label": "Nikhil",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "riya_breakfast_light",
+      "label": "Riya",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "amit_fitness",
+      "label": "Amit",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "nisha_comfort",
+      "label": "Nisha",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "vivek_energy",
+      "label": "Vivek",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "tara_simple",
+      "label": "Tara",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "rohit_veggie",
+      "label": "Rohit",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "ishita_variety",
+      "label": "Ishita",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "gaurav_quick",
+      "label": "Gaurav",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "shreya_grain",
+      "label": "Shreya",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "manish_protein_light",
+      "label": "Manish",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "priyanka_seeds",
+      "label": "Priyanka",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "deepak_hearty_bal",
+      "label": "Deepak",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "zara_yogurt",
+      "label": "Zara",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    },
+    {
+      "id": "yash_meatlover",
+      "label": "Yash",
+      "idleStatus": "planned",
+      "reactionStates": "planned",
+      "walkStates": "planned"
+    }
+  ]
+}
