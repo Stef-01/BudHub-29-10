@@ -137,7 +137,7 @@
 .ns-heat span { display: block; height: 100%; background: #c0222a; }
 .ns-overheated { border-color: #c0222a; box-shadow: 0 0 0 0.15em #c0222a55; }
 .ns-btn-boost[aria-pressed='true'] { background: #ffb84d; }
-.ns-tray { display: flex; flex-wrap: wrap; gap: 0.35em; align-items: center; background: #fff9ecdd; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.35em 0.5em; overflow: auto; }
+.ns-tray { display: flex; flex-wrap: wrap; gap: 0.35em; align-items: center; background: #fff9ecf7; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.35em 0.5em; overflow: auto; }
 .ns-tray-column { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
 .ns-tray .ns-btn { font-size: 0.8em; text-transform: capitalize; }
 .ns-tray-label { font-weight: 800; font-size: 0.8em; }
@@ -203,9 +203,15 @@
 /* The serve result floats as a snackbar instead of sitting in the dock, so nothing below it jumps
    when it appears or goes. It doesn't take pointer input, so controls under it still work. */
 .ns-dock .ns-toast { font-size: 14px; position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 50; max-width: 520px; margin: 0 auto; padding: 6px 10px; box-shadow: 0 4px 14px #0005; }
-.ns-dock .ns-toast ul { margin: 2px 0; }
+.ns-dock .ns-toast p { margin: 0; }
+.ns-dock .ns-toast ul { margin: 2px 0; display: flex; flex-wrap: wrap; gap: 0 12px; }
+.ns-dock .ns-toast li { flex-direction: row; align-items: baseline; gap: 4px; }
+.ns-dock .ns-toast li small { font-size: 12px; }
+.ns-dock .ns-toast li b { font-size: 15px; }
 .ns-dock .ns-order-counter { padding: 4px 0; }
 .ns-dock .ns-provisional { font-size: 12px; }
+/* Backing plates only matter over stage scenery; in the dock the text already sits on the page. */
+.ns-dock .ns-plate { background: none; border: 0; padding: 0; }
 .ns-compact .ns-overlay { position: fixed; inset: 0; z-index: 60; padding: 12px; }
 /* Prep and finish have no scene of their own on a phone: collapse the stage (overlays are fixed). */
 .ns-compact .ns-stage.ns-scene-empty { aspect-ratio: auto; height: 0; border-width: 0; }

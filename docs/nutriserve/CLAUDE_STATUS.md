@@ -20,7 +20,7 @@ The catalog on this branch has **55 foods and 53 customers** (main has 49 and 33
 ## Verification
 
 ```sh
-npm run test:nutriserve            # 61 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
+npm run test:nutriserve            # 70 tests: 7 reference + simulation, stations, day, nutrition, catalog, audit regressions, release gate
 npm run typecheck:nutriserve-sim   # strict TypeScript for simulation/nutrition/data/domain
 npx tsc -p tsconfig.nutriserve.json --noEmit
 npm run build
@@ -28,7 +28,7 @@ npm run dev   # then, in another terminal:
 node scripts/e2e/nutriserve-release-gate.cjs http://localhost:5173   # needs the playwright package
 ```
 
-Release gate (browser, desktop 1280 px and iPhone 13): two concurrent orders cooking in two slots; Save & exit mid-prep then Continue with progress intact; a dish served to the wrong ticket is flagged and graded; the rest of the day served; day summary reached; no horizontal scroll; no app errors. 14/14 checks passed.
+Release gate (browser, desktop 1280 px and iPhone 13): two concurrent orders cooking in two slots; Save & exit mid-prep then Continue with progress intact; a dish served to the wrong ticket is flagged and graded; the rest of the day served; day summary reached; no horizontal scroll; no app errors. It first runs browser regression checks for the second audit: a drizzle held across a layout switch is released; a plain click on a dispenser pours one tap; Tab stays inside the pause dialog, station keys do nothing behind it, Escape resumes and focus returns; a save under changed rules explains itself and carries rank, coins and credited days into a new day. 23/23 checks passed.
 
 Independent audits (findings and fixes are below).
 
