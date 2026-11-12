@@ -9,7 +9,9 @@
 // v4: the serving tools widen the exact band of build-v5 instead of adding a point, copper handis
 // widen prep-v3's perfect window instead of adding three, and pressure lids also let go of the boost
 // when a dish reaches its mark (in v3 a late release under lids overcooked more than without them).
-export const PROGRESSION_VERSION = 'progression-v4';
+// v5: the garnish tray catches pieces dropped outside the katori instead of adding points to the
+// finish score, and the serving tools and copper handis are described for build-v6 and prep-v4.
+export const PROGRESSION_VERSION = 'progression-v5';
 
 /** Cumulative points needed for each rank (index 0 = rank 1). */
 export const RANK_THRESHOLDS = [0, 40, 100, 180, 280, 400, 550, 720, 920, 1150];
@@ -33,7 +35,7 @@ export interface UpgradeDef {
     | { kind: 'portionBand'; components: Array<'base' | 'main' | 'side'> }
     | { kind: 'prepBand' }
     | { kind: 'waitingGraceMs'; ms: number }
-    | { kind: 'finishBonus'; points: number }
+    | { kind: 'catchFallen' }
     | { kind: 'heatRisePerMs'; heat: number }
     | { kind: 'lobbyGraceMs'; ms: number }
     | { kind: 'ticketGraceMs'; ms: number }
@@ -54,7 +56,7 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'rice_scoop',
     label: 'Brass rice scoop',
     hi: 'पीतल का चम्मच',
-    description: 'Rice and roti count as exact within 20% of the line (10% without).',
+    description: 'Rice and roti count as exact within 15% of the line (7% without).',
     cost: 20,
     unlockRank: 1,
     effect: { kind: 'portionBand', components: ['base'] },
@@ -72,7 +74,7 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'steel_ladles',
     label: 'Steel ladle set',
     hi: 'करछी',
-    description: 'Mains and sides count as exact within 20% of the line (10% without).',
+    description: 'Mains and sides count as exact within 15% of the line (7% without).',
     cost: 40,
     unlockRank: 2,
     effect: { kind: 'portionBand', components: ['main', 'side'] },
@@ -90,10 +92,10 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'garnish_tray',
     label: 'Garnish tray',
     hi: 'सजावट की थाली',
-    description: 'Finish score +3, capped at 100.',
+    description: 'A garnish piece dropped outside the katori lands back on the tray instead of falling off, so it costs nothing.',
     cost: 35,
     unlockRank: 2,
-    effect: { kind: 'finishBonus', points: 3 },
+    effect: { kind: 'catchFallen' },
   },
   insulated_handis: {
     id: 'insulated_handis',
@@ -126,7 +128,8 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'pressure_lid',
     label: 'Pressure lids',
     hi: 'प्रेशर ढक्कन',
-    description: 'Boost cooks three times as fast instead of two and a half, and the whistle lets go of the boost when a dish reaches its mark.',
+    description:
+      'Boost cooks three times as fast instead of two and a half, and the whistle lets go of the boost as a dish enters its perfect window.',
     cost: 120,
     unlockRank: 8,
     effect: { kind: 'boostMultiplier', times: 3, whistle: true },
@@ -139,7 +142,8 @@ export interface UpgradeEffects {
   /** Whether the prep perfect window is widened (PREP_V1.wideBandUnits). */
   prepBand: boolean;
   waitingGraceMs: number;
-  finishBonus: number;
+  /** Garnish pieces dropped outside the katori are caught instead of falling off. */
+  catchFallen: boolean;
   /** Heat added per boosting millisecond, if an upgrade lowers it (else PREP_V1.heatRisePerMs). */
   heatRisePerMs?: number;
   lobbyGraceMs: number;
@@ -155,7 +159,7 @@ export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
     portionBand: { base: false, main: false, side: false },
     prepBand: false,
     waitingGraceMs: 0,
-    finishBonus: 0,
+    catchFallen: false,
     lobbyGraceMs: 0,
     ticketGraceMs: 0,
     whistle: false,
@@ -166,7 +170,7 @@ export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
     if (effect.kind === 'portionBand') effect.components.forEach((c) => (effects.portionBand[c] = true));
     else if (effect.kind === 'prepBand') effects.prepBand = true;
     else if (effect.kind === 'waitingGraceMs') effects.waitingGraceMs += effect.ms;
-    else if (effect.kind === 'finishBonus') effects.finishBonus += effect.points;
+    else if (effect.kind === 'catchFallen') effects.catchFallen = true;
     else if (effect.kind === 'heatRisePerMs') effects.heatRisePerMs = Math.min(effects.heatRisePerMs ?? Infinity, effect.heat);
     else if (effect.kind === 'lobbyGraceMs') effects.lobbyGraceMs += effect.ms;
     else if (effect.kind === 'ticketGraceMs') effects.ticketGraceMs += effect.ms;

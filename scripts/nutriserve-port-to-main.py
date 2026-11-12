@@ -16,7 +16,8 @@ Safety:
 - the app-shell patches stop when main has changed the NutriServe entry they would insert, rather
   than inserting a second copy;
 - files deleted on the branch are deleted on main;
-- any failure puts the worktree back as it was (the same branch or commit checked out, clean).
+- any failure, Ctrl-C or SIGTERM/SIGHUP (a closed terminal, a killed job) puts the worktree back as
+  it was (the same branch or commit checked out, clean).
 
 It does not commit: run the tests and the release gate on the result, then commit and push.
 
@@ -26,6 +27,7 @@ Usage: scripts/nutriserve-port-to-main.py <source repo> <main worktree> [--assum
 """
 import json
 import re
+import signal
 import subprocess
 import sys
 
@@ -52,6 +54,28 @@ def sh(*cmd, cwd=W, check=True):
 
 def fail(msg):
     raise SystemExit(f'port stopped: {msg}')
+
+
+def add_to_union(path, type_name, member):
+    """Add `member` to a TypeScript union type alias, wherever main has put the other members (an
+    unrelated new mode on main must not stop the port). Does nothing when it is already there."""
+    p = f'{W}/{path}'
+    s = open(p).read()
+    m = re.search(rf'export type {type_name} = ([^;]*);', s)
+    if not m:
+        fail(f'{path}: type {type_name} not found')
+    if member not in m.group(1):
+        s = s[:m.end(1)] + f' | {member}' + s[m.end(1):]
+        open(p, 'w').write(s)
+
+
+def _interrupted(signum, _frame):
+    # Turn SIGTERM/SIGHUP into an exception, so the rollback below runs as it does for Ctrl-C.
+    raise KeyboardInterrupt(f'signal {signum}')
+
+
+for _sig in (signal.SIGTERM, signal.SIGHUP):
+    signal.signal(_sig, _interrupted)
 
 
 def patch(path, pairs, upgrades=()):
@@ -99,6 +123,8 @@ def ported_paths(ref):
         'docs/nutriserve/CLAUDE_BUILD_TRACK.md',
         'docs/nutriserve/ASSET_WORKFLOW.md',
         'docs/nutriserve/REA_FINDINGS.md',
+        'docs/nutriserve/asset-prompts.json',
+        'docs/nutriserve/evidence-index.json',
     ]
 
 
@@ -213,11 +239,7 @@ try:
     open(p, 'w').write(json.dumps(pkg, indent=2) + '\n')
 
     # 7. App shell (main's own files; small, explicit edits).
-    patch('types.ts', [(
-        "export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb' | 'nutriserve' | 'unified_nutrient';",
-        "export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb' | 'nutriserve' | 'unified_nutrient' | 'nutriserve_remaster';",
-        "'nutriserve_remaster'",
-    )])
+    add_to_union('types.ts', 'GameMode', "'nutriserve_remaster'")
     patch('components/GameScreen.tsx', [(
         "    nutriserve: 'NutriServe Chef',",
         "    nutriserve: 'NutriServe Chef',\n    nutriserve_remaster: 'NutriServe Kitchen',",
@@ -296,7 +318,7 @@ try:
         'This is the NutriServe Kitchen remaster on `main`. It was developed on `claude/continue-building-j1mrs7` and ported here without that '
         "branch's unrelated `old` history, as the build track asks; `docs/nutriserve/PORT_SOURCE` names the branch commit it came from. "
         'Ported as is: `src/features/nutriserve/`, `tests/nutriserve-*`, the catalog generator and release gate in `scripts/`, '
-        '`tsconfig.nutriserve-sim.json` and this folder\'s status, README, build track (CSV and handoff), asset workflow and reference record. Adapted for `main`: a small entry in the app shell '
+        '`tsconfig.nutriserve-sim.json` and this folder\'s status, README, build track (CSV and handoff), asset workflow, and the historical reference and prompt records. Adapted for `main`: a small entry in the app shell '
         '(`App.tsx`, `types.ts`, `components/GameScreen.tsx`, `components/GamesView.tsx`), four scripts in `package.json`, and '
         '`services/nutriserveCharacters.ts`, where customers that required foods that do not exist (`brown_rice`, `red_rice`) now require '
         '`rice_brown` and `rice_red`. The simulation catalog is regenerated from `main`\'s own catalog sources. On `main` the remaster keeps '
@@ -309,7 +331,10 @@ try:
                 "import('./src/features/nutriserve/data/catalog.generated.ts').then(m=>console.log(m.CATALOG_FOODS.length+' foods, '+m.CATALOG_CUSTOMERS.length+' customers'))").strip()
     print(f'ported {SOURCE_REF} {source[:8]}; catalog {counts}; removed {len(removed)} file(s){": " + ", ".join(removed) if removed else ""}')
 except BaseException:
-    # Put the worktree back as it was: the same branch (never moved) or commit, clean.
+    # Put the worktree back as it was: the same branch (never moved) or commit, clean. A second
+    # signal must not interrupt the rollback itself.
+    for _sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(_sig, signal.SIG_IGN)
     subprocess.run(['git', 'checkout', '--quiet', '--force', orig_branch or '--detach', *([] if orig_branch else [orig_commit])], cwd=W)
     subprocess.run(['git', 'reset', '--quiet', '--hard', 'HEAD'], cwd=W)
     subprocess.run(['git', 'clean', '-fdq', '-e', 'node_modules'], cwd=W)

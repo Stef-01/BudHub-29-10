@@ -17,6 +17,7 @@ export {
   portionCredit,
   prepBandUnits,
   prepTargetUnits,
+  prepSeconds,
   prepUnits,
   orderComplete,
   rewardsV1,

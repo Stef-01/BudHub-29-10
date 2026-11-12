@@ -27,8 +27,8 @@ export function slotsAtMark(state: GameState): number[] {
 
 /**
  * Bring the Done button of the most overdue at-mark slot into view (just below the pinned station
- * tabs on a phone, where the lower slots sit below the fold). Called when the player opens Prep; it
- * never moves focus, and does nothing when that button is already in view.
+ * tabs on a phone, where the lower slots sit below the fold). Called when the player comes to Prep from
+ * another station; it never moves focus, and does nothing when that button is already in view.
  */
 export function revealPrepDone(state: GameState): void {
   const marked = slotsAtMark(state);
@@ -82,8 +82,11 @@ export function StationTabs({ state, dispatch }: { state: GameState; dispatch: D
             aria-keyshortcuts={String(i + 1)}
             aria-label={`${label} station${count ? `, ${count} waiting` : ''}${atMark ? `, ${atMark} at the mark` : ''}`}
             onClick={() => {
+              // Only coming to Prep from another station scrolls: tapping Prep again while there
+              // leaves the page where the player put it.
+              const from = state.selected.station;
               dispatch({ type: 'selectStation', station });
-              if (station === 'prep') revealPrepDone(state);
+              if (station === 'prep' && from !== 'prep') revealPrepDone(state);
             }}
           >
             <span>{label}</span>

@@ -109,17 +109,19 @@ async function runDevice(browser, name, contextOptions, { touch = false } = {}) 
     await page.locator('.ns-tray button').first().click();
   }
 
+  // Doneness units (prep-v4: ms on the flame), from the slot's progress meter.
   const slotUnits = async (n) => {
-    const t = await page.getByRole('region', { name: `Prep slot ${n}` }).innerText();
-    const m = t.match(/(\d+) (?:\/|units)/);
-    return m ? Number(m[1]) : null;
+    const meter = page.getByRole('meter', { name: `Slot ${n} progress` });
+    if (!(await meter.count())) return null;
+    const v = await meter.getAttribute('aria-valuenow');
+    return v === null ? null : Number(v);
   };
 
   async function finishPrep(n, target) {
     await station('Prep');
     for (let i = 0; i < 500; i++) {
       const u = await slotUnits(n);
-      if (u === null || u >= target - 25) break;
+      if (u === null || u >= target - 150) break;
       await page.waitForTimeout(60);
     }
     await page.getByRole('region', { name: `Prep slot ${n}` }).getByRole('button', { name: 'Done' }).click();
@@ -175,7 +177,7 @@ async function runDevice(browser, name, contextOptions, { touch = false } = {}) 
     return page.locator('.ns-lastserve').first().innerText();
   }
 
-  const targetFor = (prep) => (/QUICK/.test(prep) ? 1050 : /SLOW/.test(prep) ? 2850 : 1950); // prep-v3 marks
+  const targetFor = (prep) => (/QUICK/.test(prep) ? 7000 : /SLOW/.test(prep) ? 18000 : 12000); // prep-v4 marks (ms on the flame)
 
   // 1. Two concurrent orders cooking in two slots.
   await takeOrder();
@@ -699,7 +701,8 @@ async function runAudit11(browser) {
     s = run(s, { type: 'finishBuild', dishId: d });
     s = run(s, { type: 'startPrep', dishId: d, slot: 2 });
     const start = sim.prepTargetUnits(next.order.prepLevel) - sim.prepBandUnits(sim.upgradeEffects(s.profile.upgrades));
-    s = sim.advanceGame(s, Math.round(((start - 150) / 150) * 1000));
+    const perSecond = sim.PREP_V1.unitsPerSecond; // a second short of the window
+    s = sim.advanceGame(s, Math.round(((start - perSecond) / perSecond) * 1000));
     s = run(s, { type: 'selectStation', station: 'order' });
     localStorage.setItem(k, sim.serializeGame(s));
   }, pkey);
@@ -756,11 +759,225 @@ async function runAudit11(browser) {
   await zoom.close();
 }
 
+/**
+ * Twelfth-audit regressions: handing the save between open windows, a failing save, the prep cue
+ * for a restored game, the phone layout (controls before the result bar, Build's scene collapsed,
+ * Finish tools above the vessel, no re-scroll on Prep), and the ticket's lines in a wrong-size vessel.
+ */
+async function runAudit12(browser) {
+  const tag = Date.now();
+  const enter = async (pg, user, button) => {
+    await pg.goto(`${BASE}/?user=${user}`, { waitUntil: 'networkidle' });
+    await pg.getByRole('button', { name: 'Games' }).first().click();
+    await pg.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' }).click();
+    await pg.getByRole('button', { name: button }).click();
+  };
+  const saveKeyOf = (pg) => pg.evaluate(() => Object.keys(localStorage).find((k) => k.startsWith('nutriserve.remaster.save.v1:')));
+  const seconds = (hud) => {
+    const m = hud.match(/(\d+):(\d\d)/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : -1;
+  };
+  /** Write a crafted save (body runs in the page with sim and run) and open it with Continue. */
+  const craft = async (pg, body) => {
+    await pg.getByRole('button', { name: 'Save & exit' }).click();
+    const key = await saveKeyOf(pg);
+    await pg.evaluate(
+      async ({ key, body }) => {
+        const sim = await import('/src/features/nutriserve/simulation/index.ts');
+        const run = (s, c) => {
+          const r = sim.applyCommand(s, c);
+          if (!r.result.ok) throw new Error(`${c.type}: ${r.result.error}`);
+          return r.state;
+        };
+        const rate = { base: 80, main: 90, side: 50 };
+        const helpers = {
+          toCounter: (s) => {
+            while (!s.day.customers.some((c) => c.phase === 'at_counter')) s = sim.advanceGame(s, 100);
+            return s;
+          },
+          build: (s, o, size = o.size) => {
+            s = run(s, { type: 'startDish', size });
+            const dishId = s.dishes.at(-1).id;
+            for (const [component, foodId] of [['base', o.baseId], ['main', o.mainId], ['side', o.sideId]]) {
+              s = run(s, { type: 'beginPour', dishId, component, foodId });
+              s = sim.advanceGame(s, Math.round((o.idealG[component] * 1000) / rate[component]));
+              s = run(s, { type: 'endPour' });
+            }
+            return { s, dishId };
+          },
+        };
+        const s = new Function('sim', 'run', 'h', body)(sim, run, helpers);
+        localStorage.setItem(key, sim.serializeGame(s));
+      },
+      { key, body }
+    );
+    await pg.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' }).click();
+    await pg.getByRole('button', { name: /^Continue day/ }).click();
+  };
+  // Two handis (1 and 2) inside their perfect windows, paused, at the Order station.
+  const AT_MARK = `
+    let s = sim.createGame({ seed: 9, runId: 'run-gate-a12' });
+    const dishes = [];
+    for (const slot of [0, 1]) {
+      s = h.toCounter(s);
+      s = run(s, { type: 'takeOrder' });
+      const t = s.tickets.at(-1);
+      const b = h.build(s, t.order);
+      s = run(b.s, { type: 'finishBuild', dishId: b.dishId });
+      s = run(s, { type: 'startPrep', dishId: b.dishId, slot });
+      dishes.push([b.dishId, t]);
+    }
+    // Run until both are past the start of their windows (and neither past its end).
+    const band = sim.prepBandUnits(sim.upgradeEffects(s.profile.upgrades));
+    const inWindow = (id, t) => {
+      const u = s.dishes.find((d) => d.id === id).prep.milliUnits / 1000, m = sim.prepTargetUnits(t.order.prepLevel);
+      return u >= m - band && u <= m + band;
+    };
+    for (let i = 0; i < 400 && !dishes.every(([id, t]) => inWindow(id, t)); i++) {
+      // Hold back whichever is ahead by taking turns boosting the one behind.
+      const [[a, ta], [b, tb]] = dishes;
+      const left = (id, t) => sim.prepTargetUnits(t.order.prepLevel) - band - s.dishes.find((d) => d.id === id).prep.milliUnits / 1000;
+      s = run(s, { type: 'setBoost', slot: 0, held: left(a, ta) > left(b, tb) + 200 });
+      s = run(s, { type: 'setBoost', slot: 1, held: left(b, tb) > left(a, ta) + 200 });
+      s = sim.advanceGame(s, 50);
+    }
+    s = run(s, { type: 'setBoost', slot: 0, held: false });
+    s = run(s, { type: 'setBoost', slot: 1, held: false });
+    s = run(s, { type: 'selectStation', station: 'order' });
+    s = run(s, { type: 'pause' });
+    return s;
+  `;
+
+  // 1. Two windows side by side (both visible): the second gets everything the first had done,
+  //    not its last autosave.
+  const ctx = await browser.newContext({ viewport: { width: 1000, height: 800 } });
+  const a = await ctx.newPage();
+  const b = await ctx.newPage();
+  const user = `gate-hand-${tag}`;
+  await enter(a, user, 'New game');
+  await a.waitForTimeout(2600); // past the opening save, well before the next autosave
+  const aHidden = await a.evaluate(() => document.hidden);
+  await enter(b, user, /^Continue day/);
+  await b.waitForTimeout(500);
+  const hudB = (await b.locator('.ns-hud').innerText()).replace(/\s+/g, ' ');
+  const toldA = await a.getByRole('alertdialog', { name: 'Open in another tab' }).count();
+  check(seconds(hudB) >= 2 && toldA === 1 && !aHidden, `regressions: a second window gets the first one's latest state, not its last autosave (B at ${hudB.slice(0, 14)}, A told ${toldA}, A hidden ${aHidden})`);
+  await ctx.close();
+
+  // 2. A save that fails (storage full) is shown while playing, and Save & exit asks first.
+  const full = await browser.newContext({ viewport: { width: 1000, height: 800 } });
+  await full.addInitScript(() => {
+    const orig = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) {
+      if (window.__nsFull && String(k).startsWith('nutriserve.remaster.save')) throw new DOMException('full', 'QuotaExceededError');
+      return orig.call(this, k, v);
+    };
+  });
+  const f = await full.newPage();
+  await enter(f, `gate-full-${tag}`, 'New game');
+  await f.evaluate(() => (window.__nsFull = true));
+  await f.waitForTimeout(4600); // one autosave
+  const warned = await f.locator('.ns-save-warning').count();
+  let asked = false;
+  f.once('dialog', (d) => {
+    asked = true;
+    d.dismiss();
+  });
+  await f.getByRole('button', { name: 'Save & exit' }).click();
+  await f.waitForTimeout(300);
+  const stayed = await f.locator('.ns-hud').count();
+  check(warned === 1 && asked && stayed === 1, `regressions: a failing save is shown, and Save & exit asks before leaving unsaved (warning ${warned}, asked ${asked}, stayed ${stayed})`);
+  await full.close();
+
+  // 3. A restored game's handis already at their mark are announced; the cue follows the set.
+  const cueCtx = await browser.newContext({ viewport: { width: 1000, height: 800 } });
+  const c = await cueCtx.newPage();
+  await enter(c, `gate-cue-${tag}`, 'New game');
+  await craft(c, AT_MARK);
+  await c.waitForTimeout(400);
+  const cueAtLoad = (await c.locator('[data-ns-cue]').innerText()).trim();
+  await c.getByRole('button', { name: 'Resume' }).click();
+  await c.getByRole('button', { name: /^Prep station/ }).click();
+  await c.getByRole('region', { name: 'Prep slot 1' }).getByRole('button', { name: 'Done' }).click();
+  await c.waitForTimeout(200);
+  const cueAfter = (await c.locator('[data-ns-cue]').innerText()).trim();
+  check(
+    /Prep slots [12] and [12] are at their mark/.test(cueAtLoad) && /^Prep slot 2 is at its mark/.test(cueAfter),
+    `regressions: restored handis at their mark are announced, and the cue drops a handi taken out ("${cueAtLoad.slice(0, 40)}" then "${cueAfter.slice(0, 40)}")`
+  );
+  await cueCtx.close();
+
+  // 4. Phone: the station's controls come before the result bar, Build's scene gives way to its
+  //    gauges, Finish's tools sit above the vessel, Prep doesn't re-scroll when tapped again, and a
+  //    wrong-size vessel still shows the ticket's lines.
+  const phone = await browser.newContext({ ...devices['iPhone 13'] });
+  const p = await phone.newPage();
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  p.on('console', (m) => m.type() === 'error' && !IGNORE.test(m.text()) && errors.push(m.text()));
+  await enter(p, `gate-a12-${tag}`, 'New game');
+  await craft(
+    p,
+    AT_MARK.replace(
+      "s = run(s, { type: 'selectStation', station: 'order' });",
+      `// A dish ready to finish (in slot 3, done) and one on the build counter in the wrong size.
+      s = h.toCounter(s);
+      s = run(s, { type: 'takeOrder' });
+      const t3 = s.tickets.at(-1);
+      let b3 = h.build(s, t3.order);
+      s = run(b3.s, { type: 'finishBuild', dishId: b3.dishId });
+      s = run(s, { type: 'startPrep', dishId: b3.dishId, slot: 2 });
+      s = run(s, { type: 'finishPrep', slot: 2 });
+      const wrong = t3.order.size === 'small' ? 'large' : 'small';
+      s = run(s, { type: 'startDish', size: wrong });
+      s = run(s, { type: 'selectStation', station: 'order' });`
+    )
+  );
+  await p.getByRole('button', { name: 'Resume' }).click();
+  await p.getByRole('button', { name: /^Prep station/ }).click();
+  await p.waitForTimeout(400);
+  await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await p.getByRole('button', { name: /^Prep station/ }).click();
+  await p.waitForTimeout(400);
+  const rescrolled = await p.evaluate(() => Math.round(scrollY));
+  await p.getByRole('button', { name: /^Build station/ }).click();
+  await p.waitForTimeout(300);
+  const build = await p.evaluate(() => {
+    const top = (el) => (el ? Math.round(el.getBoundingClientRect().top + scrollY) : -1);
+    const main = document.querySelector('.ns-dock-main');
+    const bar = document.querySelector('.ns-dock .ns-lastserve-wrap');
+    return {
+      stage: Math.round(document.querySelector('.ns-stage').getBoundingClientRect().height),
+      order: !!main && !!bar && !!(main.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING),
+      dispenser: top(document.querySelector('.ns-dispenser')),
+      lines: [...document.querySelectorAll('.ns-gauge-label')].filter((l) => / \/ \d+ g/.test(l.textContent)).length,
+      warning: document.querySelector('.ns-size-warning')?.textContent ?? '',
+      h: innerHeight,
+    };
+  });
+  await p.getByRole('button', { name: /^Finish station/ }).click();
+  await p.waitForTimeout(300);
+  const finish = await p.evaluate(() => {
+    const top = (sel) => Math.round(document.querySelector(sel)?.getBoundingClientRect().top ?? -1);
+    return { tools: top('.ns-tools'), vessel: top('.ns-vessel-top') };
+  });
+  check(rescrolled === 0, `regressions: tapping Prep while on Prep leaves the page where the player put it (scrolled to ${rescrolled})`);
+  check(
+    build.stage === 0 && build.order && build.dispenser > 0 && build.dispenser < build.h,
+    `regressions: on a phone, Build's controls start on the first screen, before the result bar (scene ${build.stage} px, controls first ${build.order}, first dispenser at ${build.dispenser} of ${build.h})`
+  );
+  check(build.lines === 3 && /ticket wants/.test(build.warning), `regressions: a wrong-size vessel still shows the ticket's lines, and says so (${build.lines} lines, "${build.warning.trim()}")`);
+  check(finish.tools >= 0 && finish.tools < finish.vessel, `regressions: on a phone the finish tools sit above the vessel (tools ${finish.tools}, vessel ${finish.vessel})`);
+  check(errors.length === 0, `regressions: no app errors on the twelfth-audit phone checks${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
+  await phone.close();
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
   await runRegressions(browser);
   await runAudit11(browser);
+  await runAudit12(browser);
   results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
   results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });
   results.phone = await runDevice(browser, 'phone', { ...devices['iPhone 13'] }, { touch: true });

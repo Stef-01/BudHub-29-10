@@ -518,9 +518,9 @@ test('every serve records plain reasons for its scores', () => {
   s = cmd(s, { type: 'finishDish', dishId });
   s = cmd(s, { type: 'serve', dishId, ticketId: ticket.id });
   const notes = s.day.results[0].notes;
-  assert.ok(notes.includes('Base +40 g'), notes.join(' | '));
+  assert.ok(notes.some((n) => /^Base \+40 g \(line \d+ g\)$/.test(n)), notes.join(' | '));
   assert.ok(notes.includes('No side'), notes.join(' | '));
-  assert.ok(notes.some((n) => /^Undercooked: 0 of \d+ prep units$/.test(n)), notes.join(' | '));
+  assert.ok(notes.some((n) => /^Undercooked: 0 s on the flame; the mark is \d+ s$/.test(n)), notes.join(' | '));
   assert.equal(s.day.results[0].complete, false);
   assert.ok(s.day.results[0].stars <= 4);
 });
@@ -768,14 +768,14 @@ test('rank 5-8 upgrades help where busy days cost points (progression-v3)', () =
   assert.equal(p.prepSlots[0].overheated, false);
   p = advanceGame(p, 1_000);
   assert.equal(p.prepSlots[0].overheated, true);
-  // Pressure lids: a boosted millisecond cooks 450 milli-units instead of 375.
+  // Pressure lids: a boosted millisecond cooks 3000 milli-units instead of 2500 (prep-v4).
   let q = advanceUntil(game(11, { profile: profile(['pressure_lid']) }), atCounter);
   q = cmd(q, { type: 'takeOrder' });
   const r = buildPerfect(q, q.tickets[0]);
   q = cmd(r.s, { type: 'startPrep', dishId: r.dishId, slot: 0 });
   q = cmd(q, { type: 'setBoost', slot: 0, held: true });
   q = advanceGame(q, 1_000);
-  assert.equal(q.dishes.find((d) => d.id === r.dishId).prep.milliUnits, 450_000);
+  assert.equal(q.dishes.find((d) => d.id === r.dishId).prep.milliUnits, 3_000_000);
 });
 
 test('the tiffin rack adds 15 s of ticket grace, and only ticket grace (progression-v3)', () => {
@@ -802,34 +802,12 @@ test('notes never name a portion or finish error that owned upgrades made free',
     return d;
   };
   const perfect = gradeBuild(at(0), order, scoop).score;
-  const g = [2, 4, 6, 8, 10, 12, 14, 16].find((e) => gradeBuild(at(e), order, scoop).score === perfect && gradeBuild(at(e), order).score < gradeBuild(at(0), order).score);
+  const g = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24].find((e) => gradeBuild(at(e), order, scoop).score === perfect && gradeBuild(at(e), order).score < gradeBuild(at(0), order).score);
   assert.ok(g, 'some base error is free only with the rice scoop');
   const scores = (d, effects) => ({ waiting: 100, build: gradeBuild(d, order, effects).score, prep: 100, finish: 100 });
   const base = (notes) => notes.filter((n) => /^Base [+−]/.test(n));
   assert.deepEqual(base(serveNotes(at(g), order, scores(at(g), scoop), 1, [], 0, scoop)), []);
   assert.equal(base(serveNotes(at(g), order, scores(at(g)), 1, [], 0)).length, 1);
-  // Finish: a small garnish slip the garnish tray's bonus covers is not named.
-  const tray = upgradeEffects(['garnish_tray']);
-  const d = structuredClone(s.dishes.find((x) => x.id === dishId));
-  const finishOrder = { ...order, finish: [{ kind: 'garnish', id: 'coriander', count: 3 }] };
-  // Three coriander, the last one turned a little off the even spread: a small balance penalty.
-  const place = (deg) => {
-    const r = (Math.PI / 180) * deg;
-    d.finish.garnishes = [0, 120, deg].map((t, i) => ({ id: 'coriander', x: 0.5 * Math.cos(i < 2 ? (Math.PI / 180) * t : r), y: 0.5 * Math.sin(i < 2 ? (Math.PI / 180) * t : r), fell: false }));
-  };
-  const turn = [235, 230, 225, 220, 215, 210, 205, 200].find((deg) => {
-    place(deg);
-    const b = gradeFinishV1(d, finishOrder).score;
-    return b < 100 && gradeFinishV1(d, finishOrder, tray).score === 100;
-  });
-  assert.ok(turn, 'some off-balance spread is free only with the garnish tray');
-  place(turn);
-  const withTray = gradeFinishV1(d, finishOrder, tray);
-  const bare = gradeFinishV1(d, finishOrder);
-  assert.ok(bare.score < 100 && withTray.score === 100, `bare ${bare.score}, with tray ${withTray.score}`);
-  const fin = (grade) => serveNotes(d, finishOrder, { waiting: 100, build: 100, prep: 100, finish: grade.score }, 1, grade.penalties, 0).filter((n) => /\(−\d+\)$/.test(n));
-  assert.deepEqual(fin(withTray), []);
-  assert.ok(fin(bare).length >= 1);
 });
 
 // --- Eleventh audit, 2026-11-12 ------------------------------------------------------------------
@@ -857,9 +835,9 @@ test('pressure lids let go of a latched boost at the start of the perfect window
     return { q, ticket, dishId: r.dishId, released, target, band };
   };
   const lid = run(['pressure_lid', 'insulated_handis']);
-  // The boost lets go on the millisecond the dish reaches mark - band (450 milli-units a ms).
+  // The boost lets go on the millisecond the dish reaches mark - band (3000 milli-units a ms).
   const at = (lid.target - lid.band) * 1000;
-  assert.ok(lid.released >= at && lid.released < at + 450, `${lid.released} vs ${at}`);
+  assert.ok(lid.released >= at && lid.released < at + 3000, `${lid.released} vs ${at}`);
   assert.equal(lid.q.prepSlots[0].overheated, false, 'the whistle, not overheating, let go');
   // Left on the flame at the base rate from there, the dish stays perfect for 1.6 s.
   let after = advanceGame(lid.q, 1_500);
@@ -886,5 +864,83 @@ test('the whistle needs a guiding ticket, and replays the same in any chunking',
   let parts = q;
   for (const dt of [1, 333, 7, 1_200, 59, 2_400]) parts = advanceGame(parts, dt);
   assert.deepEqual(parts, whole);
-  assert.equal(PREP_V1.version, 'prep-v3-provisional');
+  assert.equal(PREP_V1.version, 'prep-v4-provisional');
+});
+
+// --- Twelfth audit, 2026-11-12 -------------------------------------------------------------------
+import { exactBand, portionCredit } from '../src/features/nutriserve/simulation/index.ts';
+
+test('the garnish tray catches a piece dropped outside the katori instead of adding points (progression-v5)', () => {
+  assert.equal(UPGRADES.garnish_tray.effect.kind, 'catchFallen');
+  assert.equal(upgradeEffects(['garnish_tray']).catchFallen, true);
+  assert.equal('finishBonus' in upgradeEffects(['garnish_tray']), false);
+  // Without the tray the piece falls off and costs points.
+  const bare = finishing(42, 2);
+  const fell = cmd(bare.s, { type: 'placeGarnish', dishId: bare.dishId, garnishId: 'coriander', x: 1.3, y: 0 });
+  const dropped = fell.dishes.find((d) => d.id === bare.dishId);
+  assert.equal(dropped.finish.garnishes.at(-1).fell, true);
+  assert.ok(gradeFinishV1(dropped, bare.ticket.order).penalties.some((p) => /fell/.test(p.reason)));
+  // With it, the same drop changes nothing and says why; a piece inside lands as usual.
+  let { s, dishId } = finishing(42, 2);
+  s = { ...s, profile: { ...s.profile, upgrades: ['garnish_tray'] } };
+  assert.match(reject(s, { type: 'placeGarnish', dishId, garnishId: 'coriander', x: 1.3, y: 0 }), /garnish tray/);
+  s = cmd(s, { type: 'placeGarnish', dishId, garnishId: 'coriander', x: 0.4, y: 0 });
+  assert.equal(s.dishes.find((d) => d.id === dishId).finish.garnishes.length, 1);
+});
+
+test('every station score under 100 has a note, so "No points lost" never hides a loss', () => {
+  const { s, dishId, ticket } = finishing(42, 4);
+  const dish = s.dishes.find((d) => d.id === dishId);
+  const order = ticket.order;
+  const all = (scores, d = dish, penalties = [], effects) => serveNotes(d, order, { waiting: 100, build: 100, prep: 100, finish: 100, ...scores }, 1, penalties, 30_000, effects);
+  // Prep: every lost point, however small, is named (prep-v3 left 90-99 unexplained).
+  const mark = prepTargetUnits(order.prepLevel), band = prepBandUnits();
+  for (let u = 0; u <= mark + band + 4_000; u += 37) {
+    const d = { ...dish, prep: { ...dish.prep, milliUnits: u * 1000 } };
+    const prep = gradePrep(d, order);
+    const notes = all({ prep }, d).filter((n) => /cooked/.test(n));
+    assert.equal(notes.length, prep < 100 ? 1 : 0, `${u} units, prep ${prep}: ${notes}`);
+  }
+  // Waiting: 95 is named too.
+  assert.ok(all({ waiting: 95 }).some((n) => /^Waited \d+ s$/.test(n)));
+  assert.deepEqual(all({}), [], 'a perfect serve has no notes');
+  // Build: any portion outside its exact band is named, including ones that cost under a point.
+  for (const c of ['base', 'main', 'side']) {
+    for (const f of [0.5, 0.8, 0.9, 0.92, 0.95, 1.05, 1.08, 1.1, 1.5]) {
+      const d = structuredClone(dish);
+      d.build[c].mg = Math.round(order.idealG[c] * f * 1000);
+      const credit = portionCredit(d.build[c].mg / 1000, order.idealG[c], exactBand(c));
+      const named = all({ build: gradeBuild(d, order).score }, d).filter((n) => n.startsWith(`${c[0].toUpperCase()}${c.slice(1)} `));
+      assert.equal(named.length, credit < 1 ? 1 : 0, `${c} x${f}: ${named}`);
+    }
+  }
+  // Finish: penalties that are each under half a point but cost a point together are still named.
+  const small = [{ reason: 'Garnish balance', points: 0.4 }, { reason: 'Steps out of order', points: 0.3 }];
+  assert.ok(all({ finish: 99 }, dish, small).includes('Garnish balance (−<1)'));
+  assert.deepEqual(all({ finish: 100 }, dish, small).filter((n) => /\(−/.test(n)), []);
+});
+
+test('the drizzle amount is free within 12% of its target, then costs up to 24 points (finish-v4)', () => {
+  const { s, dishId, ticket } = finishing(42, 4);
+  const order = { ...ticket.order, size: 'medium', finish: [{ kind: 'drizzle', id: 'curd_swirl' }] };
+  const target = FINISH_V1.drizzleTargetG.curd_swirl.medium;
+  const amountLost = (g) => {
+    const d = structuredClone(s.dishes.find((x) => x.id === dishId));
+    d.finish.drizzles = { curd_swirl: { insideMg: g * 1000, spilledMg: 0, cellsMg: Array(FINISH_V1.gridSize ** 2).fill((g * 1000) / 20) } };
+    return gradeFinishV1(d, order).penalties.find((p) => /^Too (much|little)/.test(p.reason))?.points ?? 0;
+  };
+  assert.equal(amountLost(target), 0);
+  assert.equal(amountLost(target * 1.12), 0);
+  assert.equal(amountLost(target * 0.88), 0);
+  assert.ok(Math.abs(amountLost(target * 1.42) - 12) < 1e-6, 'half way through the span costs half the max');
+  assert.equal(amountLost(target * 2), FINISH_V1.penalty.drizzleAmountMax, 'capped');
+  assert.equal(amountLost(target * 5), FINISH_V1.penalty.drizzleAmountMax);
+});
+
+test('build-v6: a fifth off costs about a quarter of the share, and the serving tools matter', () => {
+  assert.equal(BUILD_V1.version, 'build-v6');
+  assert.ok(Math.abs(portionCredit(80, 100, BUILD_V1.exactBand) - 0.74) < 1e-9);
+  // 12% short is exact with the scoop, and costs a tenth of the share without it.
+  assert.equal(portionCredit(88, 100, BUILD_V1.toolExactBand), 1);
+  assert.ok(Math.abs(portionCredit(88, 100, BUILD_V1.exactBand) - 0.9) < 1e-9);
 });

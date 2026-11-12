@@ -22,7 +22,10 @@ export const BUILD_V1 = {
   // v5: NutriServe's own portion grading (see gradeBuild): each food is worth a share of the score,
   // a portion near its line counts as exact, short portions lose more than generous ones, and the
   // wrong vessel costs a flat amount. Hold rates are unchanged.
-  version: 'build-v5',
+  // v6: a narrower exact band and steeper losses outside it, so a portion a fifth off costs about a
+  // quarter of its share (v5 cost about a tenth, and the serving tools barely mattered). The band is
+  // still wider than one minimum press of the smallest portion, so taps can always land in it.
+  version: 'build-v6',
   /** Pour rates while a dispenser is held, in milligrams per millisecond (= grams per second). */
   pourRateMgPerMs: { base: 80, main: 90, side: 50 },
   /** The least one press pours, in ms of pouring (100 ms = 8 g base, 9 g main, 5 g side). */
@@ -30,17 +33,19 @@ export const BUILD_V1 = {
   /** Points each food is worth when it is the right food at the right amount (sums to 100). */
   share: { base: 40, main: 35, side: 25 },
   /** A portion within this fraction of its line counts as exact. */
-  exactBand: 0.1,
+  exactBand: 0.07,
   /** The same band with the matching serving tool (rice scoop, ladle set). */
-  toolExactBand: 0.2,
+  toolExactBand: 0.15,
+  /** Past the band, a short portion loses this share of its credit per portion's worth missing. */
+  shortSlope: 2,
   /** Past the band, a generous portion loses this share of its credit per extra portion's worth. */
-  overSlope: 0.6,
+  overSlope: 1.2,
   /** A generous portion never drops below this share of its credit (the food is there). */
   overFloor: 0.2,
   /** Points off for serving in a different vessel size than the ticket asked for. */
   wrongVesselPenalty: 20,
-  /** Meters show a main or side up to this multiple of its line (the line sits halfway). */
-  meterFullMultiple: 2,
+  /** Gauges show a portion up to this multiple of its line, so the line sits at 1/1.6 = 62.5%. */
+  meterFullMultiple: 1.6,
 } as const;
 
 export const PREP_V1 = {
@@ -50,9 +55,11 @@ export const PREP_V1 = {
   // v3: NutriServe's own doneness marks and grading (see gradePrep): each level has a mark, a
   // window around it counts as perfect, an undercooked dish earns its share of the way there, and
   // an overcooked one loses points for every second it stayed on.
-  version: 'prep-v3-provisional',
-  /** PROVISIONAL: doneness units gained per second on the flame (1 unit per ms = 1000 milli-units). */
-  unitsPerSecond: 150,
+  // v4: doneness is counted in milliseconds on the flame at normal heat (v3 used an abstract unit),
+  // and the marks are 7, 12 and 18 seconds: slower dishes need disproportionately longer.
+  version: 'prep-v4-provisional',
+  /** Doneness units gained per second on the flame: one unit is one millisecond at normal heat. */
+  unitsPerSecond: 1000,
   /** PROVISIONAL: units accrue this many times faster while boost is held. */
   boostMultiplier: 2.5,
   /** PROVISIONAL heat model (integer heat points). Boosting heats the slot; idling cools it. */
@@ -62,13 +69,13 @@ export const PREP_V1 = {
   /** After overheating, boost is locked and nothing cooks until heat falls back to this level. */
   heatUnlockLevel: 3_000,
   /** A dish stops gaining doneness here (25 s on the flame). */
-  maxUnits: 3_750,
-  /** Doneness mark for each prep level: 7, 13 and 19 seconds on the flame. */
-  targetUnits: { quick: 1_050, regular: 1_950, slow: 2_850 },
+  maxUnits: 25_000,
+  /** PROVISIONAL: doneness mark for each prep level, in ms on the flame (7, 12 and 18 seconds). */
+  targetUnits: { quick: 7_000, regular: 12_000, slow: 18_000 },
   /** Units either side of the mark that count as perfect (0.8 s on the flame). */
-  perfectBandUnits: 120,
+  perfectBandUnits: 800,
   /** The same window with copper handis (1.4 s on the flame). */
-  wideBandUnits: 210,
+  wideBandUnits: 1_400,
   /** Past the window, points lost per second on the flame of overcooking. */
   overPointsPerSecond: 12,
 } as const;
@@ -79,7 +86,9 @@ export const FINISH_V1 = {
   // v3: each drizzle has its own rate (about 1.7 s to a medium target for every drizzle), and the
   // deposit is spread along the path between pointer samples, so scores don't depend on the
   // device's pointer/refresh rate.
-  version: 'finish-v3-provisional',
+  // v4: the drizzle amount costs nothing within drizzleTolerancePct of its target, then up to
+  // drizzleAmountMax points, reached drizzleAmountSpanPct further off (v3 was 0.3 a percent, uncapped).
+  version: 'finish-v4-provisional',
   /** Drizzle deposition rate while held, mg per ms, by drizzle. */
   drizzleRateMgPerMs: { curd_swirl: 12, ghee_tadka: 3 } as Record<string, number>,
   /**
@@ -107,9 +116,10 @@ export const FINISH_V1 = {
     missingDrizzle: 30,
     wrongDrizzle: 25,
     unorderedDrizzle: 15,
-    /** Per percent of distance between deposited and target grams, after a 10% tolerance. */
-    drizzleAmountPerPct: 0.3,
-    drizzleTolerancePct: 10,
+    /** Drizzle amount: free within the tolerance, then rising evenly to the max over the span. */
+    drizzleAmountMax: 24,
+    drizzleTolerancePct: 12,
+    drizzleAmountSpanPct: 60,
     /** Scaled by (1 - coverage of the cells the vessel actually covers). */
     drizzleCoverage: 20,
     spillPerGram: 1.5,

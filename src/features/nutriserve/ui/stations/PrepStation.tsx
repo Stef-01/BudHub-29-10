@@ -1,6 +1,6 @@
-// Prep station: four independent slots. Progress is in provisional prep units (PREP_V1).
+// Prep station: four independent slots. Progress is in ms on the flame at normal heat (PREP_V1, prep-v4).
 import React, { useRef } from 'react';
-import { PREP_V1, prepTargetUnits, type Dish, type GameState } from '../../simulation/index.ts';
+import { PREP_V1, prepSeconds, prepTargetUnits, type Dish, type GameState } from '../../simulation/index.ts';
 import { HoldButton } from '../HoldButton.tsx';
 import { box } from '../stage.ts';
 import { Dockable } from '../Dockable.tsx';
@@ -36,7 +36,7 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
           return (
             <section
               key={slot.index}
-              className={`ns-prep-unit${slot.overheated ? ' ns-overheated' : ''}${atMark.includes(slot.index) ? ' ns-at-mark' : ''}`}
+              className={`ns-prep-unit${dish ? '' : ' ns-prep-empty'}${slot.overheated ? ' ns-overheated' : ''}${atMark.includes(slot.index) ? ' ns-at-mark' : ''}`}
               aria-label={`Prep slot ${slot.index + 1}`}
             >
               <h3>{slot.index + 1}</h3>
@@ -50,7 +50,7 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
                     aria-valuemin={0}
                     aria-valuemax={PREP_V1.maxUnits}
                     aria-valuenow={units}
-                    aria-valuetext={`${units} prep units${wanted ? `, ticket wants ${wanted}` : ''}`}
+                    aria-valuetext={`${prepSeconds(units)} seconds on the flame${wanted ? `, ticket wants ${prepSeconds(wanted)}` : ''}`}
                   >
                     <span className="ns-prep-fill" style={{ width: `${(units / PREP_V1.maxUnits) * 100}%` }} />
                     {LEVELS.map((level) => {
@@ -85,7 +85,7 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
                     <span style={{ width: `${heatPct}%` }} />
                   </div>
                   <p className="ns-muted">
-                    {slot.overheated ? 'Too hot! Off the flame' : wanted ? `${units} / ${wanted}` : `${units} units`}
+                    {slot.overheated ? 'Too hot! Off the flame' : wanted ? `${prepSeconds(units).toFixed(1)} / ${prepSeconds(wanted)} s` : `${prepSeconds(units).toFixed(1)} s`}
                     {atMark.includes(slot.index) && <b className="ns-take-out"> Take it out!</b>}
                   </p>
                   <HoldButton

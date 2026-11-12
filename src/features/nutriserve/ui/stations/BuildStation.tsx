@@ -74,9 +74,9 @@ function dishRows(state: GameState, dish: GameState['dishes'][number], open: Tic
 }
 
 function Gauge({ label, actualG, idealG, band }: { label: string; actualG: number; idealG?: number; band: number }) {
-  // The line sits at the middle; the shaded zone around it is the exact band (build-v5).
+  // The line sits at 1 / meterFullMultiple of the track; the shaded zone around it is the exact band.
   const position = idealG ? meterFraction(actualG, idealG) : 0;
-  const half = 1 / BUILD_V1.meterFullMultiple;
+  const line = 1 / BUILD_V1.meterFullMultiple;
   const error = idealG ? actualG - idealG : undefined;
   return (
     <div className="ns-gauge">
@@ -101,9 +101,9 @@ function Gauge({ label, actualG, idealG, band }: { label: string; actualG: numbe
         aria-valuetext={idealG ? `${Math.round(actualG)} of ${idealG} grams` : `${Math.round(actualG)} grams`}
       >
         {idealG !== undefined && (
-          <span className="ns-gauge-band" style={{ left: `${(1 - band) * half * 100}%`, width: `${2 * band * half * 100}%` }} />
+          <span className="ns-gauge-band" style={{ left: `${(1 - band) * line * 100}%`, width: `${2 * band * line * 100}%` }} />
         )}
-        <span className="ns-gauge-target" />
+        {idealG !== undefined && <span className="ns-gauge-target" style={{ left: `${line * 100}%` }} />}
         <span className="ns-gauge-needle" style={{ left: `${position * 100}%` }} />
       </span>
     </div>
@@ -176,7 +176,10 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
   const grams = (c: BuildComponent) => (dish.build[c]?.mg ?? 0) / 1000;
   /** A component holding no more than one minimum press can still be switched (build-v4). */
   const locked = (c: BuildComponent) => (dish.build[c]?.mg ?? 0) > BUILD_V1.pourRateMgPerMs[c] * BUILD_V1.minPressMs;
-  const ideal = ticket?.order.size === dish.size ? ticket.order.idealG : undefined;
+  // The ticket's lines, even in the wrong vessel size: grading measures against them either way
+  // (the wrong size costs points of its own), so portioning is never blind.
+  const ideal = ticket?.order.idealG;
+  const wrongSize = !!ticket && ticket.order.size !== dish.size;
   const effects = upgradeEffects(state.profile.upgrades);
   const capacity = ideal ? (ideal.base + ideal.main + ideal.side) * 1.5 : 600;
 
@@ -193,6 +196,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
       <Dockable slot="main" region={box(10, 200, 218, 146)} className="ns-gauges">
         <p className="ns-caption">
           {dish.size} vessel{ticket ? ` for #${ticket.number} ${customerName(ticket)}` : ''}
+          {wrongSize && ticket && <b className="ns-size-warning"> · ticket wants {ticket.order.size} (−{BUILD_V1.wrongVesselPenalty})</b>}
         </p>
         {COMPONENTS.map((c) => (
           <React.Fragment key={c.id}>
@@ -289,7 +293,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                         setLive(
                           ideal
                             ? `Pouring ${foodLabel(foodId)} to the line at ${ideal[c.id]} grams; it stops by itself.`
-                            : `Pouring ${foodLabel(foodId)}. No fill line: ${ticket ? "this vessel size isn't the ticket's" : 'no ticket for this dish'}. Click again to stop.`,
+                            : `Pouring ${foodLabel(foodId)}. No fill line: no ticket for this dish. Click again to stop.`,
                         );
                       }
                     }}

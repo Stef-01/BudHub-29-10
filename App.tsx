@@ -59,7 +59,7 @@ const AppContent: React.FC = () => {
     setActiveGame(gameMode);
   };
 
-  // The remaster reports each finished day once (its save records which days were reported).
+  // The remaster reports each finished day once (guarded by a ledger kept outside its save).
   const handleRemasterDay = useCallback(
     ({ averageScore, xpTier }: { day: number; averageScore: number; xpTier: 'Low' | 'Medium' | 'High' | null }) => {
       // A failed score save (offline, storage full) must not become an unhandled rejection.
