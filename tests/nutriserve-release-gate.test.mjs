@@ -2,10 +2,10 @@
 // mid-prep and restored, a dish served to the wrong ticket, and rewards credited exactly once.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceGame, deserializeGame, serializeGame, prepTargetUnits } from '../src/features/nutriserve/simulation/index.ts';
+import { advanceGame, deserializeGame, serializeGame, prepTargetUnits, PREP_V1 } from '../src/features/nutriserve/simulation/index.ts';
 import { game, cmd, advanceUntil, atCounter, buildPerfect } from './nutriserve-helpers.mjs';
 
-const prepMs = (ticket) => Math.round((prepTargetUnits(ticket.order.prepLevel) / 150) * 1000);
+const prepMs = (ticket) => Math.round((prepTargetUnits(ticket.order.prepLevel) / PREP_V1.unitsPerSecond) * 1000);
 const roundTrip = (s) => deserializeGame(serializeGame(s));
 
 function finishAndReady(s, dishId) {

@@ -40,6 +40,7 @@
 .ns-hud { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 4px; font-size: 15px; }
 .ns-hud small { color: #6b604f; }
 .ns-hud-actions { margin-left: auto; display: flex; gap: 8px; }
+.ns-save-warning { flex-basis: 100%; font-size: 14px; font-weight: 700; color: #6b2208; background: #fff0e8; border: 2px solid var(--warn); border-radius: 6px; padding: 2px 8px; }
 
 /* Stage */
 /* The wrapper is the size container: stage text is 1.9% of the stage's width (12 px at 640 px).
@@ -113,9 +114,11 @@
 .ns-gauge-label { font-size: 0.8em; }
 .ns-gauge-label .ns-over { color: #8a2a00; font-weight: 700; }
 .ns-gauge-label .ns-under { color: #1d4f9a; font-weight: 700; }
-.ns-gauge-track { position: relative; display: block; height: 0.7em; border-radius: 999px; background: linear-gradient(90deg, #d7e7f8, #fff 45%, #fff 55%, #fbdcd0); border: 1.5px solid var(--line); }
+.ns-size-warning { color: #8a2a00; }
+/* Short of the line is blue, past it red; the line sits at 62.5% (BUILD_V1.meterFullMultiple 1.6). */
+.ns-gauge-track { position: relative; display: block; height: 0.7em; border-radius: 999px; background: linear-gradient(90deg, #d7e7f8, #fff 57%, #fff 68%, #fbdcd0); border: 1.5px solid var(--line); }
 .ns-gauge-band { position: absolute; top: 0; bottom: 0; background: #1d7a4a55; border-left: 1.5px solid #1d7a4a; border-right: 1.5px solid #1d7a4a; }
-.ns-gauge-target { position: absolute; left: 50%; top: -0.2em; bottom: -0.2em; width: 0.15em; background: #14213d; transform: translateX(-50%); }
+.ns-gauge-target { position: absolute; top: -0.2em; bottom: -0.2em; width: 0.15em; background: #14213d; transform: translateX(-50%); }
 .ns-gauge-needle { position: absolute; top: 50%; width: 0.75em; height: 0.75em; border-radius: 50%; background: #f2b632; border: 2px solid var(--line); transform: translate(-50%, -50%); }
 .ns-dispensers { display: flex; flex-direction: column; gap: 0.3em; overflow: hidden; }
 .ns-dispenser-row { margin: 0; border: 2px solid var(--line); border-radius: 0.5em; background: #fff9ecee; padding: 0.1em 0.3em 0.3em; display: grid; grid-template-columns: 1fr 1fr; gap: 0.25em; min-width: 0; }
@@ -237,6 +240,11 @@
 .ns-root.ns-compact:not(.ns-side-dock) .ns-dock-tabs { position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 6px #0005; border-radius: 8px; }
 /* ...and a control scrolled into view (keyboard focus, find-in-page) lands below them, not under them. */
 .ns-root.ns-compact:not(.ns-side-dock) .ns-dock :is(button, summary, [tabindex], fieldset, .ns-gauges) { scroll-margin-top: 76px; }
+/* A Done button brought into view stays clear of a phone browser's bottom toolbar. */
+.ns-root.ns-compact .ns-dock [data-prep-done] { scroll-margin-bottom: 64px; }
+/* Empty handis take one line, so the busy ones sit higher. */
+.ns-dock .ns-prep-unit.ns-prep-empty { flex-direction: row; align-items: baseline; gap: 8px; padding: 4px 8px; }
+.ns-dock .ns-prep-unit.ns-prep-empty h3 { font-size: 16px; margin: 0; }
 /* The Why? panel scrolls under the pinned tabs rather than over them (their badges stay readable). */
 .ns-root.ns-compact:not(.ns-side-dock) .ns-why-panel { z-index: 10; }
 /* Very short viewports (300-400% zoom): pinned tabs would take a third of the screen and the finish
@@ -278,10 +286,12 @@
 .ns-side-dock > .ns-status { grid-column: 1 / -1; grid-row: 2; margin: 0; }
 .ns-side-dock > .ns-stage-wrap { grid-column: 1; grid-row: 3; max-width: max(200px, calc((100svh - 330px) * 4 / 3)); width: 100%; margin: 0; }
 .ns-side-dock > .ns-dock { display: contents; }
-.ns-side-dock > .ns-dock > :nth-child(1) { grid-column: 1; grid-row: 4; } /* station tabs */
-.ns-side-dock > .ns-dock > :nth-child(2) { grid-column: 1; grid-row: 5; } /* last serve */
-.ns-side-dock > .ns-dock > :nth-child(3) { grid-column: 1; grid-row: 6; } /* ticket rail and ticket */
-.ns-side-dock > .ns-dock > :nth-child(4) { grid-column: 2; grid-row: 3 / span 5; } /* station controls */
+.ns-side-dock > .ns-dock > .ns-dock-tabs { grid-column: 1; grid-row: 4; }
+.ns-side-dock > .ns-dock > .ns-dock-top { grid-column: 1; grid-row: 5; } /* ticket rail and ticket */
+.ns-side-dock > .ns-dock > .ns-lastserve-wrap { grid-column: 1; grid-row: 6; }
+.ns-side-dock > .ns-dock > .ns-dock-main { grid-column: 2; grid-row: 3 / span 5; } /* station controls */
+/* The tabs stay in view while the controls column scrolls (they only cover the left column). */
+.ns-side-dock > .ns-dock > .ns-dock-tabs { position: sticky; top: 0; z-index: 20; align-self: start; border-radius: 8px; box-shadow: 0 2px 6px #0005; }
 .ns-side-dock > .ns-help { grid-column: 1 / -1; }
 /* Prep and Finish have no scene: it collapses (as on phones), so the tabs and tickets lead the left column. */
 /* The vessel fits beside its tools on a short window. */
@@ -310,11 +320,14 @@
 @media (forced-colors: active) {
   .ns-prep-fill, .ns-heat span, .ns-gauge-band, .ns-gauge-needle, .ns-gauge-target, .ns-prep-mark { forced-color-adjust: none; }
   .ns-prep-fill, .ns-heat span { background: Highlight; }
-  .ns-prep-mark, .ns-gauge-target { background: CanvasText; }
-  .ns-prep-mark.ns-wanted { background: Highlight; width: 0.3em; }
+  /* A Canvas ring keeps the marks visible where the Highlight fill has reached them. */
+  .ns-prep-mark, .ns-gauge-target { background: CanvasText; box-shadow: 0 0 0 1px Canvas; }
+  .ns-prep-mark.ns-wanted { background: CanvasText; width: 0.35em; top: -0.35em; bottom: -0.35em; box-shadow: 0 0 0 2px Canvas; }
   .ns-gauge-band { background: transparent; border-color: Highlight; border-width: 3px; }
   .ns-gauge-needle { background: Highlight; border-color: CanvasText; }
   :is(.ns-btn, .ns-tab, .ns-tool, .ns-rail-ticket, .ns-dispenser)[aria-pressed='true'] { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: HighlightText; }
+  /* The live grams on the dispenser being poured: on its Highlight fill, not the authored yellow. */
+  .ns-dispenser-live { background: transparent; color: inherit; border: 1px solid currentColor; }
   .ns-at-mark { outline: 4px solid Highlight; outline-offset: 2px; }
   .ns-overheated { outline: 4px dashed CanvasText; outline-offset: 2px; }
   .ns-tab .ns-tab-alert, .ns-tab em { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: HighlightText; }

@@ -20,7 +20,17 @@ import { BuildStation } from './stations/BuildStation.tsx';
 import { FinishStation } from './stations/FinishStation.tsx';
 import { OrderStation } from './stations/OrderStation.tsx';
 import { PrepStation } from './stations/PrepStation.tsx';
-import { clearSave, readSavedGame, recordDayReported, saveKey, useNutriServeGame, wasDayReported, type Dispatch } from './useNutriServeGame.ts';
+import {
+  clearSave,
+  readSavedGame,
+  recordDayReported,
+  requestHandoff,
+  saveKey,
+  storageWorks,
+  useNutriServeGame,
+  wasDayReported,
+  type Dispatch,
+} from './useNutriServeGame.ts';
 import { LayoutContext, type DockSlot } from './Dockable.tsx';
 
 /**
@@ -97,6 +107,17 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
   const stored = useMemo(() => readSavedGame(props.userId), [props.userId, session, storageSeq]);
   const saved = stored.state;
   const problem = stored.problem;
+  const canSave = useMemo(() => storageWorks(), [session, storageSeq]);
+  // While another open tab hands the save over (at most a moment), the buttons wait.
+  const [handing, setHanding] = useState(false);
+  const afterHandoff = (then: () => void) => {
+    if (handing) return;
+    setHanding(true);
+    requestHandoff(props.userId).then(() => {
+      setHanding(false);
+      then();
+    });
+  };
   useEffect(() => {
     if (game) return;
     const onStorage = (e: StorageEvent) => {
@@ -135,6 +156,11 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
           <li>Six-customer pilot cast. Food, stations and reactions use plain layout studies until final art arrives.</li>
           <li>Waiting, prep timing, finish grading and how the four scores add up are provisional house rules and may change.</li>
         </ul>
+        {!canSave && (
+          <p className="ns-save-problem" role="alert">
+            <b>This browser isn't letting the game save</b> (site storage is blocked or full). You can still play, but nothing is kept once you leave.
+          </p>
+        )}
         {problem && (
           <div className="ns-save-problem" role="alert">
             <p>
@@ -172,22 +198,31 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
         )}
         <div className="ns-row">
           {saved && (
-            <button type="button" className="ns-btn ns-btn-primary" onClick={() => setGame(readSavedGame(props.userId).state ?? saved)}>
+            // The save is read after any other open tab has handed over its latest state.
+            <button
+              type="button"
+              className="ns-btn ns-btn-primary"
+              disabled={handing}
+              onClick={() => afterHandoff(() => setGame(readSavedGame(props.userId).state ?? saved))}
+            >
               Continue day {saved.day.number}
             </button>
           )}
           {problem?.profile && (
-            <button type="button" className="ns-btn ns-btn-primary" onClick={() => begin(problem.profile, problem.runId)}>
+            <button type="button" className="ns-btn ns-btn-primary" disabled={handing} onClick={() => afterHandoff(() => begin(problem.profile, problem.runId))}>
               Start a new day with your progress
             </button>
           )}
           <button
             type="button"
             className={`ns-btn ${saved || problem?.profile ? '' : 'ns-btn-primary'}`}
+            disabled={handing}
             onClick={() => {
               if (stored.exists && !window.confirm('Start a new game from rank 1? Your saved kitchen, coins and upgrades will be replaced.')) return;
-              clearSave(props.userId);
-              begin();
+              afterHandoff(() => {
+                clearSave(props.userId);
+                begin();
+              });
             }}
           >
             New game
@@ -208,7 +243,7 @@ function Kitchen({
   onDayComplete,
   onRestart,
 }: NutriServeRemasterProps & { initial: GameState; onRestart: (profile: Profile, runId: string) => void }) {
-  const { state, dispatch, lastError, fatal, superseded, takeOver, saveNow } = useNutriServeGame(initial, userId);
+  const { state, dispatch, lastError, fatal, superseded, takeOver, saveNow, saveFailed } = useNutriServeGame(initial, userId);
   // One live status line showing the latest announcement or rejected command, cleared STATUS_MS
   // after the last one. Each message is its own node and the last few stay (visually hidden), so a
   // screen reader reads every message once even when the next arrives before it has finished, and
@@ -230,6 +265,9 @@ function Kitchen({
     if (lastError) say(lastError.message);
   }, [lastError, say]);
   const previous = useRef(state);
+  // The at-mark slots the cue last described ('' = none yet, so handis already at their mark in a
+  // restored game are announced too).
+  const cueKey = useRef('');
 
   // Compact layout for narrow screens (see Dockable.tsx).
   const rootRef = useRef<HTMLDivElement>(null);
@@ -292,19 +330,25 @@ function Kitchen({
     state.prepSlots.forEach((slot, i) => {
       if (slot.overheated && !prev.prepSlots[i]?.overheated) messages.push(`Prep slot ${i + 1} overheated.`);
     });
-    // A handi reaching its mark is announced wherever the player is (it overcooks fast after).
+    // Handis at their mark are announced wherever the player is (they overcook fast after). The cue
+    // always describes the current set: it changes when a handi reaches its mark or is taken out,
+    // and a restored game's handis already at their mark are announced on arrival.
     const nowAtMark = slotsAtMark(state);
-    const before = new Set(slotsAtMark(prev));
-    const fresh = nowAtMark.filter((i) => !before.has(i));
-    if (fresh.length) {
-      // Newest first, then any still waiting.
-      const order = [...fresh, ...nowAtMark.filter((i) => before.has(i))].map((i) => i + 1);
-      const text =
-        order.length === 1
-          ? `Prep slot ${order[0]} is at its mark: take it out.`
-          : `Prep slots ${order.slice(0, -1).join(', ')} and ${order.at(-1)} are at their mark: take them out.`;
-      setCue((c) => ({ text, id: c.id + 1 }));
-    } else if (nowAtMark.length === 0 && before.size > 0) setCue((c) => ({ text: '', id: c.id }));
+    const key = nowAtMark.join(',');
+    if (key !== cueKey.current) {
+      const before = new Set(cueKey.current ? cueKey.current.split(',').map(Number) : []);
+      cueKey.current = key;
+      if (nowAtMark.length === 0) setCue((c) => ({ text: '', id: c.id }));
+      else {
+        // Newest first, then any still waiting.
+        const order = [...nowAtMark.filter((i) => !before.has(i)), ...nowAtMark.filter((i) => before.has(i))].map((i) => i + 1);
+        const text =
+          order.length === 1
+            ? `Prep slot ${order[0]} is at its mark: take it out.`
+            : `Prep slots ${order.slice(0, -1).join(', ')} and ${order.at(-1)} are at their mark: take them out.`;
+        setCue((c) => ({ text, id: c.id + 1 }));
+      }
+    }
     if (state.day.results.length > prev.day.results.length) {
       const r = state.day.results[state.day.results.length - 1];
       messages.push(`Served ${name(r.catalogCustomerId)}: ${r.scores.total} out of 100, ${r.tip} coins tip.`);
@@ -359,8 +403,10 @@ function Kitchen({
       if (target.closest('input, textarea, select')) return;
       const index = ['1', '2', '3', '4'].indexOf(e.key);
       if (index >= 0) {
+        // Only coming to Prep from another station scrolls (not pressing 3 again while there).
+        const from = latestState.current.selected.station;
         dispatch({ type: 'selectStation', station: STATIONS[index] });
-        if (STATIONS[index] === 'prep') revealPrepDone(latestState.current);
+        if (STATIONS[index] === 'prep' && from !== 'prep') revealPrepDone(latestState.current);
       }
       else if (isP) dispatch({ type: 'pause' });
     };
@@ -454,7 +500,11 @@ function Kitchen({
   const nextRank = RANK_THRESHOLDS[state.profile.rank];
 
   const exit = () => {
-    saveNow();
+    if (
+      !saveNow() &&
+      !window.confirm("This browser isn't letting the game save (site storage is blocked or full), so this day won't be here when you come back. Leave anyway?")
+    )
+      return;
     onExit();
   };
 
@@ -492,6 +542,11 @@ function Kitchen({
               Save &amp; exit
             </button>
           </span>
+          {saveFailed && !superseded && !fatal && (
+            <span className="ns-save-warning" role="alert">
+              Can't save: this browser's site storage is blocked or full. Progress since the last save will be lost if you leave or reload.
+            </span>
+          )}
         </header>
 
         {/* The wrapper is the size container the stage's cqw text is measured against (an element
@@ -499,7 +554,11 @@ function Kitchen({
         <div className="ns-stage-wrap">
           {!compact && <LastServe result={latest} inert={modalOpen} modal={modalOpen} />}
           <div
-            className={`ns-stage ns-station-${station}${compact && (station === 'prep' || station === 'finish') ? ' ns-scene-empty' : ''}`}
+            // Prep and Finish have no scene of their own in the dock layout, and on an upright phone
+            // Build's scene (the vessel from the side) gives way to its gauges, which say the same.
+            className={`ns-stage ns-station-${station}${
+              compact && (station === 'prep' || station === 'finish' || (station === 'build' && !sideDock)) ? ' ns-scene-empty' : ''
+            }`}
             aria-label={`${station} station`}
           >
             <div className="ns-stage-content" inert={modalOpen}>
@@ -515,10 +574,12 @@ function Kitchen({
               <FatalOverlay message={fatal} onExit={onExit} onRestart={() => onRestart(state.profile, state.runId)} />
             ) : superseded ? (
               <OtherTabOverlay
-                onContinue={() => {
-                  // The other tab's save can't be read here (e.g. it runs a newer version): reload.
-                  if (!takeOver()) window.location.reload();
-                }}
+                onContinue={() =>
+                  takeOver().then((ok) => {
+                    // The other tab's save can't be read here (e.g. it runs a newer version): reload.
+                    if (!ok) window.location.reload();
+                  })
+                }
                 onExit={onExit}
               />
             ) : state.day.completed ? (
@@ -530,11 +591,13 @@ function Kitchen({
         </div>
 
         {compact && (
+          // The station's controls come straight after the tabs and tickets; the last result follows
+          // them (it is also announced, and summed up in the status line).
           <div className="ns-dock" inert={modalOpen}>
             <div ref={slotRefs.tabs} className="ns-dock-tabs" />
-            <LastServe result={latest} modal={modalOpen} />
             <div ref={slotRefs.top} className="ns-dock-top" />
             <div ref={slotRefs.main} className="ns-dock-main" />
+            <LastServe result={latest} modal={modalOpen} />
           </div>
         )}
 
@@ -542,11 +605,17 @@ function Kitchen({
           {cue.text && <span key={cue.id}>{cue.text}</span>}
         </p>
         <p className="ns-status" role="status" aria-live="polite">
-          {status.messages.map((m, i) => (
-            <span key={m.id} className={i === status.messages.length - 1 ? undefined : 'sr-only'}>
-              {m.text}{' '}
-            </span>
-          ))}
+          {/* Older messages stay in the region (so one already being read isn't cut off) but are
+              hidden from browse mode, which reads only the latest. */}
+          {status.messages.map((m, i) =>
+            i === status.messages.length - 1 ? (
+              <span key={m.id}>{m.text} </span>
+            ) : (
+              <span key={m.id} className="sr-only" aria-hidden="true">
+                {m.text}{' '}
+              </span>
+            )
+          )}
         </p>
         <details className="ns-help" inert={modalOpen}>
           <summary>Controls</summary>
@@ -719,7 +788,10 @@ function OtherTabOverlay({ onContinue, onExit }: { onContinue: () => void; onExi
   return (
     <Modal label="Open in another tab" alert>
       <h2>Open in another tab</h2>
-      <p>This kitchen was opened in another tab or window, and your progress is being saved there. This tab has stopped saving so the two never overwrite each other.</p>
+      <p>
+        This kitchen was opened in another tab or window, and your progress was handed over to it. This tab has stopped saving so the two never overwrite
+        each other.
+      </p>
       <div className="ns-row">
         <button type="button" className="ns-btn ns-btn-primary" autoFocus onClick={onContinue}>
           Continue here

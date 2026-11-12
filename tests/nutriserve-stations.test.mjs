@@ -38,7 +38,7 @@ test('perfect build scores 100 (build-v5)', () => {
   for (const c of ['base', 'main', 'side']) assert.ok(Math.abs(grade.signedErrorG[c]) < 0.5, `${c} near ideal`);
 });
 
-test('underfill and overfill are distinguished by sign, and a short portion costs more (build-v5)', () => {
+test('underfill and overfill are distinguished by sign, and a short portion costs more (build-v6)', () => {
   const { s, ticket } = withTicket();
   const make = (factor) => {
     let x = cmd(s, { type: 'startDish', size: ticket.order.size });
@@ -53,19 +53,29 @@ test('underfill and overfill are distinguished by sign, and a short portion cost
   assert.ok(Math.abs(under.signedErrorG.main + over.signedErrorG.main) < 1, 'same magnitude');
   assert.equal(close.score, 100, 'inside the exact band is free');
   assert.ok(under.score < over.score && over.score < 100, `${under.score} < ${over.score} < 100`);
-  // 40 + 35 x (0.6 / 0.9) + 25 and 40 + 35 x (1 - 0.3 x 0.6) + 25, give or take the pour rounding.
-  assert.ok(Math.abs(under.score - 88) <= 1 && Math.abs(over.score - 94) <= 1, `${under.score} ${over.score}`);
+  // 40 + 35 x (1 - 2 x 0.33) + 25 and 40 + 35 x (1 - 1.2 x 0.33) + 25, give or take the pour rounding.
+  assert.ok(Math.abs(under.score - 77) <= 1 && Math.abs(over.score - 86) <= 1, `${under.score} ${over.score}`);
 });
 
-test('portion credit: full inside the band, proportional when short, floored when generous', () => {
-  assert.equal(portionCredit(100, 100, 0.1), 1);
-  assert.equal(portionCredit(90, 100, 0.1), 1);
-  assert.equal(portionCredit(110, 100, 0.1), 1);
-  assert.equal(portionCredit(45, 100, 0.1), 0.5);
-  assert.equal(portionCredit(0, 100, 0.1), 0);
-  assert.ok(Math.abs(portionCredit(160, 100, 0.1) - 0.7) < 1e-9);
-  assert.equal(portionCredit(1000, 100, 0.1), BUILD_V1.overFloor);
-  assert.equal(portionCredit(50, 0, 0.1), 0);
+test('portion credit: full inside the band, steeper when short than when generous, floored when generous', () => {
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} vs ${b}`);
+  assert.equal(portionCredit(100, 100, 0.07), 1);
+  assert.equal(portionCredit(93, 100, 0.07), 1);
+  assert.equal(portionCredit(107, 100, 0.07), 1);
+  near(portionCredit(80, 100, 0.07), 1 - 2 * 0.13); // a fifth short costs about a quarter
+  near(portionCredit(120, 100, 0.07), 1 - 1.2 * 0.13);
+  near(portionCredit(63, 100, 0.07), 0.4);
+  assert.equal(portionCredit(40, 100, 0.07), 0, 'well under half a portion earns nothing');
+  assert.equal(portionCredit(0, 100, 0.07), 0);
+  near(portionCredit(160, 100, 0.07), 1 - 1.2 * 0.53);
+  assert.equal(portionCredit(1000, 100, 0.07), BUILD_V1.overFloor);
+  assert.equal(portionCredit(50, 0, 0.07), 0);
+  assert.equal(portionCredit(Number.NaN, 100, 0.07), 0, 'a non-number portion earns nothing');
+  // The exact band is always wider than one minimum press of the smallest portions (taps can land in it).
+  for (const [c, smallestG] of [['base', 64], ['main', 80], ['side', 60]]) {
+    const pressG = (BUILD_V1.pourRateMgPerMs[c] * BUILD_V1.minPressMs) / 1000;
+    assert.ok(2 * BUILD_V1.exactBand * smallestG >= pressG, `${c}: band ${2 * BUILD_V1.exactBand * smallestG} g vs press ${pressG} g`);
+  }
 });
 
 test('a wrong main earns none of its share, however much was poured', () => {
@@ -100,10 +110,13 @@ test('the wrong vessel size costs a flat penalty', () => {
   assert.equal(gradeBuild(b.dishes.find((d) => d.id === dishId), ticket.order).score, 100 - BUILD_V1.wrongVesselPenalty);
 });
 
-test('meter fraction is 0.5 at the ideal and saturates at the full multiple', () => {
-  assert.equal(meterFraction(100, 100), 0.5);
+test('meter fraction puts the line at 1 / meterFullMultiple and saturates at the full multiple', () => {
+  assert.equal(meterFraction(100, 100), 1 / BUILD_V1.meterFullMultiple);
+  assert.equal(meterFraction(100, 100), 0.625);
   assert.equal(meterFraction(0, 100), 0);
   assert.equal(meterFraction(500, 100), 1);
+  assert.equal(meterFraction(Number.NaN, 100), 0);
+  assert.equal(meterFraction(50, 0), 0);
 });
 
 // --- C03 Prep (provisional parameters) ---------------------------------------
@@ -114,13 +127,17 @@ function inPrep(seed = 42, slot = 0) {
 }
 const units = (s, dishId) => Math.floor(s.dishes.find((d) => d.id === dishId).prep.milliUnits / 1000);
 
-test('prep accrues provisional units at the base rate and faster with boost', () => {
+const RATE = PREP_V1.unitsPerSecond; // units a second = milli-units a millisecond
+const BOOST = Math.round(RATE * PREP_V1.boostMultiplier);
+
+test('prep counts ms on the flame at the base rate, and faster with boost (prep-v4)', () => {
   let { s, dishId } = inPrep();
   s = advanceGame(s, 2_000);
-  assert.equal(units(s, dishId), 2 * PREP_V1.unitsPerSecond);
+  assert.equal(units(s, dishId), 2_000, 'one unit per millisecond at normal heat');
+  assert.equal(units(s, dishId), 2 * RATE);
   s = cmd(s, { type: 'setBoost', slot: 0, held: true });
   s = advanceGame(s, 1_000);
-  assert.equal(units(s, dishId), 300 + 375);
+  assert.equal(units(s, dishId), 2 * RATE + BOOST);
 });
 
 test('holding boost overheats the slot, locks boost, then unlocks after cooling', () => {
@@ -137,7 +154,7 @@ test('holding boost overheats the slot, locks boost, then unlocks after cooling'
   assert.equal(s.prepSlots[0].overheated, false);
   const resumed = units(s, dishId);
   s = advanceGame(s, 1_000);
-  assert.equal(units(s, dishId) - resumed, 150);
+  assert.equal(units(s, dishId) - resumed, RATE);
 });
 
 test('four slots run independently with different targets, even offscreen', () => {
@@ -166,21 +183,21 @@ test('four slots run independently with different targets, even offscreen', () =
   const dishes = ids.map((id) => s.dishes.find((d) => d.id === id));
   // Unboosted slots: units are exactly elapsed time x base rate, each on its own clock.
   for (const d of dishes.slice(0, 3)) {
-    assert.equal(Math.floor(d.prep.milliUnits / 1000), Math.floor(((d.prep.finishedAtMs - d.prep.startedAtMs) * 150) / 1000));
+    assert.equal(Math.floor(d.prep.milliUnits / 1000), Math.floor(((d.prep.finishedAtMs - d.prep.startedAtMs) * RATE) / 1000));
   }
   assert.ok(units(s, ids[1]) > units(s, ids[0]), 'slot 1 cooked longer than slot 0');
   const boosted = dishes[3], plain = dishes[2];
-  const extra = Math.floor(boosted.prep.milliUnits / 1000) - Math.floor(((boosted.prep.finishedAtMs - boosted.prep.startedAtMs) * 150) / 1000);
-  assert.equal(extra, Math.floor((1_500 * (375 - 150)) / 1000), 'boost added exactly its extra rate for 1.5 s');
+  const extra = Math.floor(boosted.prep.milliUnits / 1000) - Math.floor(((boosted.prep.finishedAtMs - boosted.prep.startedAtMs) * RATE) / 1000);
+  assert.equal(extra, Math.floor((1_500 * (BOOST - RATE)) / 1000), 'boost added exactly its extra rate for 1.5 s');
   assert.ok(units(s, ids[3]) > units(s, ids[2]));
   void plain;
   assert.ok(s.prepSlots.every((slot) => slot.dishId === undefined));
 });
 
-test('prep grade: perfect at the mark, a share of the way when short, points per second when over (prep-v3)', () => {
+test('prep grade: perfect at the mark, a share of the way when short, points per second when over (prep-v3 rules)', () => {
   let { s, dishId, ticket } = inPrep();
   const target = prepTargetUnits(ticket.order.prepLevel);
-  s = advanceGame(s, Math.round((target / 150) * 1000));
+  s = advanceGame(s, Math.round((target / RATE) * 1000));
   s = cmd(s, { type: 'finishPrep', slot: 0 });
   const dish = s.dishes.find((d) => d.id === dishId);
   assert.equal(units(s, dishId), target);
@@ -192,9 +209,11 @@ test('prep grade: perfect at the mark, a share of the way when short, points per
   assert.equal(at(0), 0);
   assert.equal(at((mark - band) / 2), 50);
   // Two seconds on the flame past the window: 2 x 12 points.
-  assert.equal(at(mark + band + 300), 100 - 2 * PREP_V1.overPointsPerSecond);
+  assert.equal(at(mark + band + 2 * RATE), 100 - 2 * PREP_V1.overPointsPerSecond);
+  // The marks: 7, 12 and 18 seconds on the flame, unevenly spaced (prep-v4).
+  assert.deepEqual(['quick', 'regular', 'slow'].map((l) => prepTargetUnits(l) / RATE), [7, 12, 18]);
   // Copper handis widen the window.
-  const wide = { portionBand: { base: false, main: false, side: false }, prepBand: true, waitingGraceMs: 0, finishBonus: 0, lobbyGraceMs: 0, ticketGraceMs: 0, whistle: false };
+  const wide = { portionBand: { base: false, main: false, side: false }, prepBand: true, waitingGraceMs: 0, catchFallen: false, lobbyGraceMs: 0, ticketGraceMs: 0, whistle: false };
   assert.equal(gradePrep({ ...dish, prep: { ...dish.prep, milliUnits: (mark + PREP_V1.wideBandUnits) * 1000 } }, { ...ticket.order, prepLevel: 'regular' }, wide), 100);
   assert.ok(at(mark + PREP_V1.wideBandUnits) < 100);
   // A dish that never went into a handi.

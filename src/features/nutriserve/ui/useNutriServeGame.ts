@@ -12,6 +12,12 @@
 // that sees the claim (a storage event, or the claim found at its next autosave) stops saving,
 // pauses, and offers to continue from the latest save instead, so two tabs never overwrite each
 // other's progress.
+//
+// Handing over: before a tab reads the save to open it (Continue, a new day, Continue here), it asks
+// the tab holding the save to hand it over (handoffKey). The holder pauses, saves its latest state,
+// records the asking tab as the writer and stops; the asking tab waits for that (at most HANDOFF_MS,
+// for a holder that is closed or frozen) and only then reads the save, so nothing done in the other
+// window since its last autosave is lost.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   advanceGame,
@@ -29,10 +35,16 @@ import {
 export const FRAME_CAP_MS = 250;
 export const RENDER_MS = 33;
 const AUTOSAVE_MS = 4_000;
+/** How long a tab waits for the holder of the save to hand it over. */
+const HANDOFF_MS = 800;
+/** A handover request older than this is stale (e.g. seen by a tab waking from a freeze). */
+const HANDOFF_FRESH_MS = 2_000;
 
 export const saveKey = (userId: string) => `nutriserve.remaster.save.v1:${userId}`;
 /** Which open kitchen (tab) may write the save: the one that opened most recently. */
 export const writerKey = (userId: string) => `nutriserve.remaster.writer.v1:${userId}`;
+/** A tab asking the holder of the save to hand it over: { from: tab id, at }. */
+export const handoffKey = (userId: string) => `nutriserve.remaster.handoff.v1:${userId}`;
 
 function newTabId(): string {
   try {
@@ -41,6 +53,9 @@ function newTabId(): string {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   }
 }
+
+/** This page's id: the start screen and the kitchen in one tab are one writer. */
+const TAB_ID = newTabId();
 
 /** The tab id holding the save, or null when none is recorded (or storage is unavailable). */
 function readWriter(userId: string): string | null {
@@ -52,11 +67,66 @@ function readWriter(userId: string): string | null {
   }
 }
 
+/**
+ * Record `tab` as the writer. When the write fails (storage full), the old record is removed
+ * instead, so a record left by a closed tab can't make this one stop saving: with no record, the
+ * open kitchen holds the save.
+ */
 function claimWriter(userId: string, tab: string): void {
+  const value = JSON.stringify({ tab, at: Date.now() });
   try {
-    window.localStorage.setItem(writerKey(userId), JSON.stringify({ tab, at: Date.now() }));
+    window.localStorage.setItem(writerKey(userId), value);
+    return;
   } catch {
-    // Storage blocked: nothing is saved anyway.
+    // fall through
+  }
+  try {
+    window.localStorage.removeItem(writerKey(userId));
+    window.localStorage.setItem(writerKey(userId), value);
+  } catch {
+    // Storage blocked or still full: with the record gone (or unreadable), this tab holds the save.
+  }
+}
+
+/**
+ * Ask the tab holding the save to hand it over, and resolve once it has (it saved its latest
+ * state and recorded this tab as the writer) or after HANDOFF_MS (it is closed or frozen). Resolves
+ * at once when no other tab holds the save.
+ */
+export function requestHandoff(userId: string): Promise<void> {
+  const holder = readWriter(userId);
+  if (holder === null || holder === TAB_ID) return Promise.resolve();
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timer);
+      window.removeEventListener('storage', onStorage);
+      resolve();
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === writerKey(userId) && readWriter(userId) === TAB_ID) finish();
+    };
+    const timer = window.setTimeout(finish, HANDOFF_MS);
+    window.addEventListener('storage', onStorage);
+    try {
+      window.localStorage.setItem(handoffKey(userId), JSON.stringify({ from: TAB_ID, at: Date.now() }));
+    } catch {
+      finish(); // storage blocked: nobody can be asked
+    }
+  });
+}
+
+/** Can anything be stored here at all? (False in some private modes and with site data blocked.) */
+export function storageWorks(): boolean {
+  try {
+    const key = 'nutriserve.remaster.probe.v1';
+    window.localStorage.setItem(key, '1');
+    window.localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -92,11 +162,13 @@ export function loadSavedGame(userId: string): GameState | null {
   return readSavedGame(userId).state;
 }
 
-export function writeSave(userId: string, state: GameState): void {
+/** Write the save; false when storage is blocked or full (the game keeps running, unsaved). */
+export function writeSave(userId: string, state: GameState): boolean {
   try {
     window.localStorage.setItem(saveKey(userId), serializeGame(state));
+    return true;
   } catch {
-    // Storage blocked or full: the game keeps running, it just can't resume later.
+    return false;
   }
 }
 
@@ -145,10 +217,12 @@ export interface NutriServeGame {
   fatal: string | null;
   /** The save is now held by a kitchen in another tab: this one has stopped saving and paused. */
   superseded: boolean;
-  /** Load the latest save and hold it from this tab again (false: it couldn't be read here). */
-  takeOver: () => boolean;
-  /** Save now, if this tab still holds the save (Save & exit). */
-  saveNow: () => void;
+  /** Ask for the save back, load it and hold it from this tab again (false: it couldn't be read here). */
+  takeOver: () => Promise<boolean>;
+  /** Save now, if this tab still holds the save (Save & exit). False only when a save was due and failed. */
+  saveNow: () => boolean;
+  /** The last save failed (storage blocked or full): progress since the last good save would be lost. */
+  saveFailed: boolean;
 }
 
 export function useNutriServeGame(initial: GameState, userId: string): NutriServeGame {
@@ -160,10 +234,10 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
   const fatalRef = useRef(false);
   const carry = useRef(0);
   const lastRender = useRef(0);
-  const tabId = useRef<string>('');
-  if (!tabId.current) tabId.current = newTabId();
+  const tabId = useRef<string>(TAB_ID);
   const supersededRef = useRef(false);
   const [superseded, setSuperseded] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   const fail = useCallback((error: unknown) => {
     fatalRef.current = true;
@@ -238,16 +312,31 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
 
   // Autosave (off once the simulation has failed, so a bad state never replaces the last good save,
   // and off once another tab holds the save, so this one never overwrites it).
-  const save = useCallback(() => {
-    if (fatalRef.current || supersededRef.current) return;
+  const save = useCallback((): boolean => {
+    if (fatalRef.current || supersededRef.current) return true;
     if (!owns()) {
       supersede();
-      return;
+      return true;
     }
-    writeSave(userId, ref.current);
+    const ok = writeSave(userId, ref.current);
+    setSaveFailed(!ok);
+    return ok;
   }, [owns, supersede, userId]);
 
-  const takeOver = useCallback(() => {
+  /** Hand the save to the tab that asked for it: pause, save the latest state, record it, stop. */
+  const cede = useCallback(
+    (to: string) => {
+      if (fatalRef.current || supersededRef.current || readWriter(userId) !== tabId.current) return;
+      if (!ref.current.paused && !ref.current.day.completed) dispatch({ type: 'pause' }, { silent: true });
+      writeSave(userId, ref.current);
+      claimWriter(userId, to);
+      supersede();
+    },
+    [dispatch, supersede, userId]
+  );
+
+  const takeOver = useCallback(async () => {
+    await requestHandoff(userId);
     const latest = readSavedGame(userId);
     if (!latest.state) return false;
     // Picked up paused, so the clock waits for the player to resume here.
@@ -274,8 +363,19 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
   useEffect(() => {
     // This kitchen holds the save from now on; another tab's kitchen stops writing when it sees this.
     claimWriter(userId, tabId.current);
-    writeSave(userId, ref.current);
+    setSaveFailed(!writeSave(userId, ref.current));
     const onStorage = (e: StorageEvent) => {
+      if (e.key === handoffKey(userId)) {
+        let request: { from?: unknown; at?: unknown } | null = null;
+        try {
+          request = JSON.parse(e.newValue ?? 'null');
+        } catch {
+          request = null;
+        }
+        const fresh = typeof request?.at === 'number' && Math.abs(Date.now() - request.at) < HANDOFF_FRESH_MS;
+        if (fresh && typeof request?.from === 'string' && request.from !== tabId.current) cede(request.from);
+        return;
+      }
       if ((e.key === writerKey(userId) || e.key === saveKey(userId)) && !owns()) supersede();
     };
     const id = window.setInterval(save, AUTOSAVE_MS);
@@ -286,8 +386,17 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
       window.removeEventListener('pagehide', save);
       window.removeEventListener('storage', onStorage);
       save();
+      // Leaving the kitchen (Save & exit, Exit) lets go of the save, so a tab that asks for it next
+      // doesn't wait for an answer that will never come.
+      if (readWriter(userId) === tabId.current) {
+        try {
+          window.localStorage.removeItem(writerKey(userId));
+        } catch {
+          // ignore
+        }
+      }
     };
-  }, [owns, save, supersede, userId]);
+  }, [cede, owns, save, supersede, userId]);
 
-  return { state, dispatch, lastError, fatal, superseded, takeOver, saveNow: save };
+  return { state, dispatch, lastError, fatal, superseded, takeOver, saveNow: save, saveFailed };
 }

@@ -7,10 +7,10 @@ Open **Games → Preview the NutriServe remaster art**, or `/nutriserve-art-lab.
 | Read | Purpose |
 |---|---|
 | [REA findings](REA_FINDINGS.md) | Historical record of the earlier reference investigation; the game no longer uses it |
-| [Evidence index](evidence-index.json) | Digests, byte ranges and retained-record metadata |
+| [Evidence index](evidence-index.json) | Historical: digests and record metadata of the earlier reference investigation |
 | [Asset workflow](ASSET_WORKFLOW.md) | Generate → inspect → composite → capture → reject/refine → promote loop |
 | [Asset roadmap](asset-roadmap.json) | Exact current-main 49 food / 33 customer IDs and production status |
-| [Prompts](asset-prompts.json) | Built-in image generation inputs and source identities |
+| [Prompts](asset-prompts.json) | Historical: how the pilot sprites were made (not for reuse; see the asset workflow's Originality section) |
 | [Claude track](CLAUDE_BUILD_TRACK.md) | Ready-to-execute engineering handoff and ownership boundary |
 | [Track CSV](build-track.csv) | Concrete tasks and evidence/asset dependencies |
 | [Claude status](CLAUDE_STATUS.md) | Engineering status, verification, measured costs, asset requests by id/state |

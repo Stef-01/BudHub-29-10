@@ -254,7 +254,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
     const id = window.setTimeout(() => setTapHint(false), 2_500);
     return () => window.clearTimeout(id);
   }, [tapHint]);
-  const hint = !tool ? 'Pick a drizzle or garnish below' : tapHint && tool.kind === 'drizzle' ? 'Press and hold, then drag' : undefined;
+  const hint = !tool ? 'Pick a drizzle or garnish first' : tapHint && tool.kind === 'drizzle' ? 'Press and hold, then drag' : undefined;
 
   // --- Click-only input -------------------------------------------------------------------
   const stopAuto = useCallback(() => {
@@ -419,6 +419,36 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
 
       {dish ? (
         <>
+          {/* The tools come before the vessel: pick one, then use it (the reading and Tab order;
+              on a phone the tools sit just above the vessel instead of below it). */}
+          <Dockable slot="main" region={box(164, 318, 316, 70)} className="ns-tools" role="toolbar" aria-label="Finish tools">
+            {drizzles.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className="ns-tool"
+                aria-pressed={tool?.kind === 'drizzle' && tool.id === d.id}
+                onClick={() => setTool({ kind: 'drizzle', id: d.id })}
+              >
+                <i style={{ background: DRIZZLE_COLORS[d.id] }} aria-hidden="true" />
+                {d.label}
+              </button>
+            ))}
+            {garnishes.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                className="ns-tool"
+                aria-pressed={tool?.kind === 'garnish' && tool.id === g.id}
+                onClick={() => setTool({ kind: 'garnish', id: g.id })}
+              >
+                <svg viewBox="-12 -12 24 24" aria-hidden="true">
+                  <GarnishGlyph id={g.id} />
+                </svg>
+                {g.label}
+              </button>
+            ))}
+          </Dockable>
           <Dockable
             slot="main"
             region={box(164, 44, 268, 268)}
@@ -522,34 +552,6 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
                 {hint}
               </span>
             )}
-          </Dockable>
-          <Dockable slot="main" region={box(164, 318, 316, 70)} className="ns-tools" role="toolbar" aria-label="Finish tools">
-            {drizzles.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                className="ns-tool"
-                aria-pressed={tool?.kind === 'drizzle' && tool.id === d.id}
-                onClick={() => setTool({ kind: 'drizzle', id: d.id })}
-              >
-                <i style={{ background: DRIZZLE_COLORS[d.id] }} aria-hidden="true" />
-                {d.label}
-              </button>
-            ))}
-            {garnishes.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                className="ns-tool"
-                aria-pressed={tool?.kind === 'garnish' && tool.id === g.id}
-                onClick={() => setTool({ kind: 'garnish', id: g.id })}
-              >
-                <svg viewBox="-12 -12 24 24" aria-hidden="true">
-                  <GarnishGlyph id={g.id} />
-                </svg>
-                {g.label}
-              </button>
-            ))}
           </Dockable>
           <Dockable slot="main" region={box(164, 392, 316, 40)} className="ns-row ns-actions">
             <button

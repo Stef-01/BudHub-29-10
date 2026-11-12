@@ -1,7 +1,7 @@
 // C05 serving/day/progression and C06 nutrition.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceGame, applyCommand, createGame, deserializeGame, serializeGame, rankForPoints, UPGRADES, gradeWaitingV1, prepTargetUnits } from '../src/features/nutriserve/simulation/index.ts';
+import { advanceGame, applyCommand, createGame, deserializeGame, serializeGame, rankForPoints, UPGRADES, gradeWaitingV1, prepTargetUnits, PREP_V1 } from '../src/features/nutriserve/simulation/index.ts';
 import { dishNutrition, mealGoals, nutritionFeedback, validateCatalog } from '../src/features/nutriserve/nutrition/nutrition.ts';
 import { CATALOG_FOODS } from '../src/features/nutriserve/data/catalog.generated.ts';
 import { game, cmd, reject, advanceUntil, atCounter, buildPerfect, pour } from './nutriserve-helpers.mjs';
@@ -12,7 +12,7 @@ function makePerfect(s, ticket) {
   s = cmd(built.s, { type: 'startPrep', dishId: built.dishId, slot: s.prepSlots.findIndex((x) => !x.dishId) });
   const slot = s.prepSlots.findIndex((x) => x.dishId === built.dishId);
   const targetUnits = prepTargetUnits(ticket.order.prepLevel);
-  s = advanceGame(s, Math.round((targetUnits / 150) * 1000));
+  s = advanceGame(s, Math.round((targetUnits / PREP_V1.unitsPerSecond) * 1000));
   s = cmd(s, { type: 'finishPrep', slot });
   for (const step of ticket.order.finish) {
     if (step.kind === 'drizzle') {
@@ -135,7 +135,7 @@ test('next day schedules more customers over time and resets the kitchen', () =>
   assert.ok(createGame({ seed: 1, day: 9 }).day.customers.length > createGame({ seed: 1, day: 1 }).day.customers.length);
 });
 
-test('upgrades cost coins, respect rank, apply reference furniture bonuses, and are bought once', () => {
+test('upgrades cost coins, respect rank, apply their effects, and are bought once', () => {
   let s = playDay(21);
   const coins = s.profile.coins;
   if (coins >= UPGRADES.rice_scoop.cost) {

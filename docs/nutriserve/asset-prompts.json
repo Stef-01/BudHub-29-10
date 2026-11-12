@@ -1,4 +1,5 @@
 {
+  "status": "Provenance record only: the prompts the six pilot sprites were made with under the earlier brief. They used another game's screenshot as a style input; do not reuse them for new assets (see ASSET_WORKFLOW.md, Originality).",
   "tool": "built-in image_gen",
   "transparent_background": true,
   "modelAndSeed": "Not exposed by tool; no claim of deterministic regeneration",
