@@ -299,11 +299,12 @@ export function serveNotes(
   }
   const wanted = { base: order.baseId, main: order.mainId, side: order.sideId } as const;
   if (dish.size !== order.size) notes.push(`${dish.size[0].toUpperCase()}${dish.size.slice(1)} vessel; the ticket wanted ${order.size}`);
-  // A note says what cost points, and only when the shown score is below 100: a portion a hair
-  // outside its band whose loss rounds away gets none, so a note never claims a loss the score
-  // doesn't show. Portions costing under half a point are listed only when nothing larger explains
-  // a lost point.
+  // A note says what cost points, and only for a loss the shown score shows: portion notes appear
+  // only when the build score would read higher without the portions' losses (a portion a hair
+  // outside its band, beside a wrong vessel or a missing food that explain the whole score, gets
+  // none). Portions costing under half a point are listed only when nothing larger is.
   const portionNotes: Array<{ text: string; points: number }> = [];
+  let earned = 0;
   for (const c of ['base', 'main', 'side'] as const) {
     const portion = dish.build[c];
     const label = `${c[0].toUpperCase()}${c.slice(1)}`;
@@ -311,14 +312,18 @@ export function serveNotes(
     else if (portion.foodId !== wanted[c]) notes.push(`${label}: wrong food`);
     else {
       const actualG = portion.mg / 1000;
-      const lost = BUILD_V1.share[c] * (1 - portionCredit(actualG, order.idealG[c], exactBand(c, effects, order.idealG[c])));
+      const credit = portionCredit(actualG, order.idealG[c], exactBand(c, effects, order.idealG[c]));
+      earned += BUILD_V1.share[c] * credit;
+      const lost = BUILD_V1.share[c] * (1 - credit);
       if (lost > 0) {
         const error = actualG - order.idealG[c];
         portionNotes.push({ text: `${label} ${error > 0 ? '+' : '−'}${Math.max(1, Math.round(Math.abs(error)))} g (line ${order.idealG[c]} g)`, points: lost });
       }
     }
   }
-  if (scores.build < 100 && portionNotes.length) {
+  const buildRaw = earned - (dish.size === order.size ? 0 : BUILD_V1.wrongVesselPenalty);
+  const portionLosses = portionNotes.reduce((sum, n) => sum + n.points, 0);
+  if (scores.build < 100 && portionNotes.length && clampScore(buildRaw + portionLosses) !== clampScore(buildRaw)) {
     const shown = portionNotes.filter((n) => n.points >= 0.5);
     for (const n of shown.length ? shown : [[...portionNotes].sort((a, b) => b.points - a.points)[0]]) notes.push(n.text);
   }

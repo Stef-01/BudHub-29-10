@@ -210,8 +210,10 @@ test('prep grade: perfect at the mark, a share of the way when short, points per
   assert.equal(at((mark - band) / 2), 50);
   // Two seconds on the flame past the window: 2 x 10 points.
   assert.equal(at(mark + band + 2 * RATE), 100 - 2 * PREP_V1.overPointsPerSecond);
-  // The marks: 8, 13 and 20 seconds on the flame, each step longer than the last (prep-v5).
-  assert.deepEqual(['quick', 'regular', 'slow'].map((l) => prepTargetUnits(l) / RATE), [8, 13, 20]);
+  // The marks: 8, 14 and 20 seconds on the flame, the regular one halfway (prep-v6), with a window
+  // of 1.2 s either side (1.8 s with copper handis).
+  assert.deepEqual(['quick', 'regular', 'slow'].map((l) => prepTargetUnits(l) / RATE), [8, 14, 20]);
+  assert.deepEqual([PREP_V1.perfectBandUnits / RATE, PREP_V1.wideBandUnits / RATE], [1.2, 1.8]);
   // Every dish has lost all its prep points by the time it stops cooking, with or without copper.
   for (const l of ['quick', 'regular', 'slow']) {
     for (const effects of [undefined, { prepBand: true }]) {

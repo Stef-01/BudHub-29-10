@@ -11,16 +11,7 @@
 import { DRIZZLES, GARNISHES } from '../data/finishItems.ts';
 import { getCatalogCustomer, getFood } from './catalog.ts';
 import { generateOrder, ORDERS_VERSION } from './orders.ts';
-import {
-  AGGREGATION_V2,
-  BUILD_V1,
-  DAY_V2,
-  arrivalGapRange,
-  ECONOMY_V1,
-  FINISH_V1,
-  PREP_V1,
-  WAITING_V1,
-} from './params.ts';
+import { AGGREGATION_V2, BUILD_V1, DAY_V2, arrivalGapRange, ECONOMY_V1, FINISH_V1, PREP_V1, WAITING_V1, RULE_HISTORY, versionNumber } from './params.ts';
 import { PROGRESSION_VERSION, rankForPoints, upgradeEffects, UPGRADES } from './progression.ts';
 import { createRng } from './rng.ts';
 import { lookup } from './lookup.ts';
@@ -73,6 +64,33 @@ export const PARAM_VERSIONS = {
   orders: ORDERS_VERSION,
   progression: PROGRESSION_VERSION,
 };
+
+/**
+ * Plain-language changes between the rules a save was made with (`saved`, its paramVersions) and
+ * these: every RULE_HISTORY entry newer than the save's version of its family, and one line when
+ * something else changed too (a family older than the record goes back, or one it doesn't cover).
+ * Unknown versions (an unreadable save): the latest change of each family.
+ */
+export function ruleChangesSince(saved: Record<string, unknown> | undefined): string[] {
+  if (!saved || typeof saved !== 'object') {
+    const latest = new Map<string, string>();
+    for (const e of RULE_HISTORY) latest.set(e.family, e.text);
+    return [...latest.values()];
+  }
+  const lines: string[] = [];
+  let other = false;
+  for (const [family, current] of Object.entries(PARAM_VERSIONS)) {
+    const was = versionNumber(saved[family]);
+    if (saved[family] === current) continue;
+    const entries = RULE_HISTORY.filter((e) => e.family === family);
+    const newer = entries.filter((e) => !(e.version <= was));
+    lines.push(...newer.map((e) => e.text));
+    // Changed before the record starts, or in a family it doesn't cover.
+    if (!entries.length || !(was >= entries[0].version - 1)) other = true;
+  }
+  if (other) lines.push('Several other rules changed as well since this day was saved.');
+  return lines;
+}
 
 export function newProfile(): Profile {
   return { rank: 1, points: 0, coins: 0, upgrades: [], creditedDays: [], reportedDays: [], bestDayScore: 0 };

@@ -67,10 +67,14 @@ def checkpoint():
         raise Interrupted(f'signal {STOP[0]}')
 
 
-def run(cmd, **kw):
-    """subprocess.run, then stop if a signal arrived while it ran."""
+def run(cmd, check=False, **kw):
+    """subprocess.run, then stop if a signal arrived while it ran (before judging its exit code:
+    a terminal's Ctrl-C reaches the running command too, which then fails)."""
     r = subprocess.run(cmd, **kw)
     checkpoint()
+    if check and r.returncode:
+        err = r.stderr if isinstance(r.stderr, str) else (r.stderr or b'').decode(errors='replace')
+        raise SystemExit(f'port stopped: {" ".join(map(str, cmd))[:120]} failed (exit {r.returncode}): {err.strip()[:300]}')
     return r
 
 
@@ -85,85 +89,238 @@ def fail(msg):
     raise SystemExit(f'port stopped: {msg}')
 
 
-def union_with(text, type_name, value):
+def union_with(text, type_name, value, members_only=False):
     """`text` with the string literal `value` added to the union type alias `type_name` (None when
-    the alias isn't there; `text` unchanged when the member is already in it). Reads the union as
-    code: members in comments don't count, a ';' in a comment or string doesn't end it, it may
-    span lines (Prettier's leading-pipe style) or end without a ';', and either quote style counts.
-    The new member uses the union's own quotes and layout."""
-    m = re.search(rf'\bexport\s+type\s+{re.escape(type_name)}\s*=', text)
-    if not m:
-        return None
-    i, n = m.end(), len(text)
+    the alias isn't there; `text` unchanged when the member is already in it). Reads the file as
+    code: a declaration or member inside a comment, string, template or regex doesn't count; the
+    union may span lines in either pipe style (`| 'a'` at line starts or `'a' |` at line ends) or
+    end without a ';'; a ';' or line break inside brackets (an object type, a generic spread over
+    lines) doesn't end it; only the union's own members count (a literal inside `Exclude<..>` or
+    `{ kind: .. }` is not one; one inside plain parentheses is). The new member uses the union's
+    own quotes, layout and line endings. `members_only`: the union's members instead (a list)."""
+    n = len(text)
+    WORD = re.compile(r'[A-Za-z_$\d][\w$]*')
+    REGEX_AFTER = set('(,=:[!&|?{};+-*%<>~^') | {'=>'}
+    REGEX_WORDS = {'return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'new', 'delete', 'void', 'throw', 'yield', 'await', 'instanceof'}
 
-    def next_code(k):
-        """Index of the next character that isn't whitespace or inside a comment."""
-        while k < n:
-            if text[k] in ' \t\r\n':
-                k += 1
-            elif text.startswith('//', k):
-                j = text.find('\n', k)
-                k = n if j < 0 else j
-            elif text.startswith('/*', k):
-                j = text.find('*/', k + 2)
-                k = n if j < 0 else j + 2
+    def skip_string(i):
+        q, j = text[i], i + 1
+        while j < n and text[j] != q and text[j] != '\n':
+            j += 2 if text[j] == '\\' else 1
+        return min(j + 1, n)
+
+    def skip_code_until_brace(i):
+        """Index just past the '}' that closes a template's `${`, starting inside it."""
+        depth = 0
+        while i < n:
+            c = text[i]
+            if text.startswith('//', i):
+                j = text.find('\n', i)
+                i = n if j < 0 else j
+            elif text.startswith('/*', i):
+                j = text.find('*/', i + 2)
+                i = n if j < 0 else j + 2
+            elif c in '\'"':
+                i = skip_string(i)
+            elif c == '`':
+                i = skip_template(i)
+            elif c == '{':
+                depth += 1
+                i += 1
+            elif c == '}':
+                if depth == 0:
+                    return i + 1
+                depth -= 1
+                i += 1
             else:
-                break
-        return k
+                i += 1
+        return n
 
-    literals, quote = [], None
-    last_code = i  # just after the union's last code character
-    while i < n:
-        c = text[i]
-        if text.startswith('//', i):
-            j = text.find('\n', i)
-            i = n if j < 0 else j
-            continue
-        if text.startswith('/*', i):
-            j = text.find('*/', i + 2)
-            i = n if j < 0 else j + 2
-            continue
-        if c in '\'"`':
-            j = i + 1
-            while j < n and text[j] != c:
-                j += 2 if text[j] == '\\' else 1
-            literals.append(text[i + 1:j])
-            quote = quote or c
-            i = j + 1
-            last_code = i
-            continue
-        if c == ';':
+    def skip_template(i):
+        j = i + 1
+        while j < n and text[j] != '`':
+            if text[j] == '\\':
+                j += 2
+            elif text.startswith('${', j):
+                j = skip_code_until_brace(j + 2)
+            else:
+                j += 1
+        return min(j + 1, n)
+
+    def tokens(i, prev=None):
+        """(kind, start, end) from i: kinds ws, nl (a line break, or a comment holding one),
+        comment, str, tpl, regex, word, punct. `prev` is the last significant token's text."""
+        while i < n:
+            c = text[i]
+            if c == '\n':
+                yield 'nl', i, i + 1
+                i += 1
+            elif c in ' \t\r\f\v﻿ ':
+                yield 'ws', i, i + 1
+                i += 1
+            elif text.startswith('//', i):
+                j = text.find('\n', i)
+                j = n if j < 0 else j
+                yield 'comment', i, j
+                i = j
+            elif text.startswith('/*', i):
+                j = text.find('*/', i + 2)
+                j = n if j < 0 else j + 2
+                yield ('nl' if '\n' in text[i:j] else 'comment'), i, j
+                i = j
+            elif c in '\'"':
+                j = skip_string(i)
+                yield 'str', i, j
+                prev, i = 'str', j
+            elif c == '`':
+                j = skip_template(i)
+                yield 'tpl', i, j
+                prev, i = 'tpl', j
+            elif c == '/' and (prev is None or prev in REGEX_AFTER or prev in REGEX_WORDS):
+                j, in_class = i + 1, False
+                while j < n and text[j] != '\n':
+                    if text[j] == '\\':
+                        j += 2
+                        continue
+                    if text[j] == '[':
+                        in_class = True
+                    elif text[j] == ']':
+                        in_class = False
+                    elif text[j] == '/' and not in_class:
+                        break
+                    j += 1
+                if j < n and text[j] == '/':
+                    j += 1
+                    while j < n and (text[j].isalnum() or text[j] == '_'):
+                        j += 1
+                    yield 'regex', i, j
+                    prev, i = 'regex', j
+                else:
+                    yield 'punct', i, i + 1
+                    prev, i = '/', i + 1
+            else:
+                m = WORD.match(text, i)
+                if m:
+                    yield 'word', i, m.end()
+                    prev, i = m.group(), m.end()
+                else:
+                    j = i + 2 if text.startswith('=>', i) else i + 1
+                    yield 'punct', i, j
+                    prev, i = text[i:j], j
+
+    # The declaration: `export type <name> =` in code.
+    code = [t for t in tokens(0) if t[0] not in ('ws', 'nl', 'comment')]
+    after = None
+    for k in range(len(code) - 3):
+        words = [text[s:e] for _, s, e in code[k:k + 4]]
+        if words == ['export', 'type', type_name, '='] and code[k + 2][0] == 'word':
+            after = code[k + 3][2]
             break
-        if c == '\n' and literals:
-            # Without a ';' the union ends at a line break, unless the next code continues it with '|'.
-            if not text.startswith('|', next_code(i)):
+    if after is None:
+        return None
+
+    # The union's tokens, each with the brackets around it, up to where the alias ends.
+    expr, stack, line_break = [], [], False
+    for kind, s, e in tokens(after, '='):
+        if kind in ('ws', 'comment'):
+            continue
+        if kind == 'nl':
+            line_break = line_break or (not stack and bool(expr))
+            continue
+        t = text[s:e]
+        if line_break:
+            line_break = False
+            # Without a ';' the alias ends at a line break, unless a '|' or '&' on either side continues it.
+            if expr[-1][3] not in ('|', '&') and t not in ('|', '&'):
                 break
-        if not c.isspace():
-            last_code = i + 1
-        i += 1
-    if value in literals:
+        if kind == 'punct' and t == ';' and not stack:
+            break
+        if kind == 'punct' and t in ')]}>':
+            if not stack:
+                break
+            stack.pop()
+        expr.append((kind, s, e, t, tuple(stack)))
+        if kind == 'punct' and t in '([{<':
+            stack.append(t)
+    if not expr:
+        return None
+
+    # A union wrapped in one pair of parentheses: its members are inside them.
+    level, inner = 0, expr
+    if expr[0][3] == '(':
+        close = next((k for k in range(1, len(expr)) if expr[k][3] == ')' and expr[k][4] == ()), None)
+        if close == len(expr) - 1 and close > 1:
+            level, inner = 1, expr[1:-1]
+
+    def literal(tok):
+        kind, s, e, t, around = tok
+        if any(b != '(' for b in around[level:]):
+            return None  # inside a generic, object or tuple: not a member of this union
+        if kind == 'str' or (kind == 'tpl' and '${' not in t):
+            return t[1:-1]
+        return None
+
+    members = [v for v in map(literal, inner) if v is not None]
+    if members_only:
+        return members
+    if value in members:
         return text
-    q = quote or "'"
-    body = text[m.end():last_code]
-    pipes = [line for line in body.split('\n') if line.strip().startswith('|')]
-    if '\n' in body and pipes:
-        indent = pipes[-1][: len(pipes[-1]) - len(pipes[-1].lstrip())]
-        insert = f'\n{indent}| {q}{value}{q}'
+    quotes = [tok[3][0] for tok in inner if tok[0] == 'str' and literal(tok) is not None]
+    q = quotes[0] if quotes else "'"
+
+    # Layout: pipes at the union's own level that start a line (leading style) or end one (trailing).
+    def line_start(i):
+        return text.rfind('\n', 0, i) + 1
+
+    def indent_at(i):
+        ls = line_start(i)
+        return text[ls:ls + len(text[ls:]) - len(text[ls:].lstrip(' \t'))]
+
+    leading, trailing, last_pipe = [], [], None
+    for k, tok in enumerate(inner):
+        if tok[0] == 'punct' and tok[3] == '|' and len(tok[4]) == level:
+            last_pipe = k
+            before = inner[k - 1][2] if k else (expr[0][2] if level else after)
+            nxt = inner[k + 1][1] if k + 1 < len(inner) else n
+            if '\n' in text[before:tok[1]]:
+                leading.append(tok)
+            elif '\n' in text[tok[2]:nxt]:
+                trailing.append(tok)
+    region = text[after:expr[-1][2]]
+    nl = '\r\n' if '\r\n' in region else '\n'
+    pos = inner[-1][2]
+    if leading or trailing:
+        # After any comment that ends the last member's line (but before a ';' or ')' on it).
+        following = next((s for kind, s, e in tokens(pos) if kind not in ('ws', 'comment')), n)
+        line_end = text.find('\n', pos)
+        if line_end >= 0 and following >= line_end:
+            pos = line_end - 1 if text[line_end - 1] == '\r' else line_end
+            while pos > inner[-1][2] and text[pos - 1] in ' \t':
+                pos -= 1
+    if leading:
+        insert = f'{nl}{indent_at(leading[-1][1])}| {q}{value}{q}'
+    elif trailing:
+        first_of_last = inner[last_pipe + 1][1] if last_pipe is not None and last_pipe + 1 < len(inner) else inner[-1][1]
+        insert = f' |{nl}{indent_at(first_of_last)}{q}{value}{q}'
     else:
         insert = f' | {q}{value}{q}'
-    return text[:last_code] + insert + text[last_code:]
+    return text[:pos] + insert + text[pos:]
 
 
 def add_to_union(path, type_name, value):
     """Add the string literal `value` to a TypeScript union type alias, wherever main has put the
-    other members (an unrelated new mode on main must not stop the port)."""
+    other members (an unrelated new mode on main must not stop the port). The edit is read back:
+    the union must now have `value` and still parse the same everywhere else."""
     p = f'{W}/{path}'
-    s = open(p).read()
+    s = open(p, newline='').read()
     out = union_with(s, type_name, value)
     if out is None:
         fail(f'{path}: type {type_name} not found')
-    if out != s:
-        open(p, 'w').write(out)
+    if out == s:
+        return
+    if union_with(out, type_name, value, members_only=True) != union_with(s, type_name, value, members_only=True) + [value]:
+        fail(f'{path}: could not add {value!r} to {type_name} cleanly; add it by hand')
+    open(p, 'w', newline='').write(out)
 
 
 def _interrupted(signum, _frame):
@@ -280,6 +437,29 @@ if SELF_TEST:
         ("export type M =\n  | 'a'\n  | 'b'\n\nexport const y = 1;", "export type M =\n  | 'a'\n  | 'b'\n  | 'x'\n\nexport const y = 1;"),
         ("export type M = 'a' | 'b' // note\nexport const y = 1;", "export type M = 'a' | 'b' | 'x' // note\nexport const y = 1;"),
         ("export type M =\n  | 'a'\n  /* gap */\n  | 'b'\nconst z = 2;", "export type M =\n  | 'a'\n  /* gap */\n  | 'b'\n  | 'x'\nconst z = 2;"),
+        # Audit 14: trailing pipes, declarations in comments/strings/templates/regexes, generics,
+        # template literal types, parentheses, CRLF, object members, nested functions.
+        ("export type M = 'a' |\n  'b' |\n  'c';\nexport const y = 1;\n", "export type M = 'a' |\n  'b' |\n  'c' |\n  'x';\nexport const y = 1;\n"),
+        ("export type M = 'a' |\n  'b'\nexport const y = 1;\n", "export type M = 'a' |\n  'b' |\n  'x'\nexport const y = 1;\n"),
+        ("// export type M = 'old';\nexport type M = 'a' | 'b';\n", "// export type M = 'old';\nexport type M = 'a' | 'b' | 'x';\n"),
+        ("/** Was: export type M = 'x' | 'y'; */\nexport type M = 'a' | 'b';\n", "/** Was: export type M = 'x' | 'y'; */\nexport type M = 'a' | 'b' | 'x';\n"),
+        ("const DOC = \"export type M = 'a';\";\nexport type M = 'a' | 'b';\n", "const DOC = \"export type M = 'a';\";\nexport type M = 'a' | 'b' | 'x';\n"),
+        ("const T = `export type M = ${'a'}`;\nexport type M = 'a';\n", "const T = `export type M = ${'a'}`;\nexport type M = 'a' | 'x';\n"),
+        ("const R = /'export type M = 'a'/;\nexport type M = 'a';\n", "const R = /'export type M = 'a'/;\nexport type M = 'a' | 'x';\n"),
+        ("export type M = Exclude<All, 'x'> | 'a';\n", "export type M = Exclude<All, 'x'> | 'a' | 'x';\n"),
+        ("export type M =\n  | 'a'\n  | Exclude<\n      All,\n      'legacy'\n    >;\n", "export type M =\n  | 'a'\n  | Exclude<\n      All,\n      'legacy'\n    >\n  | 'x';\n"),
+        ("export type M = `m_${string}` | 'a';\n", "export type M = `m_${string}` | 'a' | 'x';\n"),
+        ("export type M = `x` | 'a';\n", None),
+        ("export type M = (\n  | 'a'\n  | ('b' | 'c')\n);\n", "export type M = (\n  | 'a'\n  | ('b' | 'c')\n  | 'x'\n);\n"),
+        ("export type M = 'a' | ('b' | 'x');\n", None),
+        ("export type M =\r\n  | 'a'\r\n  | 'b';\r\nexport const y = 1;\r\n", "export type M =\r\n  | 'a'\r\n  | 'b'\r\n  | 'x';\r\nexport const y = 1;\r\n"),
+        ("export type M = 'a' | 'b'\r\nexport const y = 1;\r\n", "export type M = 'a' | 'b' | 'x'\r\nexport const y = 1;\r\n"),
+        ("export type M = 'a' | { kind: 'b; c' };\n", "export type M = 'a' | { kind: 'b; c' } | 'x';\n"),
+        ("export type M = 'a' | { kind: 'x' };\n", "export type M = 'a' | { kind: 'x' } | 'x';\n"),
+        ("export type M = 'it\\'s' | 'a';\n", "export type M = 'it\\'s' | 'a' | 'x';\n"),
+        ("export type M =\n  | 'a'\n  | 'b' // last one\nexport const y = 1;\n", "export type M =\n  | 'a'\n  | 'b' // last one\n  | 'x'\nexport const y = 1;\n"),
+        ("export type M = 'a'\n  | 'b';\n", "export type M = 'a'\n  | 'b'\n  | 'x';\n"),
+        ("export type M = 'a' | (() => 'b');\n", "export type M = 'a' | (() => 'b') | 'x';\n"),
     ]
     bad = 0
     for text, want in cases:
@@ -287,13 +467,23 @@ if SELF_TEST:
         if got != (text if want is None else want):
             bad += 1
             print(f'FAIL {text!r}\n  got  {got!r}\n  want {(text if want is None else want)!r}')
-    if union_with("export type N = 'a';", 'M', 'x') is not None:
-        bad += 1
-        print('FAIL: a missing type should give None')
-    print(f'union self-test: {len(cases) + 1 - bad}/{len(cases) + 1} pass')
+        elif want is not None and union_with(got, 'M', 'x', members_only=True) != union_with(text, 'M', 'x', members_only=True) + ['x']:
+            bad += 1
+            print(f'FAIL (members) {text!r}')
+    missing = ["export type N = 'a';", "// export type M = 'a';\n", "const s = \"export type M = 'a'\";"]
+    for text in missing:
+        if union_with(text, 'M', 'x') is not None:
+            bad += 1
+            print(f'FAIL: a missing type should give None: {text!r}')
+    total = len(cases) + len(missing)
+    print(f'union self-test: {total - bad}/{total} pass')
     sys.exit(1 if bad else 0)
 
 # 0. Preconditions (nothing here changes the worktree).
+_lock = os.path.join(W, sh('git', 'rev-parse', '--git-path', 'index.lock').strip())
+if os.path.exists(_lock):
+    fail(f'{_lock} exists: another git command is running in {W}, or one was stopped half way. '
+         'Remove it once nothing runs there, then port again')
 if sh('git', 'status', '--porcelain'):
     fail(f'{W} has uncommitted changes; commit or discard them first')
 sh('git', 'fetch', '--quiet', 'origin', 'main', SOURCE_REF, cwd=SRC)
@@ -498,6 +688,8 @@ except BaseException as error:
     if dirty:
         problems.append(f'{len(dirty.splitlines())} file(s) still changed')
     if problems:
+        why = error if isinstance(error, Interrupted) else (error.code if isinstance(error, SystemExit) else repr(error))
+        print(f'{why}', file=sys.stderr)
         print(f'ROLLBACK INCOMPLETE in {W}:\n  ' + '\n  '.join(problems)
               + f'\nCheck that no other git command is running there, then: git -C {W} checkout --force {target}'
               + f' && git -C {W} reset --hard && git -C {W} clean -fd -e node_modules', file=sys.stderr)

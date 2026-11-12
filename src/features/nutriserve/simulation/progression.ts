@@ -15,7 +15,8 @@
 // was worth well under a point a serve) and costs 30 instead of 35; the base scoop is described for
 // every base (it always covered idli and the rest, not only rice and roti); copper handis are
 // described for prep-v5.
-export const PROGRESSION_VERSION = 'progression-v6';
+// v7: copper handis are described for prep-v6 (1.8 s instead of 1.2); no rule changed.
+export const PROGRESSION_VERSION = 'progression-v7';
 
 /** Cumulative points needed for each rank (index 0 = rank 1). */
 export const RANK_THRESHOLDS = [0, 40, 100, 180, 280, 400, 550, 720, 920, 1150];
@@ -87,7 +88,7 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'copper_handis',
     label: 'Copper handi set',
     hi: 'तांबे की हांडी',
-    description: 'A wider perfect window at each mark: 1.8 seconds on the flame either side instead of 1.',
+    description: 'A wider perfect window at each mark: 1.8 seconds on the flame either side instead of 1.2.',
     cost: 55,
     unlockRank: 3,
     effect: { kind: 'prepBand' },

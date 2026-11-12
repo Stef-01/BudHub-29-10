@@ -1,4 +1,4 @@
-// Prep station: four independent slots. Progress is in ms on the flame at normal heat (PREP_V1, prep-v5).
+// Prep station: four independent slots. Progress is in ms on the flame at normal heat (PREP_V1, prep-v6).
 import React, { useRef } from 'react';
 import { PREP_V1, prepSeconds, prepTargetUnits, type Dish, type GameState } from '../../simulation/index.ts';
 import { HoldButton } from '../HoldButton.tsx';

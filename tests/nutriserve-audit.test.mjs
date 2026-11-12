@@ -520,7 +520,7 @@ test('every serve records plain reasons for its scores', () => {
   const notes = s.day.results[0].notes;
   assert.ok(notes.some((n) => /^Base \+40 g \(line \d+ g\)$/.test(n)), notes.join(' | '));
   assert.ok(notes.includes('No side'), notes.join(' | '));
-  assert.ok(notes.some((n) => /^Undercooked: 0 s on the flame; perfect from \d+ s \(mark \d+ s\)$/.test(n)), notes.join(' | '));
+  assert.ok(notes.some((n) => /^Undercooked: 0 s on the flame; perfect from \d+(\.\d)? s \(mark \d+ s\)$/.test(n)), notes.join(' | '));
   assert.equal(s.day.results[0].complete, false);
   assert.ok(s.day.results[0].stars <= 4);
 });
@@ -864,7 +864,7 @@ test('the whistle needs a guiding ticket, and replays the same in any chunking',
   let parts = q;
   for (const dt of [1, 333, 7, 1_200, 59, 2_400]) parts = advanceGame(parts, dt);
   assert.deepEqual(parts, whole);
-  assert.equal(PREP_V1.version, 'prep-v5-provisional');
+  assert.equal(PREP_V1.version, 'prep-v6-provisional');
 });
 
 // --- Twelfth audit, 2026-11-12 -------------------------------------------------------------------
@@ -951,7 +951,7 @@ test('build-v7: a fifth off costs about a quarter of the share, and the serving 
 // --- Thirteenth audit, 2026-11-12 ----------------------------------------------------------------
 import { GARNISH_TRAY_BALANCE_SCALE, PROGRESSION_VERSION, pressGrams } from '../src/features/nutriserve/simulation/index.ts';
 
-test('prep notes never show a time inside the perfect window, and a forgotten dish reads as burnt (prep-v5)', () => {
+test('prep notes never show a time inside the perfect window, and a forgotten dish reads as burnt (prep-v5 on)', () => {
   const { s, dishId, ticket } = finishing(42, 4);
   const dish = s.dishes.find((d) => d.id === dishId);
   for (const prepLevel of ['quick', 'regular', 'slow']) {
@@ -998,8 +998,8 @@ test('build-v7: a tap can land in every exact band, and a generous portion loses
   assert.deepEqual(serveNotes(d, order, { waiting: 100, build, prep: 100, finish: 100 }, 1, [], 30_000).filter((n) => /^Base/.test(n)), []);
 });
 
-test('the garnish tray catches dropped pieces and halves what an off-centre garnish costs (progression-v6)', () => {
-  assert.equal(PROGRESSION_VERSION, 'progression-v6');
+test('the garnish tray catches dropped pieces and halves what an off-centre garnish costs (progression-v6 on)', () => {
+  assert.equal(PROGRESSION_VERSION, 'progression-v7');
   assert.equal(UPGRADES.garnish_tray.cost, 30);
   assert.equal(upgradeEffects(['garnish_tray']).garnishBalanceScale, GARNISH_TRAY_BALANCE_SCALE);
   assert.equal(upgradeEffects([]).garnishBalanceScale, 1);
@@ -1011,4 +1011,81 @@ test('the garnish tray catches dropped pieces and halves what an off-centre garn
   assert.ok(Math.abs(offCentre(upgradeEffects(['garnish_tray'])) - offCentre() / 2) < 1e-9);
   assert.match(UPGRADES.garnish_tray.description, /off-centre garnish costs half/);
   assert.match(UPGRADES.rice_scoop.description, /Every base/);
+});
+
+// --- Fourteenth audit, 2026-11-12 ----------------------------------------------------------------
+import { PARAM_VERSIONS, ruleChangesSince } from '../src/features/nutriserve/simulation/index.ts';
+
+test('a portion note appears only when the build score shows its loss (not beside a wrong vessel or food that explain it all)', () => {
+  const { s, dishId, ticket } = finishing(42, 4);
+  const exact = structuredClone(s.dishes.find((x) => x.id === dishId));
+  const order = { ...ticket.order, idealG: { ...ticket.order.idealG, base: 66 } };
+  exact.build.base.mg = 66_000;
+  for (const c of ['main', 'side']) exact.build[c].mg = order.idealG[c] * 1000;
+  const graded = (d) => {
+    const build = gradeBuild(d, order).score;
+    return { build, portion: serveNotes(d, order, { waiting: 100, build, prep: 100, finish: 100 }, 1, [], 30_000).filter((n) => /^(Base|Main|Side) [+−]/.test(n)) };
+  };
+  const otherSize = ['small', 'medium', 'large'].find((z) => z !== order.size);
+  // The audit's case: 71.3 g on a 66 g base line costs under half a point.
+  const generous = structuredClone(exact);
+  generous.build.base.mg = 71_300;
+  assert.deepEqual(graded(generous), { build: 100, portion: [] });
+  assert.deepEqual(graded({ ...generous, size: otherSize }), { build: 80, portion: [] });
+  const wrongSide = structuredClone(generous);
+  wrongSide.build.side.foodId = 'not_the_ordered_side';
+  assert.deepEqual(graded(wrongSide), { build: 75, portion: [] });
+  // Two small losses beside a wrong vessel that together cost a shown point: the larger is named.
+  const grams = (c, lo, hi) => {
+    for (let g = order.idealG[c]; g < order.idealG[c] * 2; g += 0.05) {
+      const lost = BUILD_V1.share[c] * (1 - portionCredit(g, order.idealG[c], exactBand(c, undefined, order.idealG[c])));
+      if (lost > lo && lost < hi) return g;
+    }
+    throw new Error(`no ${c} amount loses ${lo}-${hi}`);
+  };
+  const two = structuredClone(exact);
+  two.size = otherSize;
+  two.build.base.mg = Math.round(grams('base', 0.26, 0.34) * 1000);
+  two.build.main.mg = Math.round(grams('main', 0.26, 0.34) * 1000);
+  const r = graded(two);
+  assert.equal(r.build, 79);
+  assert.equal(r.portion.length, 1);
+});
+
+test('prep-v6: marks at 8, 14 and 20 s, a perfect window of 1.2 s either side (1.8 s with copper), notes in tenths', () => {
+  assert.equal(PREP_V1.version, 'prep-v6-provisional');
+  const { s, dishId, ticket } = finishing(42, 4);
+  const dish = s.dishes.find((d) => d.id === dishId);
+  const order = { ...ticket.order, prepLevel: 'regular' };
+  const at = (ms, effects) => {
+    const d = { ...dish, prep: { ...dish.prep, milliUnits: ms * 1000 } };
+    const prep = gradePrep(d, order, effects);
+    return { prep, note: serveNotes(d, order, { waiting: 100, build: 100, prep, finish: 100 }, 1, [], 30_000, effects).find((n) => /cooked/.test(n)) };
+  };
+  assert.equal(at(12_800).prep, 100);
+  assert.equal(at(15_200).prep, 100);
+  assert.equal(at(15_300).prep, 99);
+  assert.equal(at(12_000).note, 'Undercooked: 12 s on the flame; perfect from 12.8 s (mark 14 s)');
+  assert.equal(at(16_000).note, 'Overcooked: 16 s on the flame; perfect up to 15.2 s (mark 14 s)');
+  const copper = upgradeEffects(['copper_handis']);
+  assert.equal(at(15_800, copper).prep, 100);
+  assert.equal(at(16_000, copper).note, 'Overcooked: 16 s on the flame; perfect up to 15.8 s (mark 14 s)');
+  assert.match(UPGRADES.copper_handis.description, /1\.8 seconds on the flame either side instead of 1\.2/);
+});
+
+test('a save from older rules is told every change since it was made', () => {
+  assert.deepEqual(ruleChangesSince(PARAM_VERSIONS), []);
+  // The rules of the audit's real older saves.
+  const older = { ...PARAM_VERSIONS, build: 'build-v6', prep: 'prep-v4-provisional', progression: 'progression-v5' };
+  const lines = ruleChangesSince(older);
+  for (const re of [/8, 14 and 20 seconds/, /32 seconds/, /one tap of its dispenser/, /halves what an off-centre garnish costs/]) assert.ok(lines.some((l) => re.test(l)), `${re}: ${lines.join(' | ')}`);
+  assert.ok(!lines.some((l) => /catches pieces/.test(l)), 'progression-v5 already had the tray catching pieces');
+  assert.ok(!lines.some((l) => /other rules/i.test(l)));
+  // A progression-v4 save also learns what the tray does now.
+  assert.ok(ruleChangesSince({ ...PARAM_VERSIONS, progression: 'progression-v4' }).some((l) => /catches pieces/.test(l)));
+  // Older than the record goes back, or another family changed: said in one line.
+  assert.ok(ruleChangesSince({ ...PARAM_VERSIONS, build: 'build-v1' }).some((l) => /other rules/i.test(l)));
+  assert.ok(ruleChangesSince({ ...PARAM_VERSIONS, waiting: 'waiting-v0' }).some((l) => /other rules/i.test(l)));
+  // Unknown versions (an unreadable save): the latest changes.
+  assert.ok(ruleChangesSince(undefined).some((l) => /8, 14 and 20 seconds/.test(l)));
 });

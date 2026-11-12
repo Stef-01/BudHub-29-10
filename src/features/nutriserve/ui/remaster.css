@@ -34,6 +34,7 @@
 .ns-start-notes { font-size: 14px; color: #5a5144; padding-left: 18px; }
 .ns-save-problem { border: 2px solid var(--warn); background: #fff0e8; border-radius: 8px; padding: 4px 12px; margin: 12px 0; font-size: 15px; }
 .ns-save-problem p { margin: 6px 0; }
+.ns-save-notice { border: 2px solid var(--primary); background: #eef7ef; border-radius: 8px; padding: 6px 12px; margin: 12px 0; font-size: 15px; }
 .ns-overlay kbd { border: 1px solid #8a7d66; border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: #fff; font-size: 12px; }
 
 /* HUD */
@@ -240,12 +241,11 @@
   .ns-dock .ns-dispenser > i { display: none; }
 }
 /* 320-360 px phones: narrower page margins and a smaller label, so a first word such as
-   "Cucumber" still fits on its line; the finish tools go three across. */
+   "Cucumber" still fits on its line (the finish tools go three across, below). */
 @media (max-width: 360px) {
   .ns-root.ns-compact { padding-left: 8px; padding-right: 8px; }
   .ns-dock .ns-dispenser-row { gap: 3px; padding-left: 2px; padding-right: 2px; }
   .ns-dock .ns-dispenser { font-size: 12px; padding: 2px 3px; }
-  .ns-dock .ns-tools { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .ns-dock .ns-dispensers { gap: 6px; }
 .ns-dock .ns-gauges { gap: 2px; }
@@ -258,7 +258,12 @@
 .ns-dock .ns-prep-unit:not(.ns-prep-empty) > .ns-btn-boost { grid-column: 1 / 3; }
 .ns-dock .ns-prep-unit:not(.ns-prep-empty) > [data-prep-done] { grid-column: 3; }
 .ns-dock .ns-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
-.ns-dock .ns-tool { font-size: 13px; padding: 2px 4px; min-width: 0; line-height: 1.15; text-align: left; }
+/* A long one-word name breaks at a syllable (a soft hyphen in the label) rather than spilling out. */
+.ns-dock .ns-tool { font-size: 13px; padding: 2px 4px; min-width: 0; line-height: 1.15; text-align: left; hyphens: manual; }
+/* (After the rule above, which it overrides.) */
+@media (max-width: 360px) {
+  .ns-dock .ns-tools { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .ns-dock .ns-gauge-track { height: 12px; }
 .ns-dock .ns-gauge-needle { width: 14px; height: 14px; }
 .ns-dock .ns-vessel-top { width: min(100%, 340px, 42svh); aspect-ratio: 1; margin: 0 auto; position: relative; }

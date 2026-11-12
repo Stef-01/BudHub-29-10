@@ -32,6 +32,9 @@ const GLIDE_DELAY_MS = 200;
 const GLIDE_SPEED = 2.5;
 const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 const clampCursor = (v: number) => Math.max(-1.2, Math.min(1.2, v));
+/** Where a long one-word tool name may break on a narrow phone (a soft hyphen, shown only when it breaks there). */
+const LABEL_BREAKS: Record<string, string> = { Pomegranate: 'Pome\u00ADgranate', Coriander: 'Cori\u00ADander' };
+const breakable = (label: string) => LABEL_BREAKS[label] ?? label;
 /** A click this soon after a press on the vessel ended belongs to that press (see onClickOnly). */
 const CLICK_AFTER_PRESS_MS = 600;
 /** Click-only garnish rings, one per garnish type (in GARNISHES order). */
@@ -429,10 +432,11 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
                 type="button"
                 className="ns-tool"
                 aria-pressed={tool?.kind === 'drizzle' && tool.id === d.id}
+                aria-label={d.label}
                 onClick={() => setTool({ kind: 'drizzle', id: d.id })}
               >
                 <i style={{ background: DRIZZLE_COLORS[d.id] }} aria-hidden="true" />
-                {d.label}
+                {breakable(d.label)}
               </button>
             ))}
             {garnishes.map((g) => (
@@ -441,12 +445,13 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
                 type="button"
                 className="ns-tool"
                 aria-pressed={tool?.kind === 'garnish' && tool.id === g.id}
+                aria-label={g.label}
                 onClick={() => setTool({ kind: 'garnish', id: g.id })}
               >
                 <svg viewBox="-12 -12 24 24" aria-hidden="true">
                   <GarnishGlyph id={g.id} />
                 </svg>
-                {g.label}
+                {breakable(g.label)}
               </button>
             ))}
           </Dockable>
