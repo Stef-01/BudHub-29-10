@@ -73,12 +73,14 @@ Each run also checks that stage text is 1.9% of the stage width. The regressions
 - a wrong-size vessel still shows the ticket's lines and says so;
 - a tab back from the back/forward cache keeps newer progress made in another tab, and says so;
 - with storage full, a handover still brings the newest state and the can't-save warning;
+- a holder busy past the wait hands over late, and the asking tab takes its newer state;
 - a new day after a handover keeps what the other tab bought a moment before, and the rule changes are listed;
 - on a phone held sideways each station's controls fit on one screen;
+- on an upright phone, switching station brings its controls into view under the pinned tabs;
 - on a desktop the Finish tools sit above the vessel, as in Tab order;
 - in forced colours the suggested vessel size keeps a ring.
 
-69/69 checks passed (`GATE_ONLY=regressions|audit11|audit12|devices` runs one part while working on it). The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
+69/69 checks passed (`GATE_ONLY=regressions|audit11|audit12|audit13|devices` runs one part while working on it). The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
 
 Independent audits (findings and fixes are below).
 

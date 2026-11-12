@@ -18,6 +18,7 @@ const path = require('node:path');
 
 const BASE = process.argv[2] || 'http://localhost:5173';
 const OUT = process.argv[3] || fs.mkdtempSync(path.join(os.tmpdir(), 'nutriserve-gate-'));
+fs.mkdirSync(OUT, { recursive: true });
 const RATES = { base: 80, main: 90, side: 50 }; // grams per second while held (BUILD_V1)
 const IGNORE = /TUNNEL|Failed to fetch|Failed to load resource|supabase|priceService|marketService|resourcesService|gameProgressService|GameScoresContext/i;
 
@@ -1066,7 +1067,8 @@ async function runAudit13(browser) {
   // H1: a tab restored from the back/forward cache never overwrites newer progress (Playwright turns
   // the cache off, so this browser keeps it on).
   {
-    const bf = await chromium.launch({ ignoreDefaultArgs: ['--disable-back-forward-cache'] });
+    // The full Chromium build (the headless shell has no back/forward cache).
+    const bf = await chromium.launch({ channel: 'chromium', ignoreDefaultArgs: ['--disable-back-forward-cache'] });
     const context = await bf.newContext({ viewport: { width: 1280, height: 900 } });
     const user = `gate13bf${tag}`;
     await seed(context, user, NEAR_END);
@@ -1087,7 +1089,7 @@ async function runAudit13(browser) {
     await A.waitForTimeout(5000);
     const later = await stored(B);
     const kept = afterB && later && afterB.ups === later.ups && afterB.coins === later.coins && afterB.done === later.done;
-    check(kept && (aTold || !restored), `regressions: a tab back from the back/forward cache keeps newer progress made in another tab (restored ${restored}, told ${aTold}, ${JSON.stringify(afterB)} -> ${JSON.stringify(later)})`);
+    check(restored && aTold && kept, `regressions: a tab back from the back/forward cache keeps newer progress made in another tab, and says so (restored ${restored}, told ${aTold}, ${JSON.stringify(afterB)} -> ${JSON.stringify(later)})`);
     await bf.close();
   }
 
@@ -1125,6 +1127,40 @@ async function runAudit13(browser) {
     const bWarned = await B.locator('.ns-save-warning').count();
     check(aWarned === 1 && storedTickets < aTickets && bTickets === aTickets && bWarned === 1 && (await told(A)),
       `regressions: with storage full, a handover still brings the newest state and the can't-save warning (A ${aTickets} tickets, stored ${storedTickets}, B ${bTickets}, B warned ${bWarned})`);
+    await context.close();
+  }
+
+  // A holder busy past the wait hands over late: the asking tab (opened paused, untouched) adopts it.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate13late${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    await cont(A);
+    await A.getByRole('button', { name: 'Resume' }).click().catch(() => {});
+    await A.getByRole('button', { name: /^Take .* order$/ }).click().catch(() => {});
+    await A.waitForTimeout(4300); // just past an autosave
+    await A.getByRole('button', { name: /^Order station/ }).click();
+    await A.getByRole('button', { name: /^Take .* order$/ }).click().catch(() => {});
+    const B = await open(context, user);
+    const button = await B.getByRole('button', { name: /^Continue day/ }).elementHandle();
+    const busy = A.evaluate(() => new Promise((r) => setTimeout(() => { const t = performance.now(); while (performance.now() - t < 1200); r(); }, 0)));
+    await A.waitForTimeout(20);
+    await button.evaluate((b) => b.click());
+    await busy;
+    await B.waitForSelector('.ns-hud');
+    await B.waitForTimeout(1500);
+    const gameOf = (pg) =>
+      pg.evaluate(() => {
+        const el = document.querySelector('.ns-root');
+        let f = el[Object.keys(el).find((k) => k.startsWith('__reactFiber$'))];
+        while (f && !(f.type && f.type.name === 'Kitchen')) f = f.return;
+        const s = f?.memoizedState.memoizedState.current;
+        return s ? { tickets: s.tickets.length, now: s.nowMs } : null;
+      });
+    const a = await gameOf(A), b = await gameOf(B), st = await stored(B);
+    check(a && b && b.now === a.now && b.tickets === a.tickets && st?.tickets === a.tickets && (await told(A)),
+      `regressions: a holder busy past the wait hands over late, and the asking tab takes its newer state (A ${JSON.stringify(a)}, B ${JSON.stringify(b)}, stored ${st?.tickets} tickets)`);
     await context.close();
   }
 
@@ -1226,7 +1262,33 @@ async function runAudit13(browser) {
     }
     const ok = Object.values(fits).every((f) => { const [a, b] = f.split('/'); return a === b && Number(b) > 0; });
     check(ok, `regressions: on a phone held sideways each station's controls fit on one screen (${Object.entries(fits).map(([k, v]) => `${k} ${v}`).join(', ')})`);
+    const landSave = await pg.evaluate((k) => localStorage.getItem(k), key);
     await phone.close();
+
+    // Upright: switching station brings that station's controls into view under the pinned tabs.
+    const up = await browser.newContext({ ...devices['iPhone 13'] });
+    const upg = await open(up, `gate13u${tag}`);
+    await upg.getByRole('button', { name: 'New game' }).click();
+    await upg.waitForSelector('.ns-hud');
+    await upg.getByRole('button', { name: 'Save & exit' }).click();
+    await upg.evaluate(({ k, v }) => localStorage.setItem(k, v), { k: await saveKeyOf(upg), v: landSave });
+    await upg.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' }).click();
+    await upg.getByRole('button', { name: /^Continue day/ }).click();
+    await upg.waitForSelector('.ns-hud');
+    await upg.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click().catch(() => {});
+    const inView = {};
+    for (const st of ['Build', 'Finish', 'Order', 'Prep', 'Build']) {
+      await upg.getByRole('button', { name: new RegExp(`^${st} station`) }).click();
+      await upg.waitForTimeout(400);
+      inView[st] = await upg.evaluate(() => {
+        const tabs = document.querySelector('.ns-dock-tabs').getBoundingClientRect().bottom;
+        const els = [...document.querySelectorAll('.ns-dock-main .ns-dispenser, .ns-dock-main .ns-actions .ns-btn, .ns-dock-main .ns-tool, .ns-dock-main .ns-vessel-top, .ns-dock-main [data-prep-done]')];
+        return `${els.filter((e) => { const r = e.getBoundingClientRect(); return r.top >= tabs - 1 && r.bottom <= innerHeight; }).length}/${els.length}`;
+      });
+    }
+    const upOk = ['Build', 'Finish', 'Prep'].every((k) => { const [a, b] = inView[k].split('/'); return a === b && Number(b) > 0; });
+    check(upOk, `regressions: on an upright phone switching station brings its controls into view under the pinned tabs (${Object.entries(inView).map(([k, v]) => `${k} ${v}`).join(', ')})`);
+    await up.close();
 
     const desk = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const dp = await open(desk, `gate13d${tag}`);
