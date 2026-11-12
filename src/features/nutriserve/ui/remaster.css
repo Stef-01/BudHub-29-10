@@ -220,11 +220,45 @@
 .ns-dock .ns-prep-dish, .ns-dock .ns-prep-target, .ns-dock .ns-gauge-label { font-size: 14px; }
 .ns-dock .ns-prep-bar { height: 16px; }
 .ns-dock .ns-heat { height: 8px; }
-.ns-dock .ns-dispenser-row { grid-template-columns: 1fr 1fr; }
-.ns-dock .ns-dispenser { font-size: 14px; }
+/* Phones (any compact layout): each food's four dispensers in one row, each handi's Boost and Done
+   side by side and the finish tools four across, so a whole build, all four handis and a finish each
+   fit in about one screen below the pinned tabs (audit 13: upright phones still overcooked more,
+   because every action meant scrolling). */
+.ns-dock .ns-dispenser-row { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding-top: 2px; }
+.ns-dock .ns-dispenser { font-size: 13px; padding: 2px 4px; line-height: 1.15; }
+.ns-dock .ns-dispenser-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+/* While a dispenser pours, its live grams take the place of its name (the button still says which
+   food in its accessible name), so a narrow button never has to fit both. */
+.ns-dock .ns-dispenser { position: relative; }
+.ns-dock .ns-dispenser[aria-pressed='true'] .ns-dispenser-name { visibility: hidden; }
+.ns-dock .ns-dispenser-live { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font-size: 15px; background: transparent; }
+/* An upright phone's dispensers are about 80 px wide: the colour dot gives its room to the name. */
+@media (max-width: 480px) {
+  .ns-dock .ns-dispenser > i { display: none; }
+}
+/* 320-360 px phones: narrower page margins and a smaller label, so a first word such as
+   "Cucumber" still fits on its line; the finish tools go three across. */
+@media (max-width: 360px) {
+  .ns-root.ns-compact { padding-left: 8px; padding-right: 8px; }
+  .ns-dock .ns-dispenser-row { gap: 3px; padding-left: 2px; padding-right: 2px; }
+  .ns-dock .ns-dispenser { font-size: 12px; padding: 2px 3px; }
+  .ns-dock .ns-tools { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.ns-dock .ns-dispensers { gap: 6px; }
+.ns-dock .ns-gauges { gap: 2px; }
+.ns-dock .ns-prep-slots { gap: 6px; }
+.ns-dock .ns-prep-unit:not(.ns-prep-empty) { display: grid; grid-template-columns: auto 1fr 1fr; gap: 3px 6px; padding: 4px 6px; align-items: center; }
+.ns-dock .ns-prep-unit:not(.ns-prep-empty) > * { grid-column: 1 / -1; margin: 0; }
+.ns-dock .ns-prep-unit:not(.ns-prep-empty) > h3 { grid-column: 1; font-size: 16px; }
+.ns-dock .ns-prep-unit:not(.ns-prep-empty) > .ns-prep-dish { grid-column: 2 / -1; min-height: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-dock .ns-prep-unit:not(.ns-prep-empty) > .ns-prep-target, .ns-dock .ns-prep-unit:not(.ns-prep-empty) > .ns-muted { font-size: 13px; line-height: 1.2; }
+.ns-dock .ns-prep-unit:not(.ns-prep-empty) > .ns-btn-boost { grid-column: 1 / 3; }
+.ns-dock .ns-prep-unit:not(.ns-prep-empty) > [data-prep-done] { grid-column: 3; }
+.ns-dock .ns-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.ns-dock .ns-tool { font-size: 13px; padding: 2px 4px; min-width: 0; line-height: 1.15; text-align: left; }
 .ns-dock .ns-gauge-track { height: 12px; }
 .ns-dock .ns-gauge-needle { width: 14px; height: 14px; }
-.ns-dock .ns-vessel-top { width: min(100%, 340px, 75svh); aspect-ratio: 1; margin: 0 auto; position: relative; }
+.ns-dock .ns-vessel-top { width: min(100%, 340px, 50svh); aspect-ratio: 1; margin: 0 auto; position: relative; }
 .ns-dock .ns-tray .ns-btn, .ns-dock .ns-tray-label { font-size: 15px; }
 .ns-dock .ns-lastserve-wrap { margin: 0; }
 /* Fixed height on phones too (nothing below moves); the middle line is tall enough for a touch-sized Why? button. */
@@ -307,27 +341,15 @@
   .ns-root.ns-side-dock { padding-top: 4px; row-gap: 6px; }
   .ns-side-dock > .ns-hud { padding: 0 4px; row-gap: 2px; }
   .ns-side-dock > .ns-hud .ns-btn { min-height: 36px; padding-block: 0; }
-  .ns-side-dock .ns-dock .ns-dispenser-row { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding-top: 2px; }
-  .ns-side-dock .ns-dock .ns-dispenser { font-size: 13px; min-height: 42px; padding: 2px 4px; line-height: 1.15; }
-  .ns-side-dock .ns-dock .ns-dispenser-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
-  .ns-side-dock .ns-dock .ns-dispensers { gap: 6px; }
-  .ns-side-dock .ns-dock .ns-gauges { gap: 2px; }
-  /* Each handi in five tight lines with Boost and Done side by side, so all four fit. */
-  .ns-side-dock .ns-dock .ns-prep-slots { gap: 6px; }
-  .ns-side-dock .ns-dock .ns-prep-unit:not(.ns-prep-empty) { display: grid; grid-template-columns: auto 1fr 1fr; gap: 3px 6px; padding: 4px 6px; align-items: center; }
-  .ns-side-dock .ns-dock .ns-prep-unit:not(.ns-prep-empty) > * { grid-column: 1 / -1; margin: 0; }
-  .ns-side-dock .ns-dock .ns-prep-unit:not(.ns-prep-empty) > h3 { grid-column: 1; font-size: 16px; }
-  .ns-side-dock .ns-dock .ns-prep-unit:not(.ns-prep-empty) > .ns-prep-dish { grid-column: 2 / -1; min-height: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ns-side-dock .ns-dock .ns-prep-unit:not(.ns-prep-empty) > .ns-prep-target, .ns-side-dock .ns-dock .ns-prep-unit:not(.ns-prep-empty) > .ns-muted { font-size: 13px; line-height: 1.2; }
-  .ns-side-dock .ns-dock .ns-prep-unit:not(.ns-prep-empty) > .ns-btn-boost { grid-column: 1 / 3; }
-  .ns-side-dock .ns-dock .ns-prep-unit:not(.ns-prep-empty) > [data-prep-done] { grid-column: 3; }
+  .ns-side-dock .ns-dock .ns-dispenser { min-height: 42px; }
+  /* Handis in five tight lines (Boost and Done side by side, as on every phone), so all four fit. */
   .ns-side-dock .ns-dock .ns-prep-unit .ns-btn { min-height: 40px; padding-block: 0; }
   .ns-side-dock .ns-dock .ns-prep-bar { height: 12px; }
   .ns-side-dock .ns-dock .ns-heat { height: 6px; }
   /* Finish: the tools in two columns beside the vessel, Done and Trash under both. */
   .ns-side-dock .ns-dock-main:has(> .ns-tools) { display: grid; grid-template-columns: minmax(0, 1fr) min(45svh, 180px); gap: 6px 8px; align-items: start; }
-  .ns-side-dock .ns-dock-main:has(> .ns-tools) > .ns-tools { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-  .ns-side-dock .ns-dock-main:has(> .ns-tools) > .ns-tools .ns-tool { min-height: 40px; font-size: 13px; padding: 2px 4px; min-width: 0; }
+  .ns-side-dock .ns-dock-main:has(> .ns-tools) > .ns-tools { grid-column: 1; grid-row: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ns-side-dock .ns-dock-main:has(> .ns-tools) > .ns-tools .ns-tool { min-height: 40px; }
   .ns-side-dock .ns-dock-main:has(> .ns-tools) > .ns-vessel-top { grid-column: 2; grid-row: 1; width: 100%; }
   .ns-side-dock .ns-dock-main:has(> .ns-tools) > .ns-actions { grid-column: 1 / -1; grid-row: 2; }
 }
