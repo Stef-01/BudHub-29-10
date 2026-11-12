@@ -84,7 +84,7 @@ Each run also checks that stage text is 1.9% of the stage width. The regressions
 - after a kitchen stops, its "Start a new day" doesn't overwrite another tab's newer progress;
 - the port's union edit passes its self-test.
 
-77/77 checks passed (`GATE_ONLY=regressions|audit11|audit12|audit13|devices` runs one part while working on it). The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
+84/84 checks passed (`GATE_ONLY=regressions|audit11|audit12|audit13|audit14|devices` runs one part while working on it). The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
 
 Independent audits (findings and fixes are below).
 
