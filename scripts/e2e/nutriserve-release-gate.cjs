@@ -178,7 +178,7 @@ async function runDevice(browser, name, contextOptions, { touch = false } = {}) 
     return page.locator('.ns-lastserve').first().innerText();
   }
 
-  const targetFor = (prep) => (/QUICK/.test(prep) ? 8000 : /SLOW/.test(prep) ? 20000 : 14000); // prep-v6 marks (ms on the flame)
+  const targetFor = (prep) => (/QUICK/.test(prep) ? 8500 : /SLOW/.test(prep) ? 21000 : 12500); // prep-v8 marks (ms on the flame)
 
   // 1. Two concurrent orders cooking in two slots.
   await takeOrder();
@@ -1462,7 +1462,7 @@ async function runAudit14(browser) {
     const notice = await A.locator('.ns-save-notice').innerText().catch(() => '');
     const offers = await A.getByRole('button', { name: /^Continue day/ }).count();
     const later = await stored(A);
-    check(afterB?.ups === 'rice_scoop' && later?.ups === afterB.ups && later.coins === afterB.coins && later.done === afterB.done && /newer progress/.test(notice) && offers === 1,
+    check(afterB?.ups === 'rice_scoop' && later?.ups === afterB.ups && later.coins === afterB.coins && later.done === afterB.done && /may have changed/.test(notice) && offers === 1,
       `regressions: a stopped kitchen's "Start a new day" doesn't overwrite another tab's newer progress (${JSON.stringify(afterB)} -> ${JSON.stringify(later)}; notice "${notice.slice(0, 60)}")`);
     await context.close();
   }
@@ -1476,10 +1476,196 @@ async function runAudit14(browser) {
   }
 }
 
+async function runAudit15(browser) {
+  const tag = Date.now();
+  const { saveKeyOf, toStart, open, cont, stored, seed, NEAR_END, MID_DAY, finishBuyLeave, told } = tabKit();
+  /** The kitchen's game in a page, or null. */
+  const gameOf = (pg) =>
+    pg.evaluate(() => {
+      const el = document.querySelector('.ns-root');
+      if (!el) return null;
+      let f = el[Object.keys(el).find((k) => k.startsWith('__reactFiber$'))];
+      while (f && !(f.type && f.type.name === 'Kitchen')) f = f.return;
+      const s = f?.memoizedState.memoizedState.current;
+      return s ? { run: s.runId, tickets: s.tickets.length, now: s.nowMs, coins: s.profile.coins, ups: s.profile.upgrades.join('+') || '-' } : null;
+    });
+  /** The stored save's run, clock and tickets. */
+  const storedGame = (pg) =>
+    pg.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.startsWith('nutriserve.remaster.save.v1:'));
+      const raw = k && localStorage.getItem(k);
+      if (!raw) return null;
+      const s = JSON.parse(raw).state;
+      return { run: s.runId, tickets: s.tickets.length, now: s.nowMs, coins: s.profile.coins, ups: s.profile.upgrades.join('+') || '-' };
+    });
+  // A busy page (a long task): pages here run on their own threads, so the other tab keeps going.
+  const block = (pg, ms) => pg.evaluate((ms) => new Promise((r) => setTimeout(() => { const t = performance.now(); while (performance.now() - t < ms); r(); }, 0)), ms);
+  const resume = (pg) => pg.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click({ timeout: 2000 }).catch(() => {});
+  const fill = (pg) =>
+    pg.evaluate(() => {
+      const big = 'x'.repeat(512 * 1024);
+      try { for (let n = 0; n < 40; n++) localStorage.setItem('gateFillA' + n, big); } catch {}
+      let size = 256 * 1024;
+      for (let k = 0; size >= 1; ) { try { localStorage.setItem('gateFillB' + k++, 'x'.repeat(size)); } catch { size = Math.floor(size / 2); } }
+    });
+
+  // H1: the holder's page is busy for 3 s while another tab takes the save over and plays; when it
+  // wakes, it doesn't write its older copy over the save, and the tab being played goes on.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate15busy${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    await cont(A);
+    await A.getByRole('button', { name: /^Take .* order$/ }).click().catch(() => {});
+    await A.waitForTimeout(4900); // past an autosave, then unsaved play
+    const B = await open(context, user);
+    const busy = block(A, 3000);
+    await B.waitForTimeout(50);
+    await cont(B);
+    await resume(B);
+    await B.waitForTimeout(600);
+    await busy;
+    await B.waitForTimeout(2500);
+    const b = await gameOf(B), st = await storedGame(B), bTold = await told(B), aTold = await told(A);
+    check(b && st && !bTold && aTold && st.run === b.run && st.now <= b.now && b.now - st.now < 4500,
+      `regressions: a tab busy for 3 s while another took the save over doesn't write over it when it wakes; the game being played goes on (B ${JSON.stringify(b)}, stored ${JSON.stringify(st)}, B told ${bTold}, A told ${aTold})`);
+    await context.close();
+  }
+
+  // H1: New game while the holder is busy for 2.5 s: the new game stays.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate15new${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    await cont(A);
+    await A.waitForTimeout(1000);
+    const B = await open(context, user);
+    const busy = block(A, 2500);
+    await B.waitForTimeout(50);
+    await B.getByRole('button', { name: 'New game' }).click();
+    await B.waitForSelector('.ns-hud');
+    await busy;
+    await B.waitForTimeout(2000);
+    const b = await gameOf(B), st = await storedGame(B);
+    check(b && st && st.run === b.run && b.run !== 'run-gate-a13-mid' && !(await told(B)) && (await told(A)),
+      `regressions: a new game started while the other tab was busy stays (B ${b?.run}, stored ${st?.run})`);
+    await context.close();
+  }
+
+  // H1: a write by a tab that doesn't hold the save (an older copy) is put back by the tab that does.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate15restore${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    await cont(A);
+    await A.getByRole('button', { name: /^Take .* order$/ }).click().catch(() => {});
+    await A.waitForTimeout(4300);
+    const key = await saveKeyOf(A);
+    const older = await A.evaluate((k) => localStorage.getItem(k), key);
+    await A.waitForTimeout(4300);
+    const C = await context.newPage();
+    await C.goto(`${BASE}/nutriserve-art-lab.html`, { waitUntil: 'load' });
+    await C.evaluate(({ k, v }) => localStorage.setItem(k, v), { k: key, v: older });
+    await A.waitForTimeout(800);
+    const a = await gameOf(A), st = await storedGame(A), olderNow = JSON.parse(older).state.nowMs;
+    check(a && st && !(await told(A)) && st.now > olderNow && st.run === a.run,
+      `regressions: the tab holding the save puts its game back over an older copy written by a tab that doesn't hold it (older ${olderNow}, stored ${st?.now}, A ${a?.now})`);
+    await context.close();
+  }
+
+  // M1: on the day summary (the clock stopped), a late copy from before a purchase isn't taken; one
+  // with the purchase is.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate15summary${tag}`;
+    await seed(context, user, NEAR_END);
+    const A = await open(context, user);
+    await cont(A);
+    await resume(A);
+    await A.waitForSelector('.ns-summary', { timeout: 20000 });
+    const key = await saveKeyOf(A);
+    await A.locator('.ns-summary').getByRole('button', { name: 'Save & exit' }).click();
+    await A.waitForTimeout(300);
+    const before = await A.evaluate((k) => localStorage.getItem(k), key);
+    await toStart(A); // Save & exit goes back to the games list
+    await cont(A);
+    await A.locator('.ns-upgrades li', { hasText: 'Brass rice scoop' }).getByRole('button').click();
+    await A.locator('.ns-summary').getByRole('button', { name: 'Save & exit' }).click();
+    await A.waitForTimeout(300);
+    const bought = await A.evaluate((k) => localStorage.getItem(k), key);
+    // B opens the copy from before the purchase; the purchase then arrives late, and after it the older copy.
+    await A.evaluate(({ k, v }) => localStorage.setItem(k, v), { k: key, v: before });
+    await toStart(A);
+    const B = await open(context, user);
+    await cont(B);
+    const userId = key.slice('nutriserve.remaster.save.v1:'.length);
+    const post = (raw) => A.evaluate(({ id, raw }) => { const ch = new BroadcastChannel(`nutriserve.remaster.tabs.v1:${id}`); ch.postMessage({ kind: 'ceded', from: 'gate', to: 'gate', raw, anyHolder: true }); ch.close(); }, { id: userId, raw });
+    await post(bought);
+    await B.waitForTimeout(600);
+    const took = await gameOf(B);
+    await post(before);
+    await B.waitForTimeout(600);
+    const kept = await gameOf(B), st = await storedGame(B);
+    check(took?.ups === 'rice_scoop' && kept?.ups === 'rice_scoop' && kept.coins === took.coins && st?.ups === 'rice_scoop',
+      `regressions: on the day summary a late copy with a purchase is taken and an older one is not (took ${JSON.stringify(took)}, then ${JSON.stringify(kept)}, stored ${JSON.stringify(st)})`);
+    await context.close();
+  }
+
+  // M1: the same through the back/forward cache: a tab left on the summary comes back after another
+  // tab bought something and reopened the day; the purchase stays.
+  {
+    const bf = await chromium.launch({ channel: 'chromium', ignoreDefaultArgs: ['--disable-back-forward-cache'] });
+    const context = await bf.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate15bf${tag}`;
+    await seed(context, user, NEAR_END);
+    const A = await open(context, user);
+    await cont(A);
+    await resume(A);
+    await A.waitForSelector('.ns-summary', { timeout: 20000 });
+    await A.goto(`${BASE}/nutriserve-art-lab.html`, { waitUntil: 'load' });
+    const B = await open(context, user);
+    await cont(B);
+    await finishBuyLeave(B);
+    await toStart(B);
+    await cont(B);
+    await A.goBack({ waitUntil: 'commit' });
+    await A.waitForTimeout(2500);
+    const b = await gameOf(B), st = await stored(B);
+    check(b?.ups === 'rice_scoop' && st?.ups === 'rice_scoop' && st.coins === b.coins,
+      `regressions: a tab back from the back/forward cache on the day summary doesn't undo a purchase another tab made (B ${JSON.stringify(b)}, stored ${JSON.stringify(st)})`);
+    await bf.close();
+  }
+
+  // L1: storage full before the first kitchen opens (no writer record): the next tab still gets the
+  // open kitchen's newest state, and that kitchen stops.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate15full${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    await fill(A);
+    await cont(A);
+    await resume(A);
+    await A.getByRole('button', { name: /^Take .* order$/ }).click().catch(() => {});
+    await A.waitForTimeout(1500);
+    const a = await gameOf(A);
+    const B = await open(context, user);
+    await cont(B);
+    await B.waitForTimeout(800);
+    const b = await gameOf(B);
+    check(a && b && (await told(A)) && b.tickets === a.tickets && b.now >= a.now,
+      `regressions: with storage full before any kitchen opened, the next tab still gets the open kitchen's newest state (A ${JSON.stringify(a)}, B ${JSON.stringify(b)})`);
+    await context.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
-  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|devices runs one part (for working on it); the gate is all of them.
+  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|devices runs one part (for working on it); the gate is all of them.
   const only = process.env.GATE_ONLY;
   const part = (name) => !only || only === name;
   if (part('regressions')) await runRegressions(browser);
@@ -1487,6 +1673,7 @@ async function runAudit14(browser) {
   if (part('audit12')) await runAudit12(browser);
   if (part('audit13')) await runAudit13(browser);
   if (part('audit14')) await runAudit14(browser);
+  if (part('audit15')) await runAudit15(browser);
   if (part('devices')) {
     results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
     results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });

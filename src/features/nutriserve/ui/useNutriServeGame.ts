@@ -21,10 +21,17 @@
 // nothing done in the other window since its last autosave is lost. When two tabs ask at once, the
 // one that asks last ends up with the save (the most recently opened kitchen holds it).
 //
-// A stale tab never writes: each kitchen remembers the save as it last wrote (or found) it, and
+// A stale tab doesn't write: each kitchen remembers the save as it last wrote (or found) it, and
 // before every write checks that storage still holds exactly that. A tab restored from the
 // back/forward cache, or woken from a freeze, finds another tab's newer save there and stops instead
 // of overwriting it. It checks again as soon as it is shown, so it says so at once.
+//
+// A page that was busy (no frame for STALL_MS) may see storage as it was before: other tabs'
+// changes reach it as queued events, and a timer can run before them. So it waits a moment
+// (SETTLE_MS) before it saves or claims the save, and those events run first. Should a busy tab
+// still write over the save, the tab holding it puts its own game back (or takes the other copy,
+// when nothing has been played there and it is a later copy of the same day), so the game being
+// played is never replaced by an older one.
 //
 // A late handover is taken, not fought: a holder that was busy past HANDOFF_MS answers after the
 // asking tab has stopped waiting and opened (or is opening) the older save. It only sends its state
@@ -47,6 +54,7 @@ import {
   advanceGame,
   applyCommand,
   deserializeGameWithNotes,
+  laterCopy,
   salvageSave,
   SaveError,
   serializeGame,
@@ -63,6 +71,12 @@ const AUTOSAVE_MS = 4_000;
 const HANDOFF_MS = 800;
 /** A handover request older than this is stale (e.g. seen by a tab waking from a freeze), unless the asking tab has taken the save since (see cede). */
 const HANDOFF_FRESH_MS = 2_000;
+/** A visible page that ran no frame for this long was busy (or frozen): its view of storage may be behind. */
+const STALL_MS = 500;
+/** How long a page that was busy waits for other tabs' storage changes to reach it before it saves. */
+const SETTLE_MS = 250;
+/** At most this many waits in a row (a visible page whose frames never run still saves). */
+const SETTLE_TRIES = 8;
 
 export const saveKey = (userId: string) => `nutriserve.remaster.save.v1:${userId}`;
 /** Which open kitchen (tab) may write the save: the one that opened most recently. */
@@ -202,11 +216,13 @@ export function takeLateHandover(userId: string): string | null {
 /**
  * Ask the tab holding the save to hand it over, and resolve once it has (it saved its latest
  * state and recorded this tab as the writer) or after HANDOFF_MS (it is closed, frozen or busy).
- * Resolves at once when no other tab holds the save.
+ * Resolves at once when no other tab holds the save. With no record of a writer and storage full
+ * (an open kitchen couldn't record itself), it asks anyway: a kitchen holding the save without a
+ * record answers too.
  */
 export function requestHandoff(userId: string): Promise<Handoff> {
   const holder = readWriter(userId);
-  if (holder === null || holder === TAB_ID) return Promise.resolve({ raw: ownHandover(userId), unanswered: false });
+  if (holder === TAB_ID || (holder === null && storageWorks())) return Promise.resolve({ raw: ownHandover(userId), unanswered: false });
   stopListening();
   lateHandover = null;
   return new Promise((resolve) => {
@@ -405,6 +421,9 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
   const heldAtMs = useRef<number | null>(null);
   // The late handover last adopted (the same one can arrive by more than one route).
   const adopted = useRef<string | null>(null);
+  // When the last frame ran (see STALL_MS), and the state this kitchen last wrote.
+  const lastFrame = useRef(performance.now());
+  const lastWritten = useRef<GameState | null>(null);
 
   const fail = useCallback((error: unknown) => {
     fatalRef.current = true;
@@ -452,6 +471,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
     let frameId = 0;
     let last = performance.now();
     const frame = (now: number) => {
+      lastFrame.current = performance.now();
       if (fatalRef.current) return; // a failed command stops the clock too
       const elapsed = Math.min(FRAME_CAP_MS, Math.max(0, now - last)) + carry.current;
       last = now;
@@ -508,6 +528,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
     try {
       window.localStorage.setItem(saveKey(userId), raw);
       lastRaw.current = raw;
+      lastWritten.current = ref.current;
     } catch {
       ok = false;
     }
@@ -535,12 +556,11 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       if (fatalRef.current || supersededRef.current || typeof raw !== 'string' || raw === lastRaw.current || raw === adopted.current) return false;
       if (!untouched.current || ref.current.nowMs !== heldAtMs.current || !owns()) return false;
       const latest = readSavedGame(userId, raw);
-      // Only a newer copy of the same day of the same game (never over a new game or a new day,
-      // nor an older copy, e.g. from a tab that was asleep and missed the newer saves).
+      // Only a later copy of the same day of the same game (never over a new game or a new day,
+      // nor an older copy, e.g. from a tab that was asleep and missed the newer saves, or one from
+      // before a purchase on the day summary).
       const s = latest.state;
-      const cur = ref.current;
-      if (!s || s.runId !== cur.runId || s.day.number !== cur.day.number) return false;
-      if (s.nowMs < cur.nowMs || (cur.day.completed && !s.day.completed)) return false;
+      if (!s || !laterCopy(s, ref.current)) return false;
       ref.current = s.paused || s.day.completed ? s : applyCommand(s, { type: 'pause' }).state;
       adopted.current = raw;
       hold();
@@ -556,8 +576,8 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
 
   /**
    * Send this tab's state to the tab that has taken the save (`to`, or whichever tab holds it by
-   * the time it arrives: this tab's own record of the writer may be out of date), when it is a newer
-   * copy of the same day than the save stored there (a tab that slept through newer saves has
+   * the time it arrives: this tab's own record of the writer may be out of date), when it is a later
+   * copy of the same day than the save stored there (laterCopy) (a tab that slept through newer saves has
    * nothing to give). That tab takes it if nothing has been played there yet (see adoptLate). Never writes.
    */
   const handLate = useCallback(
@@ -565,7 +585,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       if (fatalRef.current || !to || to === tabId.current) return;
       const held = readSavedGame(userId).state;
       const cur = ref.current;
-      if (held && (held.runId !== cur.runId || held.day.number !== cur.day.number || held.nowMs > cur.nowMs || (held.day.completed && !cur.day.completed))) return;
+      if (held && !laterCopy(cur, held)) return;
       let raw: string;
       try {
         raw = serializeGame(cur);
@@ -586,24 +606,56 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
    * Stop if another tab holds the save or has written it since this one did. A tab that took the
    * save while this one still had newer play (it answered a handover late, or not at all) is sent
    * that play first (handLate).
+   *
+   * While this tab is the recorded writer, a write by another tab comes from one that doesn't hold
+   * the save (it was busy and saw storage as it was before this tab took it over): this tab takes
+   * that copy if it is a later copy of this day and nothing has been played here (adoptLate), and
+   * otherwise puts its own game back. A tab taking the save over records itself as the writer
+   * before it writes, so its write never looks like this. Clearing the save (New game) is not put back.
    */
   const stillHolds = useCallback((): boolean => {
     if (fatalRef.current || supersededRef.current) return false;
-    if (!owns() || changedElsewhere()) {
-      handLate(readWriter(userId));
+    const writer = readWriter(userId);
+    const changed = changedElsewhere();
+    if (writer === tabId.current && changed) {
+      const now = readRaw(userId);
+      if (typeof now === 'string') {
+        if (!adoptLate(now)) write();
+        return true;
+      }
+    }
+    if ((writer !== null && writer !== tabId.current) || changed) {
+      handLate(writer);
       supersede();
       return false;
     }
     return true;
-  }, [changedElsewhere, handLate, owns, supersede, userId]);
+  }, [adoptLate, changedElsewhere, handLate, supersede, userId, write]);
 
   // Autosave (off once the simulation has failed, so a bad state never replaces the last good save,
   // and off once another tab holds or has written the save, so this one never overwrites it).
   const save = useCallback((): boolean => {
     if (fatalRef.current || supersededRef.current) return true;
     if (!stillHolds()) return true;
+    // Nothing new since the last write (e.g. paused in a hidden tab): writing it again could only
+    // put an out-of-date copy over another tab's save.
+    if (ref.current === lastWritten.current) return true;
     return write();
   }, [stillHolds, write]);
+
+  /**
+   * Run `then` now, or, when the page was just busy (no frame for STALL_MS), a moment later: other
+   * tabs' storage changes queued meanwhile reach this page first, so `then` sees storage as it is.
+   * A hidden page (no frames) waits once.
+   */
+  const settled = useCallback((then: () => void, tries = 0) => {
+    const busy = performance.now() - lastFrame.current > STALL_MS && (tries === 0 || !document.hidden);
+    if (busy && tries < SETTLE_TRIES) {
+      window.setTimeout(() => settled(then, tries + 1), SETTLE_MS);
+      return;
+    }
+    then();
+  }, []);
 
   /**
    * Hand the save to the tab that asked for it (`at`: when it asked): pause, save the latest state,
@@ -663,17 +715,18 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
   // When shown again (or restored from the back/forward cache, or resumed after a freeze), check
   // at once that no other tab has taken or written the save meanwhile.
   useEffect(() => {
-    const onReturn = () => {
-      if (!stillHolds()) return;
-      if (readWriter(userId) === null) claimWriter(userId, tabId.current);
-    };
+    const onReturn = () =>
+      settled(() => {
+        if (!stillHolds()) return;
+        if (readWriter(userId) === null) claimWriter(userId, tabId.current);
+      });
     const onVisibility = () => {
       if (!document.hidden) {
         onReturn();
         return;
       }
       if (!ref.current.paused && !ref.current.day.completed) dispatch({ type: 'pause' });
-      save();
+      settled(save);
     };
     const onFreeze = () => save();
     document.addEventListener('visibilitychange', onVisibility);
@@ -688,7 +741,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       window.removeEventListener('pageshow', onReturn);
       window.removeEventListener('focus', onReturn);
     };
-  }, [dispatch, save, stillHolds, userId]);
+  }, [dispatch, save, settled, stillHolds, userId]);
 
   useEffect(() => {
     const onAsk = (from: unknown, at: unknown) => {
@@ -749,7 +802,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       save();
       letGo();
     };
-    const id = window.setInterval(save, AUTOSAVE_MS);
+    const id = window.setInterval(() => settled(save), AUTOSAVE_MS);
     window.addEventListener('pagehide', onPageHide);
     window.addEventListener('storage', onStorage);
     return () => {
@@ -762,7 +815,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       save();
       letGo();
     };
-  }, [adoptLate, cede, hold, save, stillHolds, userId]);
+  }, [adoptLate, cede, hold, save, settled, stillHolds, userId]);
 
   return { state, dispatch, lastError, fatal, superseded, takeOver, saveNow: save, saveFailed, heldElsewhere };
 }

@@ -36,7 +36,7 @@ Reject realistic skin, photographic anatomy, painterly textures, detailed irises
 
 ## Current delivery and limits
 
-Six original transparent 1024 × 1536 PNG idle sprites: `arjun_fit`, `priya_balanced`, `rohan_light`, `maya_protein`, `vikram_lowsodium`, `ananya_breakfast`. Source RGBA interiors mostly have alpha 252–254; they render as visually solid. The validator deliberately uses an explicit opaque-like threshold of 245 and also records exact transparent-pixel counts. It never claims all interior pixels equal 255.
+Six transparent 1024 × 1536 PNG pilot idle sprites (made with another game's screenshot as a style input; see Originality): `arjun_fit`, `priya_balanced`, `rohan_light`, `maya_protein`, `vikram_lowsodium`, `ananya_breakfast`. Source RGBA interiors mostly have alpha 252–254; they render as visually solid. The validator deliberately uses an explicit opaque-like threshold of 245 and also records exact transparent-pixel counts. It never claims all interior pixels equal 255.
 
 The runtime registry is `src/features/nutriserve/assets/characters.ts`; metadata/provenance is `public/assets/nutriserve/manifest.json`; shared rendering is `CustomerSprite.tsx`. The current game header uses these six sprites when their IDs appear; other customers keep their existing visuals. Happy/sad result art is **not** replaced by idle sprites. That mixed-style transition is a known pilot limitation until reaction states are delivered.
 
