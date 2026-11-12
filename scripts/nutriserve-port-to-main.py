@@ -96,6 +96,9 @@ def ported_paths(ref):
         'docs/nutriserve/CLAUDE_STATUS.md',
         'docs/nutriserve/build-track.csv',
         'docs/nutriserve/README.md',
+        'docs/nutriserve/CLAUDE_BUILD_TRACK.md',
+        'docs/nutriserve/ASSET_WORKFLOW.md',
+        'docs/nutriserve/REA_FINDINGS.md',
     ]
 
 
@@ -293,7 +296,7 @@ try:
         'This is the NutriServe Kitchen remaster on `main`. It was developed on `claude/continue-building-j1mrs7` and ported here without that '
         "branch's unrelated `old` history, as the build track asks; `docs/nutriserve/PORT_SOURCE` names the branch commit it came from. "
         'Ported as is: `src/features/nutriserve/`, `tests/nutriserve-*`, the catalog generator and release gate in `scripts/`, '
-        '`tsconfig.nutriserve-sim.json` and this folder\'s status, README and build track. Adapted for `main`: a small entry in the app shell '
+        '`tsconfig.nutriserve-sim.json` and this folder\'s status, README, build track (CSV and handoff), asset workflow and reference record. Adapted for `main`: a small entry in the app shell '
         '(`App.tsx`, `types.ts`, `components/GameScreen.tsx`, `components/GamesView.tsx`), four scripts in `package.json`, and '
         '`services/nutriserveCharacters.ts`, where customers that required foods that do not exist (`brown_rice`, `red_rice`) now require '
         '`rice_brown` and `rice_red`. The simulation catalog is regenerated from `main`\'s own catalog sources. On `main` the remaster keeps '
