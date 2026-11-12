@@ -2,22 +2,30 @@
 
 Revision: 10 November 2026. Owner: Codex for generation and visual acceptance; Claude for consuming approved assets and implementing mechanics. This supersedes the earlier soft hand-painted art direction.
 
+## Originality (12 November 2026)
+
+The owner's direction is a game **inspired by** the kitchen-serving genre, not a recreation of any one game. From this revision on:
+
+- Don't use another game's screenshots, sprites, UI or logos as image-generation inputs or style references, and don't trace, paint over or match them. References are NutriServe's own approved masters, real Indian food and kitchenware, and the written brief.
+- NutriServe's characters, faces, station screens, tabs, tickets and colours are its own. Genre conventions (taking orders at a counter, a ticket, several stations, a cartoon cast) are fine; another game's specific character design or screen layout is not.
+- The six accepted idle sprites were made under the earlier brief, which used another game's screenshots as a style reference. Whether to redraw or rework them is the art owner's decision; engineering hasn't changed them.
+
 ## The style contract
 
-Use the **classic** Papa's Freezeria visual reference, not modern realistic food illustration or a mobile advertising portrait. Reference assets stay in the local investigation area; production art depicts original NutriServe characters and Indian food.
+A flat, outlined, friendly cartoon look for original NutriServe characters and Indian food — not modern realistic food illustration or a mobile advertising portrait.
 
-Characters use oversized heads, hollow vertical oval eyes, a minimal mouth, narrow limbs, simplified hands, large rounded shoes, clear dark contours and restrained flat color shapes. A working head-to-full-body target of roughly 35–40% is an art direction choice inferred from reference inspection, not a recovered engine constant. Preserve individual face/hair/clothing silhouettes; do not clone the same head across the full cast. Richer character/body/age variation is still needed beyond the six-person pilot.
+Characters use large heads, narrow limbs, simplified hands, clear dark contours and restrained flat color shapes. Give the cast NutriServe's own face design (eyes, brows, mouth) rather than one borrowed from another game. A working head-to-full-body target of roughly 35–40% is an art direction choice, not a measured constant. Preserve individual face/hair/clothing silhouettes; do not clone the same head across the full cast. Richer character/body/age variation is still needed beyond the six-person pilot.
 
-At the 640 × 480 stage, the sprite must remain readable at 120–180 CSS pixels in a queue and at larger serving scale. Gameplay machinery needs distinct silhouettes and high-contrast controls. Use a paper order ticket at the right and compact station tabs along the bottom. Four prep slots are required. Order/build/prep/finish are green/purple/orange/blue in the review bench, matching the reference's station organization.
+At the 640 × 480 stage, the sprite must remain readable at 120–180 CSS pixels in a queue and at larger serving scale. Gameplay machinery needs distinct silhouettes and high-contrast controls. The code-native UI has a paper order ticket on a rail and compact station tabs. Four prep slots are required. Order/build/prep/finish use NutriServe's own colours: peacock teal, turmeric, terracotta and rani pink (`STATION_COLORS` in `src/features/nutriserve/ui/LayoutStudy.tsx`).
 
 Reject realistic skin, photographic anatomy, painterly textures, detailed irises, soft portrait lighting, glossy 3D characters, ambiguous food silhouettes, flattened alpha, or assets that only look good enlarged. Backgrounds should support customer/tool readability. The current room and bowl in the review bench are editable layout studies, not approved final station/food assets.
 
 ## Repeatable production loop
 
-1. **Pin the reference.** Select the original screenshot or runtime frame relevant to the asset. Record source URL/artifact digest, exact state, and whether it is official imagery or a REA capture. Record what is visible and what is inferred.
+1. **Pin the brief.** Name the asset id and state, the approved NutriServe master it must match, and any real-world reference (a photo of the dish or vessel). Record the source of every input image; another game's imagery is never an input.
 2. **Choose one master.** Approve a representative character, vessel or machine at native display size before expanding a family. Arjun V3 is the current idle-character master. The rejected realistic V1 and long-body V2 remain local comparison evidence, outside the shipping registry.
 3. **Write a structured prompt.** Specify subject identity, required silhouette, palette, orientation, size/padding, transparent background, style reference roles and prohibited details. Keep approved parts fixed during edits. One generation call per asset/state; do not ask a sheet of unrelated sprites to serve as individual production files.
-4. **Generate with the built-in image tool.** Use original references plus the approved master. Preserve the original output file. Copy accepted candidates into versioned repo filenames; never silently overwrite a reviewed revision.
+4. **Generate with the built-in image tool.** Use the approved NutriServe master and real-world references only. Preserve the original output file. Copy accepted candidates into versioned repo filenames; never silently overwrite a reviewed revision.
 5. **Inspect the actual file.** Measure dimensions, alpha, opaque-like area, visible bounds and foot anchor. The tool's RGB preview can show a halo in pixels whose alpha is zero. Judge edges after compositing on cream, saturated green, dark and checkerboard backgrounds. Do not erase hidden RGB by hand unless a real render defect is established.
 6. **Render with neighbors.** Use `/nutriserve-art-lab.html`. Check the complete cast at 120/180/260px, then in the scene. Inspect cropped/occluded feet, outline weight, apparent age, face readability and visual consistency. Inspect phone and desktop widths. Avoid filtering/tinting a character to simulate another identity.
 7. **Capture the review with REA.** Use a declared browser scenario to select characters, switch station and change the alpha background. Retain the complete Evidence record, screenshots, step outcomes, console findings and cleanup status. A successful capture is not an automatic aesthetic pass.
@@ -52,6 +60,6 @@ The TypeScript AST reconciliation of the exact current-main `FOOD_LIBRARY` and `
 
 ## Prompt family
 
-The source prompts and per-character identities are retained in `asset-prompts.json`. Each uses the approved master and official screenshot 09 as references. The decisive constraints are: flat classic Flash cartoon, head roughly 36–39% of total height, small hollow oval eyes, narrow tubular arms, short legs and oversized shoes, dark uniform outlines, one hard-edged shadow at most, full-body left-facing idle, transparent padding, no realistic portrait/irises/texture/lighting.
+The source prompts and per-character identities are retained in `asset-prompts.json` as a provenance record of how the pilot sprites were made (they used another game's screenshot as a style input; new prompts must not, see Originality above). The decisive constraints for new work are: flat outlined cartoon, head roughly 36–39% of total height, NutriServe's own face design, narrow arms, dark uniform outlines, one hard-edged shadow at most, full-body left-facing idle, transparent padding, no realistic portrait/irises/texture/lighting.
 
 For each later pose, pass the exact approved identity as the edit target and change only pose/expression. Asset IDs, states and dimensions are part of the contract. Claude should request a missing asset by ID/state and proceed with unrelated mechanics, rather than fabricate or recolor a substitute and mark it complete.

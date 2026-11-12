@@ -2,11 +2,17 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CustomerSprite } from '../assets/CustomerSprite';
 import { CUSTOMER_SPRITES, type SpriteCustomerId } from '../assets/characters';
-import { gradeReferenceBuild, gradeReferenceMix, REFERENCE_PREP_SLOT_COUNT, type Blend } from '../domain/referenceScoring';
 import './review.css';
 
 const ids = Object.keys(CUSTOMER_SPRITES) as SpriteCustomerId[];
 const stations = ['order', 'build', 'prep', 'finish'] as const;
+const stationNames: Record<Station, { label: string; hi: string }> = {
+  order: { label: 'Order', hi: 'ऑर्डर' },
+  build: { label: 'Build', hi: 'परोसें' },
+  prep: { label: 'Prep', hi: 'पकाएँ' },
+  finish: { label: 'Finish', hi: 'सजाएँ' },
+};
+const PREP_SLOTS = 4;
 type Station = typeof stations[number];
 
 function Backdrop({ station }: { station: Station }) {
@@ -52,11 +58,6 @@ function ArtLab() {
   const [station, setStation] = useState<Station>('order');
   const [backdrop, setBackdrop] = useState('cream');
   const [size, setSize] = useState(180);
-  const [meter, setMeter] = useState(50);
-  const [units, setUnits] = useState(1800);
-  const [blend, setBlend] = useState<Blend>('regular');
-  const [wrong, setWrong] = useState(false);
-  const buildScore = gradeReferenceBuild({ cup: { correct: true, actualFill: 100, idealFill: 100 }, mixable: { correct: !wrong, meterFraction: meter / 100 }, syrup: { correct: true, meterFraction: .5 } });
   return <main className="art-lab">
     <header className="lab-header"><div><p className="eyebrow">BUDHUB / NUTRISERVE</p><h1>Character & station review</h1><p>Six original idle sprites. Review the cast and station layout before completing the gameplay remaster.</p></div><a href="/">Back to BudHub</a></header>
     <section className="review-layout" aria-label="Station integration review">
@@ -64,15 +65,14 @@ function ArtLab() {
         <Backdrop station={station} />
         <div className="ticket-rail" />
         <aside className="order-ticket"><span className="ticket-number">01</span><b>{CUSTOMER_SPRITES[selected].name}</b><hr /><span>REGULAR</span><strong>Rice<br />Chana masala<br />Raita</strong><hr /><span>MEDIUM PREP</span></aside>
-        {station === 'order' ? <><CustomerSprite customerId={selected} className="scene-customer" /><div className="counter-front"><span>Welcome to NutriServe!</span></div></> : station === 'prep' ? <div className="prep-slots">{Array.from({ length: REFERENCE_PREP_SLOT_COUNT }, (_, i) => <div className="prep-unit" key={i}><div className="heat-meter"><span style={{ width: `${25 + i * 20}%` }} /></div><Bowl filled /><b>{i + 1}</b></div>)}</div> : <div className="bowl-preview"><Bowl filled={station === 'finish'} /></div>}
+        {station === 'order' ? <><CustomerSprite customerId={selected} className="scene-customer" /><div className="counter-front"><span>Welcome to NutriServe!</span></div></> : station === 'prep' ? <div className="prep-slots">{Array.from({ length: PREP_SLOTS }, (_, i) => <div className="prep-unit" key={i}><div className="heat-meter"><span style={{ width: `${25 + i * 20}%` }} /></div><Bowl filled /><b>{i + 1}</b></div>)}</div> : <div className="bowl-preview"><Bowl filled={station === 'finish'} /></div>}
         {station === 'build' && <div className="ingredient-sign">CHOOSE • PORTION • PREP</div>}
         {station === 'finish' && <div className="ingredient-sign">DRIZZLE • GARNISH • SERVE</div>}
-        <nav className="station-tabs" aria-label="Preview station">{stations.map(s => <button key={s} type="button" className={`tab-${s}`} aria-pressed={station === s} onClick={() => setStation(s)}>{s}<small>station</small></button>)}</nav>
+        <nav className="station-tabs" aria-label="Preview station">{stations.map(s => <button key={s} type="button" className={`tab-${s}`} aria-pressed={station === s} onClick={() => setStation(s)}>{stationNames[s].label} <span lang="hi">{stationNames[s].hi}</span></button>)}</nav>
       </div><p className="caption">640 × 480 stage coordinates. Four prep slots. Procedural room and bowl are layout studies; final food and equipment art remains a separate asset gate.</p></div>
       <aside className="review-controls"><h2>Cast</h2><div className="cast-picker">{ids.map(id => <button key={id} type="button" aria-pressed={id === selected} onClick={() => setSelected(id)}>{CUSTOMER_SPRITES[id].name}</button>)}</div><label>Display size <output>{size} px</output><input aria-label="Sprite display height" type="range" min="120" max="260" step="20" value={size} onChange={e => setSize(Number(e.target.value))} /></label><label>Alpha background<select value={backdrop} onChange={e => setBackdrop(e.target.value)}><option value="cream">Cream</option><option value="green">Green</option><option value="dark">Dark</option><option value="checker">Checkerboard</option></select></label><p>Review silhouettes, eye shape, outline weight, clipping, and transparent edges at actual display size. Idle art must not stand in for a missing reaction.</p></aside>
     </section>
     <section aria-labelledby="cast-title"><h2 id="cast-title">Native-size cast check</h2><div className={`cast-sheet bg-${backdrop}`}>{ids.map(id => <figure key={id}><CustomerSprite customerId={id} style={{ height: size, width: size * 2 / 3 }} /><figcaption>{CUSTOMER_SPRITES[id].name}</figcaption></figure>)}</div></section>
-    <section className="scoring-review" aria-labelledby="score-title"><h2 id="score-title">Recovered scoring contract</h2><p>These functions transcribe recovered bytecode. They are not a claim of verified whole-game parity. Prep values below are original internal units, not seconds.</p><div className="scoring-columns"><div><h3>Build meter</h3><label>Mixable meter: {meter}%<input aria-label="Mixable meter" type="range" min="0" max="100" value={meter} onChange={e => setMeter(Number(e.target.value))} /></label><label className="check"><input type="checkbox" checked={wrong} onChange={e => setWrong(e.target.checked)} /> Wrong ingredient</label><output aria-live="polite">Build: {buildScore}%</output></div><div><h3>Prep / mixing</h3><label>Blend<select value={blend} onChange={e => setBlend(e.target.value as Blend)}><option value="chunky">Chunky</option><option value="regular">Regular</option><option value="smooth">Smooth</option></select></label><label>Internal units: {units}<input aria-label="Prep internal units" type="range" min="0" max="3600" step="50" value={units} onChange={e => setUnits(Number(e.target.value))} /></label><output aria-live="polite">Prep: {gradeReferenceMix(units, blend)}%</output></div></div></section>
   </main>;
 }
 createRoot(document.getElementById('root')!).render(<ArtLab />);

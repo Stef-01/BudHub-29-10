@@ -1,6 +1,6 @@
 // Station tabs along the bottom of the stage. Keys 1-4 switch stations (see NutriServeRemaster).
 import React from 'react';
-import { prepTargetUnits, type GameState, type StationId } from '../simulation/index.ts';
+import { prepBandUnits, prepTargetUnits, upgradeEffects, type GameState, type StationId } from '../simulation/index.ts';
 import { dishTicket } from './TicketRail.tsx';
 import type { Dispatch } from './useNutriServeGame.ts';
 import { STATION_COLORS } from './LayoutStudy.tsx';
@@ -10,21 +10,43 @@ import { Dockable } from './Dockable.tsx';
 export const STATIONS: StationId[] = ['order', 'build', 'prep', 'finish'];
 
 /**
- * Prep units this close to a slot's target count as "at its mark": the last half second of cooking
- * at the base rate, about a fifth of a second while boosting (less with pressure lids).
+ * Prep slots whose dish has reached its ticket's perfect window (and is still cooking): take it out
+ * now. The window opens 0.8 s on the flame before the mark (1.4 s with copper handis).
  */
-const MARK_WINDOW_UNITS = 75;
-
-/** Prep slots whose dish has reached its ticket's mark (and is still cooking): take it out now. */
 export function slotsAtMark(state: GameState): number[] {
+  const band = prepBandUnits(upgradeEffects(state.profile.upgrades));
   const ready: number[] = [];
   for (const slot of state.prepSlots) {
     const dish = state.dishes.find((d) => d.id === slot.dishId);
     const ticket = dishTicket(state, dish);
     if (!dish?.prep || !ticket) continue;
-    if (dish.prep.milliUnits / 1000 >= prepTargetUnits(ticket.order.prepLevel) - MARK_WINDOW_UNITS) ready.push(slot.index);
+    if (dish.prep.milliUnits / 1000 >= prepTargetUnits(ticket.order.prepLevel) - band) ready.push(slot.index);
   }
   return ready;
+}
+
+/**
+ * Bring the Done button of the most overdue at-mark slot into view (just below the pinned station
+ * tabs on a phone, where the lower slots sit below the fold). Called when the player opens Prep; it
+ * never moves focus, and does nothing when that button is already in view.
+ */
+export function revealPrepDone(state: GameState): void {
+  const marked = slotsAtMark(state);
+  if (marked.length === 0) return;
+  const over = (index: number) => {
+    const slot = state.prepSlots[index];
+    const dish = state.dishes.find((d) => d.id === slot.dishId);
+    const ticket = dishTicket(state, dish);
+    return dish?.prep && ticket ? dish.prep.milliUnits / 1000 - prepTargetUnits(ticket.order.prepLevel) : 0;
+  };
+  const urgent = [...marked].sort((a, b) => over(b) - over(a))[0];
+  // After the station has rendered (the dispatch that opened it renders before the next frame).
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const button = document.querySelector<HTMLElement>(`[data-prep-done="${urgent}"]`);
+      button?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' as ScrollBehavior });
+    })
+  );
 }
 
 /** Small counts so the player can see what's waiting where without switching. */
@@ -59,7 +81,10 @@ export function StationTabs({ state, dispatch }: { state: GameState; dispatch: D
             aria-pressed={active}
             aria-keyshortcuts={String(i + 1)}
             aria-label={`${label} station${count ? `, ${count} waiting` : ''}${atMark ? `, ${atMark} at the mark` : ''}`}
-            onClick={() => dispatch({ type: 'selectStation', station })}
+            onClick={() => {
+              dispatch({ type: 'selectStation', station });
+              if (station === 'prep') revealPrepDone(state);
+            }}
           >
             <span>{label}</span>
             <small lang="hi">{hi}</small>

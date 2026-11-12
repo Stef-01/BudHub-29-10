@@ -1,7 +1,5 @@
 // Station grading. Four scores stay separate (waiting, build, prep, finish); nutrition is a
-// separate report (../nutrition). Build and Prep wrap the unchanged recovered reference functions
-// through named Indian-food adapters; finish and waiting are provisional and versioned.
-import { gradeReferenceBuild, gradeReferenceMix, MIX_TARGETS } from '../domain/referenceScoring.ts';
+// separate report (../nutrition). Every rule is NutriServe's own and versioned in ./params.ts.
 import { DRIZZLES, GARNISHES } from '../data/finishItems.ts';
 import { lookup } from './lookup.ts';
 import {
@@ -33,66 +31,85 @@ export function meterFraction(actualG: number, idealG: number): number {
   return Math.max(0, Math.min(1, actualG / (BUILD_V1.meterFullMultiple * idealG)));
 }
 
+/** How far from its line a portion may be and still count as exact (a share of the line). */
+export function exactBand(component: BuildComponent, effects?: UpgradeEffects): number {
+  return effects?.portionBand?.[component] ? BUILD_V1.toolExactBand : BUILD_V1.exactBand;
+}
+
 /**
- * ADAPTATION gradeIndianBuildV1. Maps the dish onto the reference's three categories:
- * cup = vessel size + base fill, mixable = main portion meter, syrup = side portion meter.
- * The reference function is called unchanged; a wrong base food (with the right vessel) costs
- * BUILD_V1.baseMismatchPenalty on top.
+ * Share of a food's credit (0..1) for a portion of the right food. Within the exact band of its
+ * line it is full credit. A short portion earns its share of the way to the band's edge (half a
+ * portion earns about half), since the food isn't there. A generous portion loses overSlope per
+ * extra portion's worth past the band, down to overFloor, since the food is there but too much.
  */
-export function gradeIndianBuildV1(dish: Dish, order: TicketOrder, effects?: UpgradeEffects): BuildGrade {
-  const base = dish.build.base;
-  const main = dish.build.main;
-  const side = dish.build.side;
+export function portionCredit(actualG: number, idealG: number, band: number): number {
+  if (!(idealG > 0)) return 0;
+  const ratio = actualG / idealG;
+  if (ratio < 1 - band) return Math.max(0, ratio / (1 - band));
+  if (ratio > 1 + band) return Math.max(BUILD_V1.overFloor, 1 - (ratio - 1 - band) * BUILD_V1.overSlope);
+  return 1;
+}
+
+/**
+ * ADAPTATION gradeBuild (build-v5). Base, main and side are each worth a share of 100 points
+ * (BUILD_V1.share), earned in full for the right food within the exact band of its line and in part
+ * otherwise (portionCredit); the wrong food or no food earns none of its share. Serving in a
+ * different vessel size than the ticket asked costs wrongVesselPenalty on top. Portions are always
+ * measured against the ticket's lines.
+ */
+export function gradeBuild(dish: Dish, order: TicketOrder, effects?: UpgradeEffects): BuildGrade {
+  const wanted = { base: order.baseId, main: order.mainId, side: order.sideId } as const;
   const correct = {
     size: dish.size === order.size,
-    base: base?.foodId === order.baseId,
-    main: main?.foodId === order.mainId,
-    side: side?.foodId === order.sideId,
+    base: dish.build.base?.foodId === order.baseId,
+    main: dish.build.main?.foodId === order.mainId,
+    side: dish.build.side?.foodId === order.sideId,
   };
-  const furniture = effects?.buildFurniture ?? { cup: false, mixable: false, syrup: false };
-  const input = (cupCorrect: boolean) => ({
-    // The cup furniture bonus needs the whole cup category right: vessel and base food.
-    cup: { correct: cupCorrect, actualFill: grams(base?.mg), idealFill: order.idealG.base, furnitureBonus: furniture.cup && correct.base },
-    mixable: { correct: correct.main, meterFraction: meterFraction(grams(main?.mg), order.idealG.main), furnitureBonus: furniture.mixable },
-    syrup: { correct: correct.side, meterFraction: meterFraction(grams(side?.mg), order.idealG.side), furnitureBonus: furniture.syrup },
-  });
-  const wrongCupScore = gradeReferenceBuild(input(false));
-  let score: number;
-  if (!correct.size) score = wrongCupScore;
-  else {
-    const reference = gradeReferenceBuild(input(true));
-    const adapted = correct.base ? reference : reference - BUILD_V1.baseMismatchPenalty;
-    // The vessel+base category can never cost more than getting the vessel wrong would.
-    score = Math.max(0, Math.max(adapted, wrongCupScore));
+  let earned = 0;
+  const signedErrorG = { base: null, main: null, side: null } as BuildGrade['signedErrorG'];
+  for (const c of ['base', 'main', 'side'] as const) {
+    const portion = dish.build[c];
+    if (!portion || portion.foodId !== wanted[c]) continue;
+    const actualG = grams(portion.mg);
+    signedErrorG[c] = actualG - order.idealG[c];
+    earned += BUILD_V1.share[c] * portionCredit(actualG, order.idealG[c], exactBand(c, effects));
   }
-  return {
-    score,
-    signedErrorG: {
-      base: correct.base ? grams(base?.mg) - order.idealG.base : null,
-      main: correct.main ? grams(main?.mg) - order.idealG.main : null,
-      side: correct.side ? grams(side?.mg) - order.idealG.side : null,
-    },
-    correct,
-  };
+  const score = clampScore(earned - (correct.size ? 0 : BUILD_V1.wrongVesselPenalty));
+  return { score, signedErrorG, correct };
 }
 
 // --- Prep ----------------------------------------------------------------------
 
-/** Whole reference units cooked so far. */
+/** Whole doneness units cooked so far. */
 export const prepUnits = (dish: Dish) => Math.floor((dish.prep?.milliUnits ?? 0) / 1000);
 
-/** Target units for an Indian prep level (via its mapped reference blend). */
+/** The doneness mark for a prep level. */
 export function prepTargetUnits(level: TicketOrder['prepLevel']): number {
-  return MIX_TARGETS[PREP_V1.referenceBlendFor[level]];
+  return PREP_V1.targetUnits[level];
 }
 
-/** ADAPTATION gradeIndianPrepV1: the unchanged reference mix score on this dish's units. */
-export function gradeIndianPrepV1(dish: Dish, order: TicketOrder, effects?: UpgradeEffects): number {
+/** Units either side of the mark that count as perfect (wider with copper handis). */
+export function prepBandUnits(effects?: UpgradeEffects): number {
+  return effects?.prepBand ? PREP_V1.wideBandUnits : PREP_V1.perfectBandUnits;
+}
+
+/**
+ * ADAPTATION gradePrep (prep-v3). Within the perfect window around the level's mark: 100. Short of
+ * the window, the dish earns its share of the way there (a dish taken out half way scores 50, a raw
+ * one 0). Past the window it loses overPointsPerSecond for every second on the flame it stayed on.
+ * A dish that never went into a handi scores 0.
+ */
+export function gradePrep(dish: Dish, order: TicketOrder, effects?: UpgradeEffects): number {
   if (!dish.prep) return 0;
-  return gradeReferenceMix(prepUnits(dish), PREP_V1.referenceBlendFor[order.prepLevel], effects?.prepFurniture ?? false);
+  const units = prepUnits(dish);
+  const target = prepTargetUnits(order.prepLevel);
+  const band = prepBandUnits(effects);
+  if (units < target - band) return clampScore((100 * units) / (target - band));
+  if (units > target + band) return clampScore(100 - ((units - target - band) / PREP_V1.unitsPerSecond) * PREP_V1.overPointsPerSecond);
+  return 100;
 }
 
-// --- Finish (PROVISIONAL, Q09 open) ------------------------------------------------
+// --- Finish (PROVISIONAL) ------------------------------------------------------------
 
 export interface FinishGrade {
   score: number;
@@ -272,10 +289,10 @@ export function serveNotes(
     else if (portion.foodId !== wanted[c]) notes.push(`${label}: wrong food`);
     else {
       // Only portions that cost points: would a perfect portion of this component score higher?
-      // (The reference meter forgives small errors, so a few grams off is often free.)
+      // (The exact band forgives small errors, so a few grams off is often free.)
       const error = portion.mg / 1000 - order.idealG[c];
       const perfect = { ...dish, build: { ...dish.build, [c]: { ...portion, mg: Math.round(order.idealG[c] * 1000) } } };
-      if (Math.abs(error) >= 1 && gradeIndianBuildV1(perfect, order, effects).score > gradeIndianBuildV1(dish, order, effects).score) {
+      if (Math.abs(error) >= 1 && gradeBuild(perfect, order, effects).score > gradeBuild(dish, order, effects).score) {
         notes.push(`${label} ${error > 0 ? '+' : '−'}${Math.round(Math.abs(error))} g`);
       }
     }

@@ -175,7 +175,7 @@ async function runDevice(browser, name, contextOptions, { touch = false } = {}) 
     return page.locator('.ns-lastserve').first().innerText();
   }
 
-  const targetFor = (prep) => (/QUICK/.test(prep) ? 900 : /SLOW/.test(prep) ? 2700 : 1800);
+  const targetFor = (prep) => (/QUICK/.test(prep) ? 1050 : /SLOW/.test(prep) ? 2850 : 1950); // prep-v3 marks
 
   // 1. Two concurrent orders cooking in two slots.
   await takeOrder();
@@ -335,6 +335,39 @@ async function runRegressions(browser) {
   await page.waitForTimeout(300);
   const released = await page.getByRole('button', { name: 'Done', exact: true }).isEnabled();
   check(drizzling && released, `regressions: drizzle released across a layout switch (held ${drizzling}, released ${released})`);
+  await page.setViewportSize({ width: 1000, height: 900 });
+
+  // 1b. A garnish press held across the same switch is forgotten: each later click places one piece.
+  await page.getByRole('button', { name: 'Save & exit' }).click();
+  await storeFinishSave();
+  await open();
+  await page.getByRole('button', { name: /^Continue day/ }).click();
+  await page.getByRole('button', { name: 'Coriander', exact: true }).click();
+  const gv = await page.locator('.ns-vessel-top').boundingBox();
+  await page.mouse.move(gv.x + gv.width * 0.8, gv.y + gv.height * 0.5);
+  await page.mouse.down();
+  await page.setViewportSize({ width: 500, height: 900 });
+  await page.waitForTimeout(400);
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+  const pieces = async () => {
+    await page.getByRole('button', { name: 'Save & exit' }).click();
+    const n = await page.evaluate((k) => JSON.parse(localStorage.getItem(k)).state.dishes.find((d) => d.stage === 'prepped' || d.stage === 'finishing').finish.garnishes.length, key);
+    await open();
+    await page.getByRole('button', { name: /^Continue day/ }).click();
+    return n;
+  };
+  const piecesBefore = await pieces();
+  await page.getByRole('button', { name: 'Coriander', exact: true }).click();
+  const gvc = page.locator('.ns-vessel-top');
+  await gvc.scrollIntoViewIfNeeded();
+  const gb = await gvc.boundingBox();
+  for (const [fx, fy] of [[0.5, 0.3], [0.3, 0.5], [0.5, 0.7]]) {
+    await page.mouse.click(gb.x + gb.width * fx, gb.y + gb.height * fy);
+    await page.waitForTimeout(150);
+  }
+  const piecesAfter = await pieces();
+  check(piecesAfter - piecesBefore === 3, `regressions: after a garnish press cut off by a layout switch, every click places a piece (${piecesBefore} -> ${piecesAfter})`);
   await page.setViewportSize({ width: 1000, height: 900 });
 
   // 2. Click-only input (switch access, screen readers): one click starts the pour, the next stops
@@ -577,10 +610,157 @@ async function runRegressions(browser) {
   await phone.close();
 }
 
+/** Eleventh-audit regressions: two tabs, the prep cue and reveal on a phone, layering, forced colours, zoom. */
+async function runAudit11(browser) {
+  const tag = Date.now();
+  const enter = async (pg, user, button) => {
+    await pg.goto(`${BASE}/?user=${user}`, { waitUntil: 'networkidle' });
+    await pg.getByRole('button', { name: 'Games' }).first().click();
+    await pg.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' }).click();
+    await pg.getByRole('button', { name: button }).click();
+  };
+  const saveKeyOf = (pg) => pg.evaluate(() => Object.keys(localStorage).find((k) => k.startsWith('nutriserve.remaster.save.v1:')));
+  const clock = (ms) => `${Math.floor(ms / 60_000)}:${String(Math.floor((ms % 60_000) / 1000)).padStart(2, '0')}`;
+
+  // 1. Two tabs: the kitchen opened last holds the save; the other stops writing, says so, and can
+  //    pick up from the latest save.
+  const tabs = await browser.newContext({ viewport: { width: 1000, height: 800 } });
+  const a = await tabs.newPage();
+  const b = await tabs.newPage();
+  const user = `gate-tabs-${tag}`;
+  await enter(a, user, 'New game');
+  await a.waitForTimeout(600);
+  await enter(b, user, /^Continue day/);
+  await a.waitForTimeout(600);
+  const told = await a.getByRole('alertdialog', { name: 'Open in another tab' }).count();
+  await b.waitForTimeout(1500);
+  await b.getByRole('button', { name: 'Save & exit' }).click();
+  const key = await saveKeyOf(b);
+  const byB = await b.evaluate((k) => localStorage.getItem(k), key);
+  await a.waitForTimeout(4600); // longer than an autosave
+  const later = await a.evaluate((k) => localStorage.getItem(k), key);
+  check(told === 1 && later === byB, `regressions: a second tab takes over the save; the first says so and stops writing (dialog ${told}, overwritten ${later !== byB})`);
+  await a.getByRole('button', { name: 'Continue here' }).click();
+  await a.waitForTimeout(300);
+  const hudA = (await a.locator('.ns-hud').innerText()).replace(/\s+/g, ' ');
+  const wantClock = clock(JSON.parse(byB).state.nowMs);
+  const pausedA = await a.getByRole('dialog', { name: 'Paused' }).count();
+  check(hudA.includes(wantClock) && pausedA === 1, `regressions: Continue here picks up the latest save, paused (${hudA.slice(0, 16)} vs ${wantClock}, paused ${pausedA})`);
+  await tabs.close();
+
+  // 2. Phone: a handi reaching its mark is announced in its own region, and opening Prep brings
+  //    its Done button into view below the pinned tabs. The Why? panel scrolls under the tabs.
+  const phone = await browser.newContext({ ...devices['iPhone 13'] });
+  const p = await phone.newPage();
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  p.on('console', (m) => m.type() === 'error' && !IGNORE.test(m.text()) && errors.push(m.text()));
+  await enter(p, `gate-a11-${tag}`, 'New game');
+  await p.getByRole('button', { name: 'Save & exit' }).click();
+  const pkey = await saveKeyOf(p);
+  await p.evaluate(async (k) => {
+    const sim = await import('/src/features/nutriserve/simulation/index.ts');
+    const run = (s, c) => {
+      const r = sim.applyCommand(s, c);
+      if (!r.result.ok) throw new Error(`${c.type}: ${r.result.error}`);
+      return r.state;
+    };
+    let s = sim.createGame({ seed: 7, runId: 'run-gate-a11' });
+    const toCounter = () => {
+      while (!s.day.customers.some((c) => c.phase === 'at_counter')) s = sim.advanceGame(s, 100);
+    };
+    const rate = { base: 80, main: 90, side: 50 };
+    const build = (o) => {
+      s = run(s, { type: 'startDish', size: o.size });
+      const dishId = s.dishes.at(-1).id;
+      for (const [component, foodId] of [['base', o.baseId], ['main', o.mainId], ['side', o.sideId]]) {
+        s = run(s, { type: 'beginPour', dishId, component, foodId });
+        s = sim.advanceGame(s, Math.round((o.idealG[component] * 1000) / rate[component]));
+        s = run(s, { type: 'endPour' });
+      }
+      return dishId;
+    };
+    // One customer served (so there is a result with a Why? button) ...
+    toCounter();
+    s = run(s, { type: 'takeOrder' });
+    const first = s.tickets[0];
+    let d = build(first.order);
+    s = run(s, { type: 'finishBuild', dishId: d });
+    s = run(s, { type: 'startPrep', dishId: d, slot: 0 });
+    s = sim.advanceGame(s, 7_000);
+    s = run(s, { type: 'finishPrep', slot: 0 });
+    s = run(s, { type: 'finishDish', dishId: d });
+    s = run(s, { type: 'serve', dishId: d, ticketId: first.id });
+    // ... and the next one's dish in handi 3, a second short of its perfect window.
+    toCounter();
+    s = run(s, { type: 'takeOrder' });
+    const next = s.tickets.find((t) => t.servedAtMs === undefined);
+    d = build(next.order);
+    s = run(s, { type: 'finishBuild', dishId: d });
+    s = run(s, { type: 'startPrep', dishId: d, slot: 2 });
+    const start = sim.prepTargetUnits(next.order.prepLevel) - sim.prepBandUnits(sim.upgradeEffects(s.profile.upgrades));
+    s = sim.advanceGame(s, Math.round(((start - 150) / 150) * 1000));
+    s = run(s, { type: 'selectStation', station: 'order' });
+    localStorage.setItem(k, sim.serializeGame(s));
+  }, pkey);
+  await p.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' }).click();
+  await p.getByRole('button', { name: /^Continue day/ }).click();
+  await p.waitForTimeout(1600);
+  const cue = await p.locator('[data-ns-cue]').innerText();
+  check(/Prep slot 3 is at its mark/.test(cue), `regressions: a handi at its mark is announced in its own region (${cue.trim().slice(0, 50)})`);
+  await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await p.getByRole('button', { name: /^Prep station/ }).click();
+  await p.waitForTimeout(400);
+  const reveal = await p.evaluate(() => {
+    const done = document.querySelector('[data-prep-done="2"]').getBoundingClientRect();
+    const tabs = document.querySelector('.ns-tabs').getBoundingClientRect();
+    return { y: Math.round(scrollY), top: Math.round(done.top), bottom: Math.round(done.bottom), tabs: Math.round(tabs.bottom), h: innerHeight };
+  });
+  check(reveal.top >= reveal.tabs && reveal.bottom <= reveal.h, `regressions: opening Prep on a phone brings the at-mark handi's Done into view (scrolled ${reveal.y}, Done ${reveal.top}-${reveal.bottom}, tabs end ${reveal.tabs}, view ${reveal.h})`);
+  // Forced colours: the selected tab, the meter fill and the at-mark handi stay distinguishable.
+  await p.emulateMedia({ forcedColors: 'active' });
+  const forced = await p.evaluate(() => {
+    const bg = (el) => getComputedStyle(el).backgroundColor;
+    const pressed = document.querySelector('.ns-tab[aria-pressed="true"]');
+    const other = document.querySelector('.ns-tab[aria-pressed="false"]');
+    const unit = document.querySelector('.ns-prep-unit.ns-at-mark');
+    const fill = unit?.querySelector('.ns-prep-fill');
+    const bar = unit?.querySelector('.ns-prep-bar');
+    return {
+      tabs: bg(pressed) !== bg(other),
+      fill: !!fill && bg(fill) !== bg(bar),
+      mark: !!unit && getComputedStyle(unit).outlineStyle !== 'none',
+    };
+  });
+  await p.emulateMedia({ forcedColors: 'none' });
+  check(forced.tabs && forced.fill && forced.mark, `regressions: forced colours keep the selected tab, prep fill and at-mark handi visible (${JSON.stringify(forced)})`);
+  await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await p.getByRole('button', { name: 'Why?' }).click();
+  await p.evaluate(() => window.scrollBy({ top: 260, behavior: 'instant' }));
+  await p.waitForTimeout(200);
+  const layered = await p.evaluate(() => {
+    const t = document.querySelector('.ns-tabs').getBoundingClientRect();
+    const hit = document.elementFromPoint(t.left + t.width / 2, t.top + t.height / 2);
+    return { panel: !!document.querySelector('.ns-why-panel'), onTabs: !!hit?.closest('.ns-tabs') };
+  });
+  check(layered.panel && layered.onTabs, `regressions: the Why? panel scrolls under the pinned tabs (${JSON.stringify(layered)})`);
+  check(errors.length === 0, `regressions: no app errors on the phone checks${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
+  await phone.close();
+
+  // 3. 400% zoom (a 320x256 viewport): the tabs scroll with the page instead of covering a third of it.
+  const zoom = await browser.newContext({ viewport: { width: 320, height: 256 } });
+  const z = await zoom.newPage();
+  await enter(z, `gate-zoom-${tag}`, 'New game');
+  const position = await z.evaluate(() => getComputedStyle(document.querySelector('.ns-dock-tabs')).position);
+  check(position === 'static', `regressions: at 400% zoom the station tabs are not pinned (${position})`);
+  await zoom.close();
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
   await runRegressions(browser);
+  await runAudit11(browser);
   results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
   results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });
   results.phone = await runDevice(browser, 'phone', { ...devices['iPhone 13'] }, { touch: true });

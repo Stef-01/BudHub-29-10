@@ -1,8 +1,7 @@
 // C02 Build, C03 Prep, C04 Finish station mechanics and grading.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceGame, gradeFinishV1, gradeIndianBuildV1, gradeIndianPrepV1, meterFraction, prepTargetUnits, BUILD_V1, PREP_V1 } from '../src/features/nutriserve/simulation/index.ts';
-import { gradeReferenceBuild, gradeReferenceMix } from '../src/features/nutriserve/domain/referenceScoring.ts';
+import { advanceGame, gradeFinishV1, gradeBuild, gradePrep, meterFraction, portionCredit, prepTargetUnits, BUILD_V1, PREP_V1 } from '../src/features/nutriserve/simulation/index.ts';
 import { game, cmd, reject, advanceUntil, atCounter, pour, buildPerfect } from './nutriserve-helpers.mjs';
 
 function withTicket(seed = 42) {
@@ -30,16 +29,16 @@ test('a press with no time poured still pours the minimum (build-v3)', () => {
   assert.equal(s.dishes[0].build.main.mg, 90 * 100);
 });
 
-test('perfect build scores 100 through the unchanged reference scorer', () => {
+test('perfect build scores 100 (build-v5)', () => {
   const { s, ticket } = withTicket();
   const { s: b, dishId } = buildPerfect(s, ticket);
   const dish = b.dishes.find((d) => d.id === dishId);
-  const grade = gradeIndianBuildV1(dish, ticket.order);
+  const grade = gradeBuild(dish, ticket.order);
   assert.equal(grade.score, 100);
   for (const c of ['base', 'main', 'side']) assert.ok(Math.abs(grade.signedErrorG[c]) < 0.5, `${c} near ideal`);
 });
 
-test('underfill and overfill are distinguished by sign and both cost points', () => {
+test('underfill and overfill are distinguished by sign, and a short portion costs more (build-v5)', () => {
   const { s, ticket } = withTicket();
   const make = (factor) => {
     let x = cmd(s, { type: 'startDish', size: ticket.order.size });
@@ -47,30 +46,43 @@ test('underfill and overfill are distinguished by sign and both cost points', ()
     x = pour(x, id, 'base', ticket.order.baseId, Math.round((ticket.order.idealG.base * 1000) / 80));
     x = pour(x, id, 'main', ticket.order.mainId, Math.round((ticket.order.idealG.main * factor * 1000) / 90));
     x = pour(x, id, 'side', ticket.order.sideId, Math.round((ticket.order.idealG.side * 1000) / 50));
-    return gradeIndianBuildV1(x.dishes.at(-1), ticket.order);
+    return gradeBuild(x.dishes.at(-1), ticket.order);
   };
-  const under = make(0.6), over = make(1.4);
+  const under = make(0.6), over = make(1.4), close = make(1.05);
   assert.ok(under.signedErrorG.main < 0 && over.signedErrorG.main > 0, 'opposite signs');
   assert.ok(Math.abs(under.signedErrorG.main + over.signedErrorG.main) < 1, 'same magnitude');
-  assert.ok(under.score < 100 && over.score < 100);
-  assert.equal(under.score, over.score, 'symmetric meter around the ideal');
+  assert.equal(close.score, 100, 'inside the exact band is free');
+  assert.ok(under.score < over.score && over.score < 100, `${under.score} < ${over.score} < 100`);
+  // 40 + 35 x (0.6 / 0.9) + 25 and 40 + 35 x (1 - 0.3 x 0.6) + 25, give or take the pour rounding.
+  assert.ok(Math.abs(under.score - 88) <= 1 && Math.abs(over.score - 94) <= 1, `${under.score} ${over.score}`);
 });
 
-test('wrong main loses its fixed reference share and skips its meter penalty', () => {
+test('portion credit: full inside the band, proportional when short, floored when generous', () => {
+  assert.equal(portionCredit(100, 100, 0.1), 1);
+  assert.equal(portionCredit(90, 100, 0.1), 1);
+  assert.equal(portionCredit(110, 100, 0.1), 1);
+  assert.equal(portionCredit(45, 100, 0.1), 0.5);
+  assert.equal(portionCredit(0, 100, 0.1), 0);
+  assert.ok(Math.abs(portionCredit(160, 100, 0.1) - 0.7) < 1e-9);
+  assert.equal(portionCredit(1000, 100, 0.1), BUILD_V1.overFloor);
+  assert.equal(portionCredit(50, 0, 0.1), 0);
+});
+
+test('a wrong main earns none of its share, however much was poured', () => {
   const { s, ticket } = withTicket();
   let x = cmd(s, { type: 'startDish', size: ticket.order.size });
   const id = x.dishes.at(-1).id;
   x = pour(x, id, 'base', ticket.order.baseId, Math.round((ticket.order.idealG.base * 1000) / 80));
   const wrongMain = ticket.order.mainId === 'rajma_masala' ? 'chana_masala' : 'rajma_masala';
-  x = pour(x, id, 'main', wrongMain, 10_000); // wildly overfilled, but wrong food: no meter penalty
+  x = pour(x, id, 'main', wrongMain, 10_000);
   x = pour(x, id, 'side', ticket.order.sideId, Math.round((ticket.order.idealG.side * 1000) / 50));
-  const grade = gradeIndianBuildV1(x.dishes.at(-1), ticket.order);
-  assert.equal(grade.score, 67);
+  const grade = gradeBuild(x.dishes.at(-1), ticket.order);
+  assert.equal(grade.score, 100 - BUILD_V1.share.main);
   assert.equal(grade.signedErrorG.main, null);
   assert.equal(grade.correct.main, false);
 });
 
-test('a wrong base food is an adapter penalty layered on the reference, not inside it', () => {
+test('a wrong base food earns none of the base share', () => {
   const { s, ticket } = withTicket();
   const otherBase = ticket.order.baseId === 'rice_white' ? 'rice_brown' : 'rice_white';
   let x = cmd(s, { type: 'startDish', size: ticket.order.size });
@@ -78,17 +90,14 @@ test('a wrong base food is an adapter penalty layered on the reference, not insi
   x = pour(x, id, 'base', otherBase, Math.round((ticket.order.idealG.base * 1000) / 80));
   x = pour(x, id, 'main', ticket.order.mainId, Math.round((ticket.order.idealG.main * 1000) / 90));
   x = pour(x, id, 'side', ticket.order.sideId, Math.round((ticket.order.idealG.side * 1000) / 50));
-  const grade = gradeIndianBuildV1(x.dishes.at(-1), ticket.order);
-  assert.equal(grade.score, 100 - BUILD_V1.baseMismatchPenalty);
-  // The reference function itself has no base category: the same inputs score 100 there.
-  assert.equal(gradeReferenceBuild({ cup: { correct: true, actualFill: 1, idealFill: 1 }, mixable: { correct: true, meterFraction: 0.5 }, syrup: { correct: true, meterFraction: 0.5 } }), 100);
+  assert.equal(gradeBuild(x.dishes.at(-1), ticket.order).score, 100 - BUILD_V1.share.base);
 });
 
-test('wrong vessel size costs the reference cup share', () => {
+test('the wrong vessel size costs a flat penalty', () => {
   const { s, ticket } = withTicket();
   const size = ticket.order.size === 'small' ? 'large' : 'small';
   const { s: b, dishId } = buildPerfect(s, ticket, size);
-  assert.equal(gradeIndianBuildV1(b.dishes.find((d) => d.id === dishId), ticket.order).score, 66);
+  assert.equal(gradeBuild(b.dishes.find((d) => d.id === dishId), ticket.order).score, 100 - BUILD_V1.wrongVesselPenalty);
 });
 
 test('meter fraction is 0.5 at the ideal and saturates at the full multiple', () => {
@@ -168,23 +177,37 @@ test('four slots run independently with different targets, even offscreen', () =
   assert.ok(s.prepSlots.every((slot) => slot.dishId === undefined));
 });
 
-test('prep grade uses the unchanged reference mix score via the level mapping', () => {
+test('prep grade: perfect at the mark, a share of the way when short, points per second when over (prep-v3)', () => {
   let { s, dishId, ticket } = inPrep();
   const target = prepTargetUnits(ticket.order.prepLevel);
   s = advanceGame(s, Math.round((target / 150) * 1000));
   s = cmd(s, { type: 'finishPrep', slot: 0 });
   const dish = s.dishes.find((d) => d.id === dishId);
-  assert.equal(gradeIndianPrepV1(dish, ticket.order), 100);
-  assert.equal(gradeIndianPrepV1(dish, { ...ticket.order, prepLevel: ticket.order.prepLevel === 'quick' ? 'slow' : 'quick' }), gradeReferenceMix(units(s, dishId), ticket.order.prepLevel === 'quick' ? 'smooth' : 'chunky'));
+  assert.equal(units(s, dishId), target);
+  assert.equal(gradePrep(dish, ticket.order), 100);
+  const at = (u) => gradePrep({ ...dish, prep: { ...dish.prep, milliUnits: u * 1000 } }, { ...ticket.order, prepLevel: 'regular' });
+  const mark = PREP_V1.targetUnits.regular, band = PREP_V1.perfectBandUnits;
+  assert.equal(at(mark - band), 100);
+  assert.equal(at(mark + band), 100);
+  assert.equal(at(0), 0);
+  assert.equal(at((mark - band) / 2), 50);
+  // Two seconds on the flame past the window: 2 x 12 points.
+  assert.equal(at(mark + band + 300), 100 - 2 * PREP_V1.overPointsPerSecond);
+  // Copper handis widen the window.
+  const wide = { portionBand: { base: false, main: false, side: false }, prepBand: true, waitingGraceMs: 0, finishBonus: 0, lobbyGraceMs: 0, ticketGraceMs: 0, whistle: false };
+  assert.equal(gradePrep({ ...dish, prep: { ...dish.prep, milliUnits: (mark + PREP_V1.wideBandUnits) * 1000 } }, { ...ticket.order, prepLevel: 'regular' }, wide), 100);
+  assert.ok(at(mark + PREP_V1.wideBandUnits) < 100);
+  // A dish that never went into a handi.
+  assert.equal(gradePrep({ ...dish, prep: undefined }, ticket.order), 0);
 });
 
-test('overcooking keeps running to the provisional cap and floors at the reference minimum', () => {
+test('overcooking keeps running to the cap, and a long-burnt dish scores nothing', () => {
   let { s, dishId, ticket } = inPrep();
   s = advanceGame(s, 60_000);
   assert.equal(units(s, dishId), PREP_V1.maxUnits);
   s = cmd(s, { type: 'finishPrep', slot: 0 });
   const quick = { ...ticket.order, prepLevel: 'quick' };
-  assert.equal(gradeIndianPrepV1(s.dishes.find((d) => d.id === dishId), quick), 17);
+  assert.equal(gradePrep(s.dishes.find((d) => d.id === dishId), quick), 0);
 });
 
 // --- C04 Finish (provisional rules) -------------------------------------------

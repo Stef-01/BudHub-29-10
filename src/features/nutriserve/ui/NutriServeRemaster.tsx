@@ -14,13 +14,13 @@ import {
   type ServeResult,
 } from '../simulation/index.ts';
 import { StationBackdrop } from './LayoutStudy.tsx';
-import { slotsAtMark, STATIONS, StationTabs } from './StationTabs.tsx';
+import { revealPrepDone, slotsAtMark, STATIONS, StationTabs } from './StationTabs.tsx';
 import { TicketRail } from './TicketRail.tsx';
 import { BuildStation } from './stations/BuildStation.tsx';
 import { FinishStation } from './stations/FinishStation.tsx';
 import { OrderStation } from './stations/OrderStation.tsx';
 import { PrepStation } from './stations/PrepStation.tsx';
-import { clearSave, readSavedGame, recordDayReported, useNutriServeGame, wasDayReported, writeSave, type Dispatch } from './useNutriServeGame.ts';
+import { clearSave, readSavedGame, recordDayReported, saveKey, useNutriServeGame, wasDayReported, type Dispatch } from './useNutriServeGame.ts';
 import { LayoutContext, type DockSlot } from './Dockable.tsx';
 
 /**
@@ -46,6 +46,8 @@ function nextCompact(was: boolean, kitchenWidth: number, windowWidth: number, wi
 const SIDE_DOCK_MIN_WIDTH = 560;
 /** How long a status message stays in the live line. */
 const STATUS_MS = 6_000;
+/** Recent messages kept in the status region (all but the newest are visually hidden). */
+const STATUS_KEPT = 3;
 import './remaster.css';
 
 export interface NutriServeRemasterProps {
@@ -90,9 +92,19 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
   const [game, setGame] = useState<GameState | null>(null);
   // Bumped on every new game so the kitchen remounts with fresh state.
   const [session, setSession] = useState(0);
-  const stored = useMemo(() => readSavedGame(props.userId), [props.userId, session]);
+  // Re-read when another tab changes the save, so the start screen never offers a stale day.
+  const [storageSeq, setStorageSeq] = useState(0);
+  const stored = useMemo(() => readSavedGame(props.userId), [props.userId, session, storageSeq]);
   const saved = stored.state;
   const problem = stored.problem;
+  useEffect(() => {
+    if (game) return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === saveKey(props.userId)) setStorageSeq((n) => n + 1);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [game, props.userId]);
 
   const begin = useCallback(
     (profile?: Profile, runId?: string) => {
@@ -160,7 +172,7 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
         )}
         <div className="ns-row">
           {saved && (
-            <button type="button" className="ns-btn ns-btn-primary" onClick={() => setGame(saved)}>
+            <button type="button" className="ns-btn ns-btn-primary" onClick={() => setGame(readSavedGame(props.userId).state ?? saved)}>
               Continue day {saved.day.number}
             </button>
           )}
@@ -196,16 +208,24 @@ function Kitchen({
   onDayComplete,
   onRestart,
 }: NutriServeRemasterProps & { initial: GameState; onRestart: (profile: Profile, runId: string) => void }) {
-  const { state, dispatch, lastError, fatal } = useNutriServeGame(initial, userId);
-  // One live status line: the latest announcement or rejected command, cleared after STATUS_MS.
-  // seq makes an identical message (a second overheat) count as new and be read out again.
-  const [status, setStatus] = useState({ text: '', seq: 0 });
-  const say = useCallback((text: string) => setStatus((s) => ({ text, seq: s.seq + 1 })), []);
+  const { state, dispatch, lastError, fatal, superseded, takeOver, saveNow } = useNutriServeGame(initial, userId);
+  // One live status line showing the latest announcement or rejected command, cleared STATUS_MS
+  // after the last one. Each message is its own node and the last few stay (visually hidden), so a
+  // screen reader reads every message once even when the next arrives before it has finished, and
+  // an identical repeat (a second overheat) is a new node that is read again.
+  const [status, setStatus] = useState<{ messages: Array<{ text: string; id: number }>; seq: number }>({ messages: [], seq: 0 });
+  const say = useCallback(
+    (text: string) => setStatus((s) => ({ messages: [...s.messages, { text, id: s.seq + 1 }].slice(-STATUS_KEPT), seq: s.seq + 1 })),
+    []
+  );
   useEffect(() => {
-    if (!status.text) return;
-    const id = window.setTimeout(() => setStatus((s) => (s.seq === status.seq ? { ...s, text: '' } : s)), STATUS_MS);
+    if (!status.messages.length) return;
+    const id = window.setTimeout(() => setStatus((s) => (s.seq === status.seq ? { ...s, messages: [] } : s)), STATUS_MS);
     return () => window.clearTimeout(id);
   }, [status]);
+  // Prep cues have a region of their own: a handi at its mark overcooks in seconds, so its cue must
+  // never be replaced by an arrival or a serve before it is read. It names every handi at its mark.
+  const [cue, setCue] = useState<{ text: string; id: number }>({ text: '', id: 0 });
   useEffect(() => {
     if (lastError) say(lastError.message);
   }, [lastError, say]);
@@ -275,7 +295,16 @@ function Kitchen({
     // A handi reaching its mark is announced wherever the player is (it overcooks fast after).
     const nowAtMark = slotsAtMark(state);
     const before = new Set(slotsAtMark(prev));
-    for (const i of nowAtMark) if (!before.has(i)) messages.push(`Prep slot ${i + 1} is at its mark: take it out.`);
+    const fresh = nowAtMark.filter((i) => !before.has(i));
+    if (fresh.length) {
+      // Newest first, then any still waiting.
+      const order = [...fresh, ...nowAtMark.filter((i) => before.has(i))].map((i) => i + 1);
+      const text =
+        order.length === 1
+          ? `Prep slot ${order[0]} is at its mark: take it out.`
+          : `Prep slots ${order.slice(0, -1).join(', ')} and ${order.at(-1)} are at their mark: take them out.`;
+      setCue((c) => ({ text, id: c.id + 1 }));
+    } else if (nowAtMark.length === 0 && before.size > 0) setCue((c) => ({ text: '', id: c.id }));
     if (state.day.results.length > prev.day.results.length) {
       const r = state.day.results[state.day.results.length - 1];
       messages.push(`Served ${name(r.catalogCustomerId)}: ${r.scores.total} out of 100, ${r.tip} coins tip.`);
@@ -306,8 +335,11 @@ function Kitchen({
   }, [state, onDayComplete, dispatch, userId]);
 
   // A dialog (pause, day summary, error) is open: everything behind it is inert.
-  const pausedDialog = state.paused && !state.day.completed;
-  const modalOpen = pausedDialog || state.day.completed || !!fatal;
+  const pausedDialog = state.paused && !state.day.completed && !superseded;
+  const modalOpen = pausedDialog || state.day.completed || !!fatal || superseded;
+
+  const latestState = useRef(state);
+  latestState.current = state;
 
   // Keyboard: 1-4 switch stations, P pauses/resumes, Escape resumes from the pause dialog.
   // Shortcuts never act behind an open dialog, and holding a key never repeats them.
@@ -326,7 +358,10 @@ function Kitchen({
       // The finish vessel (role=application) uses arrows, Space and Enter only, so P and 1-4 work there too.
       if (target.closest('input, textarea, select')) return;
       const index = ['1', '2', '3', '4'].indexOf(e.key);
-      if (index >= 0) dispatch({ type: 'selectStation', station: STATIONS[index] });
+      if (index >= 0) {
+        dispatch({ type: 'selectStation', station: STATIONS[index] });
+        if (STATIONS[index] === 'prep') revealPrepDone(latestState.current);
+      }
       else if (isP) dispatch({ type: 'pause' });
     };
     window.addEventListener('keydown', onKey);
@@ -419,7 +454,7 @@ function Kitchen({
   const nextRank = RANK_THRESHOLDS[state.profile.rank];
 
   const exit = () => {
-    writeSave(userId, state);
+    saveNow();
     onExit();
   };
 
@@ -478,6 +513,14 @@ function Kitchen({
             </div>
             {fatal ? (
               <FatalOverlay message={fatal} onExit={onExit} onRestart={() => onRestart(state.profile, state.runId)} />
+            ) : superseded ? (
+              <OtherTabOverlay
+                onContinue={() => {
+                  // The other tab's save can't be read here (e.g. it runs a newer version): reload.
+                  if (!takeOver()) window.location.reload();
+                }}
+                onExit={onExit}
+              />
             ) : state.day.completed ? (
               <DaySummary state={state} dispatch={dispatch} onExit={exit} />
             ) : state.paused ? (
@@ -495,10 +538,15 @@ function Kitchen({
           </div>
         )}
 
+        <p className="sr-only" aria-live="polite" data-ns-cue>
+          {cue.text && <span key={cue.id}>{cue.text}</span>}
+        </p>
         <p className="ns-status" role="status" aria-live="polite">
-          {status.text}
-          {/* An invisible change so an identical repeat is announced again. */}
-          {status.text && status.seq % 2 ? '\u200b' : ''}
+          {status.messages.map((m, i) => (
+            <span key={m.id} className={i === status.messages.length - 1 ? undefined : 'sr-only'}>
+              {m.text}{' '}
+            </span>
+          ))}
         </p>
         <details className="ns-help" inert={modalOpen}>
           <summary>Controls</summary>
@@ -663,6 +711,26 @@ function FatalOverlay({ message, onExit, onRestart }: { message: string; onExit:
           Exit
         </button>
       </div>
+    </Modal>
+  );
+}
+
+function OtherTabOverlay({ onContinue, onExit }: { onContinue: () => void; onExit: () => void }) {
+  return (
+    <Modal label="Open in another tab" alert>
+      <h2>Open in another tab</h2>
+      <p>This kitchen was opened in another tab or window, and your progress is being saved there. This tab has stopped saving so the two never overwrite each other.</p>
+      <div className="ns-row">
+        <button type="button" className="ns-btn ns-btn-primary" autoFocus onClick={onContinue}>
+          Continue here
+        </button>
+        <button type="button" className="ns-btn ns-btn-quiet" onClick={onExit}>
+          Exit
+        </button>
+      </div>
+      <p className="ns-muted">
+        <small>Continue here picks up from the latest save, and the other tab stops instead.</small>
+      </p>
     </Modal>
   );
 }

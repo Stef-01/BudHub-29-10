@@ -108,7 +108,12 @@ export function PrepStation({ state, dispatch }: { state: GameState; dispatch: D
                   >
                     Boost
                   </HoldButton>
-                  <button type="button" className="ns-btn ns-btn-primary" onClick={() => dispatch({ type: 'finishPrep', slot: slot.index })}>
+                  <button
+                    type="button"
+                    className="ns-btn ns-btn-primary"
+                    data-prep-done={slot.index}
+                    onClick={() => dispatch({ type: 'finishPrep', slot: slot.index })}
+                  >
                     Done
                   </button>
                 </>

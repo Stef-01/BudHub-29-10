@@ -1,7 +1,7 @@
 // C05 serving/day/progression and C06 nutrition.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceGame, applyCommand, createGame, deserializeGame, serializeGame, rankForPoints, UPGRADES, gradeWaitingV1 } from '../src/features/nutriserve/simulation/index.ts';
+import { advanceGame, applyCommand, createGame, deserializeGame, serializeGame, rankForPoints, UPGRADES, gradeWaitingV1, prepTargetUnits } from '../src/features/nutriserve/simulation/index.ts';
 import { dishNutrition, mealGoals, nutritionFeedback, validateCatalog } from '../src/features/nutriserve/nutrition/nutrition.ts';
 import { CATALOG_FOODS } from '../src/features/nutriserve/data/catalog.generated.ts';
 import { game, cmd, reject, advanceUntil, atCounter, buildPerfect, pour } from './nutriserve-helpers.mjs';
@@ -11,7 +11,7 @@ function makePerfect(s, ticket) {
   const built = buildPerfect(s, ticket);
   s = cmd(built.s, { type: 'startPrep', dishId: built.dishId, slot: s.prepSlots.findIndex((x) => !x.dishId) });
   const slot = s.prepSlots.findIndex((x) => x.dishId === built.dishId);
-  const targetUnits = { quick: 900, regular: 1800, slow: 2700 }[ticket.order.prepLevel];
+  const targetUnits = prepTargetUnits(ticket.order.prepLevel);
   s = advanceGame(s, Math.round((targetUnits / 150) * 1000));
   s = cmd(s, { type: 'finishPrep', slot });
   for (const step of ticket.order.finish) {

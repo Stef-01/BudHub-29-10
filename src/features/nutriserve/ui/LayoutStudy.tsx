@@ -9,10 +9,11 @@ import { getFood } from '../simulation/index.ts';
 import { FINISH_V1 } from '../simulation/index.ts';
 
 export const STATION_COLORS: Record<StationId, { wall: string; accent: string; label: string; hi: string }> = {
-  order: { wall: '#b9d87b', accent: '#2f7d3a', label: 'Order', hi: 'ऑर्डर' },
-  build: { wall: '#a77cc9', accent: '#5b2f86', label: 'Build', hi: 'परोसें' },
-  prep: { wall: '#eda957', accent: '#9a4f0c', label: 'Prep', hi: 'पकाएँ' },
-  finish: { wall: '#6f98d6', accent: '#1f4e91', label: 'Finish', hi: 'सजाएँ' },
+  // NutriServe's own station colours (peacock teal, turmeric, terracotta, rani pink).
+  order: { wall: '#9fd3c7', accent: '#1d6b63', label: 'Order', hi: 'ऑर्डर' },
+  build: { wall: '#f0d27a', accent: '#7d5a0b', label: 'Build', hi: 'परोसें' },
+  prep: { wall: '#e8a58c', accent: '#963a22', label: 'Prep', hi: 'पकाएँ' },
+  finish: { wall: '#e3a6c6', accent: '#8a2858', label: 'Finish', hi: 'सजाएँ' },
 };
 
 export function StationBackdrop({ station }: { station: StationId }) {
