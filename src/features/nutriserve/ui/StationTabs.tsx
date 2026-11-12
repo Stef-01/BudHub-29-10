@@ -49,6 +49,55 @@ export function revealPrepDone(state: GameState): void {
   );
 }
 
+/**
+ * On a phone, after switching to a station, bring its controls into view just below the pinned
+ * tabs: Build from its ticket down to Send, Finish from its dish list down to Done, Order and Prep
+ * from their first control (Prep with a handi at its mark brings that handi's Done into view
+ * instead, see revealPrepDone). Without it the page stays wherever the last station left it, and
+ * every switch on an upright phone began with a scroll (audit 13). Nothing moves when the controls
+ * are already in view (a block taller than the screen: when its top is in the upper quarter), or on
+ * a wide layout. It never moves focus.
+ */
+export function revealStation(state: GameState, station: StationId): void {
+  if (station === 'prep' && slotsAtMark(state).length) {
+    revealPrepDone(state);
+    return;
+  }
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const root = document.querySelector<HTMLElement>('.ns-root.ns-compact');
+      const main = root?.querySelector<HTMLElement>('.ns-dock-main');
+      if (!root || !main?.firstElementChild) return;
+      const bottom = main.getBoundingClientRect().bottom;
+      // The pinned tabs cover the top of the screen above the controls (not when they sit beside them,
+      // as on a phone held sideways, or scroll with the page, as at 400% zoom).
+      const tabs = root.querySelector<HTMLElement>('.ns-dock-tabs');
+      const t = tabs?.getBoundingClientRect();
+      const m = main.getBoundingClientRect();
+      const pinned = !!tabs && !!t && getComputedStyle(tabs).position === 'sticky' && t.right > m.left && t.left < m.right;
+      const room = window.innerHeight - (pinned ? t.height : 0);
+      // The longest block that fits, from the station's ticket (Build) or dish list (Finish) down to
+      // its last control; else from its first control.
+      const starts = [
+        ...(station === 'build' ? [root.querySelector<HTMLElement>('.ns-dock-top'), root.querySelector<HTMLElement>('.ns-dock-aside:not(:empty)')] : []),
+        ...(station === 'finish' ? [root.querySelector<HTMLElement>('.ns-dock-aside:not(:empty)')] : []),
+        main,
+      ]
+        // Only what sits above the controls (when side by side, the ticket and dish list are in the other column).
+        .filter((e): e is HTMLElement => !!e && e.getBoundingClientRect().right > m.left && e.getBoundingClientRect().left < m.right);
+      const start = starts.find((e) => bottom - e.getBoundingClientRect().top <= room) ?? main;
+      const block = start.getBoundingClientRect();
+      const visibleTop = pinned ? Math.max(0, t.bottom) : 0;
+      const fits = bottom - block.top <= room;
+      const shown = block.top >= visibleTop && (fits ? bottom <= window.innerHeight : block.top <= visibleTop + window.innerHeight / 4);
+      if (shown) return;
+      // Up to 6 px below the tabs, less when the block only just fits (a pixel spare for rounding).
+      const gap = fits ? Math.max(0, Math.min(6, Math.floor(room - (bottom - block.top)) - 1)) : 6;
+      window.scrollBy({ top: block.top - (pinned ? t.height : 0) - gap, behavior: 'instant' as ScrollBehavior });
+    })
+  );
+}
+
 /** Small counts so the player can see what's waiting where without switching. */
 function badge(state: GameState, station: StationId): number {
   switch (station) {
@@ -82,11 +131,11 @@ export function StationTabs({ state, dispatch }: { state: GameState; dispatch: D
             aria-keyshortcuts={String(i + 1)}
             aria-label={`${label} station${count ? `, ${count} waiting` : ''}${atMark ? `, ${atMark} at the mark` : ''}`}
             onClick={() => {
-              // Only coming to Prep from another station scrolls: tapping Prep again while there
+              // Only coming from another station scrolls: tapping the current station's tab again
               // leaves the page where the player put it.
               const from = state.selected.station;
               dispatch({ type: 'selectStation', station });
-              if (station === 'prep' && from !== 'prep') revealPrepDone(state);
+              if (station !== from) revealStation(state, station);
             }}
           >
             <span>{label}</span>

@@ -15,7 +15,7 @@ import {
   type ServeResult,
 } from '../simulation/index.ts';
 import { StationBackdrop } from './LayoutStudy.tsx';
-import { revealPrepDone, slotsAtMark, STATIONS, StationTabs } from './StationTabs.tsx';
+import { revealStation, slotsAtMark, STATIONS, StationTabs } from './StationTabs.tsx';
 import { TicketRail } from './TicketRail.tsx';
 import { BuildStation } from './stations/BuildStation.tsx';
 import { FinishStation } from './stations/FinishStation.tsx';
@@ -444,10 +444,10 @@ function Kitchen({
       if (target.closest('input, textarea, select')) return;
       const index = ['1', '2', '3', '4'].indexOf(e.key);
       if (index >= 0) {
-        // Only coming to Prep from another station scrolls (not pressing 3 again while there).
+        // Only coming from another station scrolls (not pressing 3 again while on Prep).
         const from = latestState.current.selected.station;
         dispatch({ type: 'selectStation', station: STATIONS[index] });
-        if (STATIONS[index] === 'prep' && from !== 'prep') revealPrepDone(latestState.current);
+        if (STATIONS[index] !== from) revealStation(latestState.current, STATIONS[index]);
       }
       else if (isP) dispatch({ type: 'pause' });
     };

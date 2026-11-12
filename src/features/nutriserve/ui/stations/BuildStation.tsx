@@ -73,7 +73,7 @@ function dishRows(state: GameState, dish: GameState['dishes'][number], open: Tic
   return rows;
 }
 
-function Gauge({ label, actualG, idealG, band }: { label: string; actualG: number; idealG?: number; band: number }) {
+function Gauge({ label, food, actualG, idealG, band }: { label: string; food?: string; actualG: number; idealG?: number; band: number }) {
   // The line sits at 1 / meterFullMultiple of the track; the shaded zone around it is the exact band.
   const position = idealG ? meterFraction(actualG, idealG) : 0;
   const line = 1 / BUILD_V1.meterFullMultiple;
@@ -90,6 +90,9 @@ function Gauge({ label, actualG, idealG, band }: { label: string; actualG: numbe
             {Math.round(error)}
           </small>
         )}
+        {/* On a phone: the food the ticket wants, so the gauges read on their own when the ticket is
+            scrolled away (last, so a long name is the part that gets cut short). */}
+        {food && <span className="ns-gauge-food"> · {food}</span>}
       </span>
       <span
         className="ns-gauge-track"
@@ -200,7 +203,13 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
         </p>
         {COMPONENTS.map((c) => (
           <React.Fragment key={c.id}>
-            <Gauge label={c.label} actualG={grams(c.id)} idealG={ideal?.[c.id]} band={exactBand(c.id, effects, ideal?.[c.id])} />
+            <Gauge
+              label={c.label}
+              food={ticket ? foodLabel(c.id === 'base' ? ticket.order.baseId : c.id === 'main' ? ticket.order.mainId : ticket.order.sideId) : undefined}
+              actualG={grams(c.id)}
+              idealG={ideal?.[c.id]}
+              band={exactBand(c.id, effects, ideal?.[c.id])}
+            />
           </React.Fragment>
         ))}
         {!ideal && ticket && <p className="ns-muted">Size differs from ticket #{ticket.number}</p>}

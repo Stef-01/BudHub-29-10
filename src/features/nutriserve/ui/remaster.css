@@ -114,6 +114,9 @@
 .ns-gauge-label { font-size: 0.8em; }
 .ns-gauge-label .ns-over { color: #8a2a00; font-weight: 700; }
 .ns-gauge-label .ns-under { color: #1d4f9a; font-weight: 700; }
+.ns-gauge-food { display: none; }
+.ns-dock .ns-gauge-food { display: inline; font-weight: 700; }
+.ns-dock .ns-gauge-label { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ns-size-warning { color: #8a2a00; }
 /* Short of the line is blue, past it red; the line sits at 62.5% (BUILD_V1.meterFullMultiple 1.6). */
 .ns-gauge-track { position: relative; display: block; height: 0.7em; border-radius: 999px; background: linear-gradient(90deg, #d7e7f8, #fff 57%, #fff 68%, #fbdcd0); border: 1.5px solid var(--line); }
@@ -258,7 +261,7 @@
 .ns-dock .ns-tool { font-size: 13px; padding: 2px 4px; min-width: 0; line-height: 1.15; text-align: left; }
 .ns-dock .ns-gauge-track { height: 12px; }
 .ns-dock .ns-gauge-needle { width: 14px; height: 14px; }
-.ns-dock .ns-vessel-top { width: min(100%, 340px, 50svh); aspect-ratio: 1; margin: 0 auto; position: relative; }
+.ns-dock .ns-vessel-top { width: min(100%, 340px, 42svh); aspect-ratio: 1; margin: 0 auto; position: relative; }
 .ns-dock .ns-tray .ns-btn, .ns-dock .ns-tray-label { font-size: 15px; }
 .ns-dock .ns-lastserve-wrap { margin: 0; }
 /* Fixed height on phones too (nothing below moves); the middle line is tall enough for a touch-sized Why? button. */
