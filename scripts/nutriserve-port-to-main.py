@@ -35,6 +35,7 @@ import re
 import signal
 import subprocess
 import sys
+import tempfile
 
 SOURCE_REF = 'claude/continue-building-j1mrs7'
 PORT_SOURCE = 'docs/nutriserve/PORT_SOURCE'
@@ -97,15 +98,24 @@ def union_with(text, type_name, value, members_only=False):
     end without a ';'; a ';' or line break inside brackets (an object type, a generic spread over
     lines) doesn't end it; only the union's own members count (a literal inside `Exclude<..>` or
     `{ kind: .. }` is not one; one inside plain parentheses is). The new member uses the union's
-    own quotes, layout and line endings. `members_only`: the union's members instead (a list)."""
+    own quotes, layout and line endings. Only a declaration at the file's top level counts (not
+    one inside a namespace or other block). `members_only`: the union's members instead (a list)."""
     n = len(text)
     WORD = re.compile(r'[A-Za-z_$\d][\w$]*')
     REGEX_AFTER = set('(,=:[!&|?{};+-*%<>~^') | {'=>'}
     REGEX_WORDS = {'return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'new', 'delete', 'void', 'throw', 'yield', 'await', 'instanceof'}
 
+    # Line terminators: LF, CR, and U+2028/U+2029 (which a string may contain, but which end a
+    # line comment or a regex, and a statement without ';').
+    LT = '\n\r\u2028\u2029'
+
+    def line_end(i):
+        """Index of the first line terminator at or after i (n when none)."""
+        return next((j for j in range(i, n) if text[j] in LT), n)
+
     def skip_string(i):
         q, j = text[i], i + 1
-        while j < n and text[j] != q and text[j] != '\n':
+        while j < n and text[j] != q and text[j] not in '\n\r':
             j += 2 if text[j] == '\\' else 1
         return min(j + 1, n)
 
@@ -115,8 +125,7 @@ def union_with(text, type_name, value, members_only=False):
         while i < n:
             c = text[i]
             if text.startswith('//', i):
-                j = text.find('\n', i)
-                i = n if j < 0 else j
+                i = line_end(i)
             elif text.startswith('/*', i):
                 j = text.find('*/', i + 2)
                 i = n if j < 0 else j + 2
@@ -152,21 +161,21 @@ def union_with(text, type_name, value, members_only=False):
         comment, str, tpl, regex, word, punct. `prev` is the last significant token's text."""
         while i < n:
             c = text[i]
-            if c == '\n':
-                yield 'nl', i, i + 1
-                i += 1
-            elif c in ' \t\r\f\v﻿ ':
+            if c in LT:
+                j = i + 2 if text.startswith('\r\n', i) else i + 1
+                yield 'nl', i, j
+                i = j
+            elif c in ' \t\f\v﻿ ':
                 yield 'ws', i, i + 1
                 i += 1
             elif text.startswith('//', i):
-                j = text.find('\n', i)
-                j = n if j < 0 else j
+                j = line_end(i)
                 yield 'comment', i, j
                 i = j
             elif text.startswith('/*', i):
                 j = text.find('*/', i + 2)
                 j = n if j < 0 else j + 2
-                yield ('nl' if '\n' in text[i:j] else 'comment'), i, j
+                yield ('nl' if any(ch in LT for ch in text[i:j]) else 'comment'), i, j
                 i = j
             elif c in '\'"':
                 j = skip_string(i)
@@ -178,7 +187,7 @@ def union_with(text, type_name, value, members_only=False):
                 prev, i = 'tpl', j
             elif c == '/' and (prev is None or prev in REGEX_AFTER or prev in REGEX_WORDS):
                 j, in_class = i + 1, False
-                while j < n and text[j] != '\n':
+                while j < n and text[j] not in LT:
                     if text[j] == '\\':
                         j += 2
                         continue
@@ -204,14 +213,22 @@ def union_with(text, type_name, value, members_only=False):
                     yield 'word', i, m.end()
                     prev, i = m.group(), m.end()
                 else:
-                    j = i + 2 if text.startswith('=>', i) else i + 1
+                    # `++` and `--` are one token: a '/' after `i++` divides, it doesn't start a regex.
+                    j = i + 2 if text.startswith(('=>', '++', '--'), i) else i + 1
                     yield 'punct', i, j
                     prev, i = text[i:j], j
 
-    # The declaration: `export type <name> =` in code.
+    # The declaration: `export type <name> =` in code, at the top level (outside every brace).
     code = [t for t in tokens(0) if t[0] not in ('ws', 'nl', 'comment')]
-    after = None
+    after, depth = None, 0
     for k in range(len(code) - 3):
+        t = text[code[k][1]:code[k][2]]
+        if code[k][0] == 'punct' and t == '{':
+            depth += 1
+        elif code[k][0] == 'punct' and t == '}':
+            depth = max(0, depth - 1)
+        if depth:
+            continue
         words = [text[s:e] for _, s, e in code[k:k + 4]]
         if words == ['export', 'type', type_name, '='] and code[k + 2][0] == 'word':
             after = code[k + 3][2]
@@ -307,10 +324,73 @@ def union_with(text, type_name, value, members_only=False):
     return text[:pos] + insert + text[pos:]
 
 
+# Reads an edit back with TypeScript's own parser (main's node_modules), independently of
+# union_with: argv = before file, after file, type name, added value. Prints {"ok": true} or why not.
+TS_CHECK = r'''
+const [before, after, name, value] = process.argv.slice(1);
+let ts;
+try { ts = require(require.resolve('typescript', { paths: [process.cwd()] })); }
+catch (e) { console.log(JSON.stringify({ ok: false, why: 'TypeScript is not installed here' })); process.exit(0); }
+const fs = require('fs');
+const read = (file) => {
+  const text = fs.readFileSync(file, 'utf8');
+  const sf = ts.createSourceFile('x.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const found = sf.statements.filter((s) => ts.isTypeAliasDeclaration(s) && s.name.text === name && !s.typeParameters
+    && (ts.getModifiers ? ts.getModifiers(s) || [] : s.modifiers || []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword));
+  if (found.length !== 1) return { why: `${found.length} exported type ${name} at the top level` };
+  const members = [];
+  const walk = (t) => {
+    if (ts.isParenthesizedTypeNode(t)) return walk(t.type);
+    if (ts.isUnionTypeNode(t)) return t.types.forEach(walk);
+    if (ts.isLiteralTypeNode(t) && (ts.isStringLiteral(t.literal) || ts.isNoSubstitutionTemplateLiteral(t.literal))) members.push(t.literal.text);
+  };
+  walk(found[0].type);
+  // Where an edit to this declaration may go: from its start to the next statement's.
+  const next = sf.statements[sf.statements.indexOf(found[0]) + 1];
+  return { text, members, from: found[0].getStart(sf), to: next ? next.getStart(sf) : text.length, errors: (sf.parseDiagnostics || []).length };
+};
+const a = read(before), b = read(after);
+const why = a.why || b.why || (() => {
+  if (JSON.stringify(b.members) !== JSON.stringify([...a.members, value])) return `members ${JSON.stringify(a.members)} became ${JSON.stringify(b.members)}`;
+  // The edit as one insertion: the common prefix and suffix must cover the whole old text.
+  let p = 0;
+  while (p < a.text.length && a.text[p] === b.text[p]) p++;
+  let q = 0;
+  while (q < a.text.length - p && a.text[a.text.length - 1 - q] === b.text[b.text.length - 1 - q]) q++;
+  if (p + q !== a.text.length || b.text.length <= a.text.length) return 'more than one place changed';
+  if (p < a.from || p > a.to) return 'text outside the declaration changed';
+  return b.errors > a.errors ? 'the file no longer parses' : '';
+})();
+console.log(JSON.stringify(why ? { ok: false, why } : { ok: true }));
+'''
+
+
+def ts_check(before, after, type_name, value, cwd):
+    """TypeScript's reading of the edit (see TS_CHECK): None when it is exactly `value` added to the
+    union and nothing else changed, else why not."""
+    paths = []
+    try:
+        for text in (before, after):
+            fd, path = tempfile.mkstemp(suffix='.ts')
+            with os.fdopen(fd, 'w', newline='') as f:
+                f.write(text)
+            paths.append(path)
+        r = run(['node', '-e', TS_CHECK, *paths, type_name, value], cwd=cwd, text=True, capture_output=True)
+        try:
+            verdict = json.loads(r.stdout.strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            return f'the check did not run ({(r.stderr or "no output").strip()[:200]})'
+        return None if verdict.get('ok') else verdict.get('why', 'unknown')
+    finally:
+        for path in paths:
+            os.unlink(path)
+
+
 def add_to_union(path, type_name, value):
     """Add the string literal `value` to a TypeScript union type alias, wherever main has put the
-    other members (an unrelated new mode on main must not stop the port). The edit is read back:
-    the union must now have `value` and still parse the same everywhere else."""
+    other members (an unrelated new mode on main must not stop the port). The edit is read back
+    twice: by union_with (the union must now have `value`), and by TypeScript's own parser, which
+    shares nothing with union_with (exactly `value` added to the union, nothing else changed)."""
     p = f'{W}/{path}'
     s = open(p, newline='').read()
     out = union_with(s, type_name, value)
@@ -320,6 +400,9 @@ def add_to_union(path, type_name, value):
         return
     if union_with(out, type_name, value, members_only=True) != union_with(s, type_name, value, members_only=True) + [value]:
         fail(f'{path}: could not add {value!r} to {type_name} cleanly; add it by hand')
+    why = ts_check(s, out, type_name, value, W)
+    if why:
+        fail(f'{path}: adding {value!r} to {type_name} did not read back right ({why}); add it by hand')
     open(p, 'w', newline='').write(out)
 
 
@@ -460,6 +543,16 @@ if SELF_TEST:
         ("export type M =\n  | 'a'\n  | 'b' // last one\nexport const y = 1;\n", "export type M =\n  | 'a'\n  | 'b' // last one\n  | 'x'\nexport const y = 1;\n"),
         ("export type M = 'a'\n  | 'b';\n", "export type M = 'a'\n  | 'b'\n  | 'x';\n"),
         ("export type M = 'a' | (() => 'b');\n", "export type M = 'a' | (() => 'b') | 'x';\n"),
+        # Audit 15: a '/' after `++`/`--` divides; only the top-level declaration counts; U+2028
+        # and a lone CR end a line.
+        ("let i = 0;\nconst h = i++ / 2, s = \"/ export type M = 'z';\";\nexport type M = 'a';\n",
+         "let i = 0;\nconst h = i++ / 2, s = \"/ export type M = 'z';\";\nexport type M = 'a' | 'x';\n"),
+        ("let j = 9;\nconst g = j-- / 3 / 1;\nexport type M = 'a';\n", "let j = 9;\nconst g = j-- / 3 / 1;\nexport type M = 'a' | 'x';\n"),
+        ("export namespace Old {\n  export type M = 'z';\n}\nexport type M = 'a';\n",
+         "export namespace Old {\n  export type M = 'z';\n}\nexport type M = 'a' | 'x';\n"),
+        ("export type M = 'a' | 'b'\u2028export const y = 1;\n", "export type M = 'a' | 'b' | 'x'\u2028export const y = 1;\n"),
+        ("// note\u2028export type M = 'a';\n", "// note\u2028export type M = 'a' | 'x';\n"),
+        ("export type M = 'a' | 'b'\rexport const y = 1;\r", "export type M = 'a' | 'b' | 'x'\rexport const y = 1;\r"),
     ]
     bad = 0
     for text, want in cases:
@@ -470,12 +563,22 @@ if SELF_TEST:
         elif want is not None and union_with(got, 'M', 'x', members_only=True) != union_with(text, 'M', 'x', members_only=True) + ['x']:
             bad += 1
             print(f'FAIL (members) {text!r}')
-    missing = ["export type N = 'a';", "// export type M = 'a';\n", "const s = \"export type M = 'a'\";"]
+        elif want is not None and (why := ts_check(text, got, 'M', 'x', SRC)):
+            bad += 1
+            print(f'FAIL (TypeScript: {why}) {text!r}')
+    # A U+2029 ends a line comment, so two declarations are code: the TypeScript read-back stops the port.
+    two = "// note\u2029export type M = 'z';\nexport type M = 'a';\n"
+    why = ts_check(two, union_with(two, 'M', 'x'), 'M', 'x', SRC)
+    if not (why and 'at the top level' in why):
+        bad += 1
+        print(f'FAIL: two declarations should stop the port (TypeScript said {why!r})')
+    missing = ["export type N = 'a';", "// export type M = 'a';\n", "const s = \"export type M = 'a'\";",
+               "export namespace Old {\n  export type M = 'a';\n}\n"]
     for text in missing:
         if union_with(text, 'M', 'x') is not None:
             bad += 1
             print(f'FAIL: a missing type should give None: {text!r}')
-    total = len(cases) + len(missing)
+    total = len(cases) + len(missing) + 1
     print(f'union self-test: {total - bad}/{total} pass')
     sys.exit(1 if bad else 0)
 
@@ -663,6 +766,9 @@ try:
     counts = sh('node', '--experimental-strip-types', '-e',
                 "import('./src/features/nutriserve/data/catalog.generated.ts').then(m=>console.log(m.CATALOG_FOODS.length+' foods, '+m.CATALOG_CUSTOMERS.length+' customers'))").strip()
     checkpoint()
+    # The port is complete: a signal from here on (even while Python exits) changes nothing.
+    for _sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(_sig, signal.SIG_IGN)
     print(f'ported {SOURCE_REF} {source[:8]}; catalog {counts}; removed {len(removed)} file(s){": " + ", ".join(removed) if removed else ""}')
 except BaseException as error:
     # Put the worktree back as it was: the same branch (never moved) or commit, clean. Signals are

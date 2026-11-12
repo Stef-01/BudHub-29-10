@@ -71,6 +71,19 @@ export const PARAM_VERSIONS = {
  * something else changed too (a family older than the record goes back, or one it doesn't cover).
  * Unknown versions (an unreadable save): the latest change of each family.
  */
+/**
+ * Is `a` a later copy of the same game and day than `b`? Game time first; at the same game time
+ * (paused, or on the day summary, where a purchase doesn't move the clock) the copy with more
+ * done (GameState.rev). A completed day is never followed by an uncompleted copy of it. Used to
+ * decide whether a copy another tab sends late replaces this tab's.
+ */
+export function laterCopy(a: GameState, b: GameState): boolean {
+  if (a.runId !== b.runId || a.day.number !== b.day.number) return false;
+  if (b.day.completed && !a.day.completed) return false;
+  if (a.nowMs !== b.nowMs) return a.nowMs > b.nowMs;
+  return (a.rev ?? 0) > (b.rev ?? 0);
+}
+
 export function ruleChangesSince(saved: Record<string, unknown> | undefined): string[] {
   if (!saved || typeof saved !== 'object') {
     const latest = new Map<string, string>();
@@ -79,9 +92,15 @@ export function ruleChangesSince(saved: Record<string, unknown> | undefined): st
   }
   const lines: string[] = [];
   let other = false;
+  let fromNewer = false;
   for (const [family, current] of Object.entries(PARAM_VERSIONS)) {
     const was = versionNumber(saved[family]);
     if (saved[family] === current) continue;
+    // Saved with rules newer than these (another version of the game): nothing here describes them.
+    if (was > versionNumber(current)) {
+      fromNewer = true;
+      continue;
+    }
     const entries = RULE_HISTORY.filter((e) => e.family === family);
     const newer = entries.filter((e) => !(e.version <= was));
     lines.push(...newer.map((e) => e.text));
@@ -89,6 +108,7 @@ export function ruleChangesSince(saved: Record<string, unknown> | undefined): st
     if (!entries.length || !(was >= entries[0].version - 1)) other = true;
   }
   if (other) lines.push('Several other rules changed as well since this day was saved.');
+  if (fromNewer) lines.push('This day was saved with newer rules than this version of the game has.');
   return lines;
 }
 
@@ -392,10 +412,15 @@ const fail = (state: GameState, error: string) => ({ state, result: { ok: false,
  * Apply a player command at the current simulation time. Invalid commands leave the state
  * unchanged and report why.
  */
+/** Commands that don't count as playing (see GameState.rev). */
+const NOT_PLAYING = /^(pause|select|releaseHolds)/;
+
 export function applyCommand(state: GameState, command: Command): { state: GameState; result: CommandResult } {
   const s = structuredClone(state);
   const error = run(s, command);
-  return error ? fail(state, error) : { state: s, result: { ok: true } };
+  if (error) return fail(state, error);
+  if (!NOT_PLAYING.test(command.type)) s.rev = (state.rev ?? 0) + 1;
+  return { state: s, result: { ok: true } };
 }
 
 /** Let go of every held control: end a pour (dropping an empty portion), a drizzle, and boosts. */

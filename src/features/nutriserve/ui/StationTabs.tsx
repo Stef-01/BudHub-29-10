@@ -11,7 +11,7 @@ export const STATIONS: StationId[] = ['order', 'build', 'prep', 'finish'];
 
 /**
  * Prep slots whose dish has reached its ticket's perfect window (and is still cooking): take it out
- * now. The window opens 1 s on the flame before the mark (1.8 s with copper handis).
+ * now. The window opens 1.3 s on the flame before the mark (1.9 s with copper handis).
  */
 export function slotsAtMark(state: GameState): number[] {
   const band = prepBandUnits(upgradeEffects(state.profile.upgrades));

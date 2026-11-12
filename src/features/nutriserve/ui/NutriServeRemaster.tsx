@@ -669,7 +669,7 @@ function Kitchen({
                 // day from this tab's (older) progress would overwrite that, so show the save as it is.
                 onRestart={() =>
                   heldElsewhere()
-                    ? onStartScreen('Another tab took over this kitchen after it stopped and has newer progress. Here is the save as it is now.')
+                    ? onStartScreen('Another tab opened this kitchen after it stopped, so the save may have changed. Here it is as it is now.')
                     : onRestart(state.profile, state.runId)
                 }
               />

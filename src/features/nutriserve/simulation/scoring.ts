@@ -110,7 +110,7 @@ export function prepBandUnits(effects?: UpgradeEffects): number {
 }
 
 /**
- * ADAPTATION gradePrep (prep-v3 rules, prep-v5 numbers). Within the perfect window around the level's mark: 100. Short of
+ * ADAPTATION gradePrep (prep-v3 rules, prep-v7 numbers). Within the perfect window around the level's mark: 100. Short of
  * the window, the dish earns its share of the way there (a dish taken out half way scores 50, a raw
  * one 0). Past the window it loses overPointsPerSecond for every second on the flame it stayed on.
  * A dish that never went into a handi scores 0.
@@ -298,11 +298,13 @@ export function serveNotes(
     notes.push(`Only ${Math.round(share * 100)}% of the ordered food is in the katori, so waiting, prep and finish counted less`);
   }
   const wanted = { base: order.baseId, main: order.mainId, side: order.sideId } as const;
-  if (dish.size !== order.size) notes.push(`${dish.size[0].toUpperCase()}${dish.size.slice(1)} vessel; the ticket wanted ${order.size}`);
-  // A note says what cost points, and only for a loss the shown score shows: portion notes appear
-  // only when the build score would read higher without the portions' losses (a portion a hair
-  // outside its band, beside a wrong vessel or a missing food that explain the whole score, gets
-  // none). Portions costing under half a point are listed only when nothing larger is.
+  // Where the vessel note goes (most important first), once it is known to show (below).
+  const vesselAt = notes.length;
+  // A note says what cost points, and only for a loss the shown score shows: the vessel note and
+  // portion notes appear only when the build score would read higher without that loss (a wrong
+  // vessel beside three missing or wrong foods, or a portion a hair outside its band beside a wrong
+  // vessel or a missing food, gets none). Portions costing under half a point are listed only when
+  // nothing larger is.
   const portionNotes: Array<{ text: string; points: number }> = [];
   let earned = 0;
   for (const c of ['base', 'main', 'side'] as const) {
@@ -322,6 +324,9 @@ export function serveNotes(
     }
   }
   const buildRaw = earned - (dish.size === order.size ? 0 : BUILD_V1.wrongVesselPenalty);
+  if (dish.size !== order.size && clampScore(earned) !== clampScore(buildRaw)) {
+    notes.splice(vesselAt, 0, `${dish.size[0].toUpperCase()}${dish.size.slice(1)} vessel; the ticket wanted ${order.size}`);
+  }
   const portionLosses = portionNotes.reduce((sum, n) => sum + n.points, 0);
   if (scores.build < 100 && portionNotes.length && clampScore(buildRaw + portionLosses) !== clampScore(buildRaw)) {
     const shown = portionNotes.filter((n) => n.points >= 0.5);
