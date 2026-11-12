@@ -250,11 +250,13 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
   const takeOver = useCallback(() => {
     const latest = readSavedGame(userId);
     if (!latest.state) return false;
-    ref.current = latest.state;
+    // Picked up paused, so the clock waits for the player to resume here.
+    const s = latest.state;
+    ref.current = s.paused || s.day.completed ? s : applyCommand(s, { type: 'pause' }).state;
     claimWriter(userId, tabId.current);
     supersededRef.current = false;
     setSuperseded(false);
-    render(latest.state);
+    render(ref.current);
     return true;
   }, [render, userId]);
 

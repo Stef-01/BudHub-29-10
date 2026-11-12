@@ -5,13 +5,18 @@ Only the NutriServe work moves: the unrelated `old`-branch history (Cookventure,
 services) stays out of main, as docs/nutriserve/CLAUDE_BUILD_TRACK.md asks.
 
 Safety:
-- the main worktree must be clean (nothing of yours is reset away);
+- the main worktree must be clean (nothing of yours is reset away), and a branch checked out there
+  must not have commits that origin/main lacks (they would be left behind);
 - the source is the named branch, and it must match its pushed copy (main never gets unpushed work);
+  the commit checked is the commit ported;
 - main records the source commit it was ported from (docs/nutriserve/PORT_SOURCE). Before porting,
-  every ported file on main is compared with that commit: an edit made on main, or a file added on
-  main, stops the port so it can be carried back to the branch first;
+  every ported file on main is compared with that commit: an edit, an added file or a deleted file
+  on main (and an edit to the body of the status doc) stops the port so it can be carried back to
+  the branch first;
+- the app-shell patches stop when main has changed the NutriServe entry they would insert, rather
+  than inserting a second copy;
 - files deleted on the branch are deleted on main;
-- any failure rolls the worktree back to origin/main.
+- any failure puts the worktree back as it was (the same branch or commit checked out, clean).
 
 It does not commit: run the tests and the release gate on the result, then commit and push.
 
@@ -39,7 +44,10 @@ SRC, W = args
 
 
 def sh(*cmd, cwd=W, check=True):
-    return subprocess.run(cmd, cwd=cwd, check=check, text=True, capture_output=True).stdout
+    r = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
+    if check and r.returncode:
+        raise SystemExit(f'port stopped: {" ".join(cmd)[:120]} failed: {r.stderr.strip()[:300]}')
+    return r.stdout
 
 
 def fail(msg):
@@ -47,20 +55,34 @@ def fail(msg):
 
 
 def patch(path, pairs, upgrades=()):
-    """Apply (anchor, replacement) pairs once each. `upgrades` first turn an earlier port's text
-    into the current replacement, so a re-run never inserts a second copy."""
+    """Apply (anchor, replacement, marker) triples once each. `upgrades` first turn an earlier
+    port's text into the current replacement, so a re-run never inserts a second copy. `marker` is
+    text only the NutriServe insert contains: when the replacement isn't there but the marker is,
+    main has edited the insert, and inserting again would add a second copy, so the port stops."""
     p = f'{W}/{path}'
     s = open(p).read()
     for old, new in upgrades:
         if old in s and new not in s:
             s = s.replace(old, new, 1)
-    for a, b in pairs:
+    for a, b, marker in pairs:
         if b in s:
             continue  # already applied by an earlier port
+        if marker in s:
+            fail(f'{path}: main has changed the NutriServe entry ({marker!r}); carry that change into this script first')
         if a not in s:
             fail(f'{path}: anchor not found: {a[:70]!r}')
         s = s.replace(a, b, 1)
     open(p, 'w').write(s)
+
+
+STATUS_DOC = 'docs/nutriserve/CLAUDE_STATUS.md'
+C06_COUNT = re.compile(r'Catalog validation \(found and fixed \w+ customers requiring nonexistent ids\)')
+C06_MAIN = 'Catalog validation (customers requiring nonexistent ids are corrected; see the note at the top)'
+
+
+def status_body(text):
+    """The status doc as main shows it, below the head the port writes."""
+    return C06_COUNT.sub(C06_MAIN, text[text.index('## Task status'):])
 
 
 def ported_paths(ref):
@@ -86,33 +108,55 @@ def ported_files(ref, cwd):
     }
 
 
+_trees = {}
+
+
 def blob(ref, path, cwd):
-    r = subprocess.run(['git', 'rev-parse', '--verify', '--quiet', f'{ref}:{path}'], cwd=cwd, text=True, capture_output=True)
-    return r.stdout.strip() or None
+    """A file's mode and content id at `ref` (None when absent), so a mode change counts as an edit."""
+    key = (ref, cwd)
+    if key not in _trees:
+        tree = {}
+        for line in sh('git', 'ls-tree', '-r', '--full-tree', ref, cwd=cwd).splitlines():
+            meta, name = line.split('\t', 1)
+            mode, _kind, sha = meta.split()
+            tree[name] = f'{mode} {sha}'
+        _trees[key] = tree
+    return _trees[key].get(path)
 
 
-# 0. Preconditions.
+# 0. Preconditions (nothing here changes the worktree).
 if sh('git', 'status', '--porcelain'):
     fail(f'{W} has uncommitted changes; commit or discard them first')
 sh('git', 'fetch', '--quiet', 'origin', 'main', SOURCE_REF, cwd=SRC)
 source = sh('git', 'rev-parse', SOURCE_REF, cwd=SRC).strip()
 pushed = sh('git', 'rev-parse', f'origin/{SOURCE_REF}', cwd=SRC).strip()
 if source != pushed:
-    fail(f'{SOURCE_REF} ({source[:8]}) differs from origin/{SOURCE_REF} ({pushed[:8]}); push it first')
+    behind = subprocess.run(['git', 'merge-base', '--is-ancestor', source, pushed], cwd=SRC).returncode == 0
+    fail(f'{SOURCE_REF} ({source[:8]}) differs from origin/{SOURCE_REF} ({pushed[:8]}); '
+         + ('it is behind: pull it first' if behind else 'push it first'))
+sh('git', 'fetch', '--quiet', 'origin', 'main')
+orig_commit = sh('git', 'rev-parse', 'HEAD').strip()
+orig_branch = sh('git', 'symbolic-ref', '--quiet', '--short', 'HEAD', check=False).strip() or None
+if orig_branch:
+    ahead = sh('git', 'rev-list', '--count', 'origin/main..HEAD').strip()
+    if ahead != '0':
+        fail(f'{W} has {orig_branch} checked out with {ahead} commit(s) that origin/main lacks; push or move them first')
 
 try:
-    # 1. Fresh main.
-    sh('git', 'fetch', '--quiet', 'origin', 'main')
+    # 1. Fresh main (detached first, so no local branch is ever moved).
     sh('git', 'checkout', '--quiet', '--detach', 'origin/main')
     sh('git', 'reset', '--quiet', '--hard', 'origin/main')
     sh('git', 'clean', '-fdq', '-e', 'node_modules')
 
     # 2. Main-only work in the ported files stops the port.
     try:
-        recorded = open(f'{W}/{PORT_SOURCE}').read().split()[0]
+        words = open(f'{W}/{PORT_SOURCE}').read().split()
+        if not words:
+            fail(f'{PORT_SOURCE} on main is empty; restore it (or pass --assume-source)')
+        recorded = words[0]
     except FileNotFoundError:
         recorded = assume
-    paths = ported_paths(SOURCE_REF)
+    paths = ported_paths(source)
     on_main = ported_files('HEAD', W)
     if recorded:
         if subprocess.run(['git', 'cat-file', '-e', f'{recorded}^{{commit}}'], cwd=SRC, capture_output=True).returncode:
@@ -124,19 +168,28 @@ try:
                 problems.append(f'added on main: {f}')
             elif blob('HEAD', f, W) != then:
                 problems.append(f'edited on main: {f}')
+        for f in sorted(ported_files(recorded, SRC) - on_main - REWRITTEN):
+            problems.append(f'deleted on main: {f}')
+        # The status doc is rewritten (its head), but its body must match what was ported.
+        if STATUS_DOC in on_main and blob(recorded, STATUS_DOC, SRC):
+            then = sh('git', 'show', f'{recorded}:{STATUS_DOC}', cwd=SRC)
+            now = open(f'{W}/{STATUS_DOC}').read()
+            if status_body(now) != status_body(then):
+                problems.append(f'edited on main (below its head): {STATUS_DOC}')
         if problems:
             fail('main has NutriServe changes the branch does not:\n  ' + '\n  '.join(problems))
     else:
         print('note: main has no PORT_SOURCE and no --assume-source was given; main-only edits are not checked this time')
 
     # 3. Files deleted on the branch are deleted on main.
-    on_source = ported_files(SOURCE_REF, SRC)
+    on_source = ported_files(source, SRC)
     removed = sorted(f for f in on_main - on_source - REWRITTEN)
     for f in removed:
         sh('git', 'rm', '--quiet', f)
 
     # 4. The NutriServe files, as committed on the source branch.
-    archive = subprocess.run(['git', 'archive', SOURCE_REF, *paths], cwd=SRC, check=True, capture_output=True).stdout
+    present = [p for p in paths if p in on_source or any(f.startswith(p + '/') for f in on_source)]
+    archive = subprocess.run(['git', 'archive', source, *present], cwd=SRC, check=True, capture_output=True).stdout
     subprocess.run(['tar', '-x', '-C', W], input=archive, check=True)
 
     # 5. Catalog source fixes (customers that required ids that don't exist), on main's own file.
@@ -160,10 +213,12 @@ try:
     patch('types.ts', [(
         "export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb' | 'nutriserve' | 'unified_nutrient';",
         "export type GameMode = 'diabetic_friendly' | 'high_protein' | 'high_fiber' | 'low_carb' | 'nutriserve' | 'unified_nutrient' | 'nutriserve_remaster';",
+        "'nutriserve_remaster'",
     )])
     patch('components/GameScreen.tsx', [(
         "    nutriserve: 'NutriServe Chef',",
         "    nutriserve: 'NutriServe Chef',\n    nutriserve_remaster: 'NutriServe Kitchen',",
+        "nutriserve_remaster:",
     )])
     SAVE_OLD = "      scoresCtx.saveScore('nutriserve_remaster', averageScore);\n"
     SAVE_NEW = (
@@ -171,16 +226,19 @@ try:
         "      Promise.resolve(scoresCtx.saveScore('nutriserve_remaster', averageScore)).catch(() => {});\n"
     )
     patch('App.tsx', [
-        ("import React, { useState, useMemo } from 'react';", "import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';"),
-        ("import { useGameScores } from './contexts/GameScoresContext';", "import { useGameScores } from './contexts/GameScoresContext';\nimport { useGamification } from './contexts/GamificationContext';"),
+        ("import React, { useState, useMemo } from 'react';", "import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';", "Suspense, lazy"),
+        ("import { useGameScores } from './contexts/GameScoresContext';", "import { useGameScores } from './contexts/GameScoresContext';\nimport { useGamification } from './contexts/GamificationContext';",
+         "useGamification }"),
         ("import UnifiedNutrientGame from './components/UnifiedNutrientGame';",
          "import UnifiedNutrientGame from './components/UnifiedNutrientGame';\n"
          "// Loaded on demand so the remaster's code isn't in the main bundle.\n"
          "const NutriServeRemaster = lazy(() => import('./src/features/nutriserve/ui/NutriServeRemaster.tsx'));\n"
          "/** The remaster keeps its saves per browser (this app has no signed-in user id). */\n"
-         "const REMASTER_PLAYER = 'local';"),
+         "const REMASTER_PLAYER = 'local';",
+         "const NutriServeRemaster"),
         ("  const scoresCtx = useGameScores();\n",
-         "  const scoresCtx = useGameScores();\n  const { addXp } = useGamification();\n"),
+         "  const scoresCtx = useGameScores();\n  const { addXp } = useGamification();\n",
+         "useGamification()"),
         ("  const handleExitGame = () => {\n    setActiveGame(null);\n  };\n",
          "  const handleExitGame = () => {\n    setActiveGame(null);\n  };\n\n"
          "  // The remaster reports each finished day once (guarded by a ledger outside its save). XP scales\n"
@@ -191,7 +249,8 @@ try:
          "      if (xpTier) addXp(xpTier, 'add');\n"
          "    },\n"
          "    [scoresCtx, addXp]\n"
-         "  );\n"),
+         "  );\n",
+         "handleRemasterDay"),
         ("    if (activeGame === 'unified_nutrient') {",
          "    if (activeGame === 'nutriserve_remaster') {\n"
          "      return (\n"
@@ -200,11 +259,13 @@ try:
          "        </Suspense>\n"
          "      );\n"
          "    }\n"
-         "    if (activeGame === 'unified_nutrient') {"),
+         "    if (activeGame === 'unified_nutrient') {",
+         "activeGame === 'nutriserve_remaster'"),
     ], upgrades=[(SAVE_OLD, SAVE_NEW)])
     patch('components/GamesView.tsx', [
         ("            nutriserve: getHighScoresByMode('nutriserve')[0]?.score || 0,",
-         "            nutriserve: getHighScoresByMode('nutriserve')[0]?.score || 0,\n            nutriserve_remaster: getHighScoresByMode('nutriserve_remaster')[0]?.score || 0,"),
+         "            nutriserve: getHighScoresByMode('nutriserve')[0]?.score || 0,\n            nutriserve_remaster: getHighScoresByMode('nutriserve_remaster')[0]?.score || 0,",
+         "nutriserve_remaster: getHighScoresByMode"),
         ("""                <a href="/nutriserve-art-lab.html\"""",
          """                <div className="mt-4">
                     <GameCard
@@ -216,14 +277,15 @@ try:
                         onPlay={onPlay}
                     />
                 </div>
-                <a href="/nutriserve-art-lab.html\""""),
+                <a href="/nutriserve-art-lab.html\"""",
+         'gameMode="nutriserve_remaster"'),
     ])
 
     # 8. Regenerate the simulation catalog from main's catalog sources.
     print(sh('node', 'scripts/generate-nutriserve-catalog.mjs').strip())
 
     # 9. The status doc's head, for main (fixed wording: it reads the same on every re-port).
-    p = f'{W}/docs/nutriserve/CLAUDE_STATUS.md'
+    p = f'{W}/{STATUS_DOC}'
     s = open(p).read()
     head_end = s.index('## Task status')
     s = (
@@ -236,10 +298,7 @@ try:
         '`services/nutriserveCharacters.ts`, where customers that required foods that do not exist (`brown_rice`, `red_rice`) now require '
         '`rice_brown` and `rice_red`. The simulation catalog is regenerated from `main`\'s own catalog sources. On `main` the remaster keeps '
         'saves per browser, because this app has no signed-in user id.\n\n'
-    ) + s[head_end:]
-    # The branch's count of corrected customers is the branch's own; main's differs.
-    s = re.sub(r'Catalog validation \(found and fixed \w+ customers requiring nonexistent ids\)',
-               'Catalog validation (customers requiring nonexistent ids are corrected; see the note at the top)', s)
+    ) + status_body(s)  # the branch's count of corrected customers is the branch's own; main's differs
     open(p, 'w').write(s)
     open(f'{W}/{PORT_SOURCE}', 'w').write(f'{source}\n')
 
@@ -247,8 +306,9 @@ try:
                 "import('./src/features/nutriserve/data/catalog.generated.ts').then(m=>console.log(m.CATALOG_FOODS.length+' foods, '+m.CATALOG_CUSTOMERS.length+' customers'))").strip()
     print(f'ported {SOURCE_REF} {source[:8]}; catalog {counts}; removed {len(removed)} file(s){": " + ", ".join(removed) if removed else ""}')
 except BaseException:
-    # Leave main as it was.
-    subprocess.run(['git', 'reset', '--quiet', '--hard', 'origin/main'], cwd=W)
+    # Put the worktree back as it was: the same branch (never moved) or commit, clean.
+    subprocess.run(['git', 'checkout', '--quiet', '--force', orig_branch or '--detach', *([] if orig_branch else [orig_commit])], cwd=W)
+    subprocess.run(['git', 'reset', '--quiet', '--hard', 'HEAD'], cwd=W)
     subprocess.run(['git', 'clean', '-fdq', '-e', 'node_modules'], cwd=W)
-    print('rolled back to origin/main', file=sys.stderr)
+    print(f'rolled back to {orig_branch or orig_commit[:8]}', file=sys.stderr)
     raise
