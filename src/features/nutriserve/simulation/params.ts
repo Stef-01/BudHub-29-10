@@ -75,7 +75,12 @@ export const PREP_V1 = {
   // burns at 35 s, by when every dish has lost all its prep points. Every mark, step, window edge
   // and width was checked against the values derived from the other game's numbers at both rates
   // this project used (150 units a second, and 1 unit a millisecond): none matches.
-  version: 'prep-v7-provisional',
+  // v8: v7's longer marks left more dishes cooking while the next one was built, and the device bots
+  // overcooked more on every device (the iPhone SE 12 of 16 dishes, against 8 on prep-v6). The marks
+  // are now 8.5, 12.5 and 21 s (steps of 4 and 8.5 s: a regular dish is a little quicker than on
+  // prep-v6, a slow one a little slower), with v7's window, and a dish burns at 33 s, by when every
+  // dish has lost all its prep points. Checked against the same derived values: none matches.
+  version: 'prep-v8-provisional',
   /** Doneness units gained per second on the flame: one unit is one millisecond at normal heat. */
   unitsPerSecond: 1000,
   /** PROVISIONAL: units accrue this many times faster while boost is held. */
@@ -86,10 +91,10 @@ export const PREP_V1 = {
   heatCoolPerMs: 2,
   /** After overheating, boost is locked and nothing cooks until heat falls back to this level. */
   heatUnlockLevel: 3_000,
-  /** A dish stops gaining doneness here (35 s on the flame): burnt. */
-  maxUnits: 35_000,
-  /** PROVISIONAL: doneness mark for each prep level, in ms on the flame (8.5, 16 and 22.5 seconds). */
-  targetUnits: { quick: 8_500, regular: 16_000, slow: 22_500 },
+  /** A dish stops gaining doneness here (33 s on the flame): burnt. */
+  maxUnits: 33_000,
+  /** PROVISIONAL: doneness mark for each prep level, in ms on the flame (8.5, 12.5 and 21 seconds). */
+  targetUnits: { quick: 8_500, regular: 12_500, slow: 21_000 },
   /** Units either side of the mark that count as perfect (1.3 s on the flame). */
   perfectBandUnits: 1_300,
   /** The same window with copper handis (1.9 s on the flame). */
@@ -252,13 +257,14 @@ export const RULE_HISTORY: ReadonlyArray<{ family: string; version: number; text
   { family: 'prep', version: 4, text: 'Prep is timed in seconds on the flame.' },
   { family: 'prep', version: 5, text: 'Overcooking costs 10 points a second, and a dish left on the flame long enough burns: it stops cooking and scores 0 for prep.' },
   { family: 'prep', version: 6, text: 'The perfect window at each prep mark is wider.' },
-  { family: 'prep', version: 7, text: 'Prep marks are now 8.5, 16 and 22.5 seconds on the flame, with a perfect window of 1.3 seconds either side (1.9 seconds with copper handis); a dish left on the flame burns at 35 seconds.' },
+  { family: 'prep', version: 7, text: 'The perfect window at each prep mark is a little wider again, with copper handis too.' },
+  { family: 'prep', version: 8, text: 'Prep marks are now 8.5, 12.5 and 21 seconds on the flame, with a perfect window of 1.3 seconds either side (1.9 seconds with copper handis); a dish left on the flame burns at 33 seconds.' },
   { family: 'finish', version: 4, text: 'A drizzle within 12% of its target amount costs nothing; further off, it costs up to 24 points.' },
   { family: 'progression', version: 5, text: 'The garnish tray catches pieces that fall outside the katori, instead of adding points to the finish score.' },
   { family: 'progression', version: 6, text: 'The garnish tray also halves what an off-centre garnish costs, and now costs 30 coins.' },
 ];
 
-/** The version number in a version name ("prep-v7-provisional" is 7; NaN when there is none). */
+/** The version number in a version name ("prep-v8-provisional" is 8; NaN when there is none). */
 export function versionNumber(name: unknown): number {
   const m = typeof name === 'string' ? /-v(\d+)/.exec(name) : null;
   return m ? Number(m[1]) : NaN;

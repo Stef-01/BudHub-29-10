@@ -16,7 +16,7 @@
 // every base (it always covered idli and the rest, not only rice and roti); copper handis are
 // described for prep-v5.
 // v7: copper handis are described for prep-v6 (1.8 s instead of 1.2); no rule changed.
-// v8: copper handis are described for prep-v7 (1.9 s instead of 1.3); no rule changed.
+// v8: copper handis are described for prep-v7 and prep-v8 (1.9 s instead of 1.3); no rule changed.
 export const PROGRESSION_VERSION = 'progression-v8';
 
 /** Cumulative points needed for each rank (index 0 = rank 1). */

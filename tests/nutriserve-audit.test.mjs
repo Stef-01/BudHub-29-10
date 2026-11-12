@@ -864,7 +864,7 @@ test('the whistle needs a guiding ticket, and replays the same in any chunking',
   let parts = q;
   for (const dt of [1, 333, 7, 1_200, 59, 2_400]) parts = advanceGame(parts, dt);
   assert.deepEqual(parts, whole);
-  assert.equal(PREP_V1.version, 'prep-v7-provisional');
+  assert.equal(PREP_V1.version, 'prep-v8-provisional');
 });
 
 // --- Twelfth audit, 2026-11-12 -------------------------------------------------------------------
@@ -965,7 +965,7 @@ test('prep notes never show a time inside the perfect window, and a forgotten di
         assert.equal(notes.length, prep < 100 ? 1 : 0, `${prepLevel} ${u}: ${notes}`);
         if (!notes.length) continue;
         const shown = Number(/^(?:Under|Over)cooked: ([\d.]+) s/.exec(notes[0])?.[1] ?? NaN);
-        if (u >= PREP_V1.maxUnits) assert.match(notes[0], /^Burnt: still on the flame at 35 s/);
+        if (u >= PREP_V1.maxUnits) assert.match(notes[0], /^Burnt: still on the flame at 33 s/);
         else if (u < mark) assert.ok(shown * 1000 < mark - band, `${prepLevel} ${u}: "${notes[0]}" reads as inside the window`);
         else assert.ok(shown * 1000 > mark + band, `${prepLevel} ${u}: "${notes[0]}" reads as inside the window`);
       }
@@ -1052,8 +1052,8 @@ test('a portion note appears only when the build score shows its loss (not besid
   assert.equal(r.portion.length, 1);
 });
 
-test('prep-v7: marks at 8.5, 16 and 22.5 s, a perfect window of 1.3 s either side (1.9 s with copper), notes in tenths', () => {
-  assert.equal(PREP_V1.version, 'prep-v7-provisional');
+test('prep-v8: marks at 8.5, 12.5 and 21 s, a perfect window of 1.3 s either side (1.9 s with copper), notes in tenths', () => {
+  assert.equal(PREP_V1.version, 'prep-v8-provisional');
   const { s, dishId, ticket } = finishing(42, 4);
   const dish = s.dishes.find((d) => d.id === dishId);
   const order = { ...ticket.order, prepLevel: 'regular' };
@@ -1062,14 +1062,14 @@ test('prep-v7: marks at 8.5, 16 and 22.5 s, a perfect window of 1.3 s either sid
     const prep = gradePrep(d, order, effects);
     return { prep, note: serveNotes(d, order, { waiting: 100, build: 100, prep, finish: 100 }, 1, [], 30_000, effects).find((n) => /cooked/.test(n)) };
   };
-  assert.equal(at(14_700).prep, 100);
-  assert.equal(at(17_300).prep, 100);
-  assert.equal(at(17_400).prep, 99);
-  assert.equal(at(14_000).note, 'Undercooked: 14 s on the flame; perfect from 14.7 s (mark 16 s)');
-  assert.equal(at(18_000).note, 'Overcooked: 18 s on the flame; perfect up to 17.3 s (mark 16 s)');
+  assert.equal(at(11_200).prep, 100);
+  assert.equal(at(13_800).prep, 100);
+  assert.equal(at(13_900).prep, 99);
+  assert.equal(at(10_000).note, 'Undercooked: 10 s on the flame; perfect from 11.2 s (mark 12.5 s)');
+  assert.equal(at(15_000).note, 'Overcooked: 15 s on the flame; perfect up to 13.8 s (mark 12.5 s)');
   const copper = upgradeEffects(['copper_handis']);
-  assert.equal(at(17_900, copper).prep, 100);
-  assert.equal(at(18_000, copper).note, 'Overcooked: 18 s on the flame; perfect up to 17.9 s (mark 16 s)');
+  assert.equal(at(14_400, copper).prep, 100);
+  assert.equal(at(15_000, copper).note, 'Overcooked: 15 s on the flame; perfect up to 14.4 s (mark 12.5 s)');
   assert.match(UPGRADES.copper_handis.description, /1\.9 seconds on the flame either side instead of 1\.3/);
   // A slow dish forgotten on the flame has lost every prep point by the time it burns.
   const slow = { ...order, prepLevel: 'slow' };
@@ -1082,7 +1082,7 @@ test('a save from older rules is told every change since it was made', () => {
   // The rules of the audit's real older saves.
   const older = { ...PARAM_VERSIONS, build: 'build-v6', prep: 'prep-v4-provisional', progression: 'progression-v5' };
   const lines = ruleChangesSince(older);
-  for (const re of [/8\.5, 16 and 22\.5 seconds/, /burns at 35 seconds/, /window at each prep mark is wider/, /one tap of its dispenser/, /halves what an off-centre garnish costs/]) assert.ok(lines.some((l) => re.test(l)), `${re}: ${lines.join(' | ')}`);
+  for (const re of [/8\.5, 12\.5 and 21 seconds/, /burns at 33 seconds/, /window at each prep mark is wider/, /wider again/, /one tap of its dispenser/, /halves what an off-centre garnish costs/]) assert.ok(lines.some((l) => re.test(l)), `${re}: ${lines.join(' | ')}`);
   assert.ok(!lines.some((l) => /catches pieces/.test(l)), 'progression-v5 already had the tray catching pieces');
   assert.ok(!lines.some((l) => /other rules/i.test(l)));
   // A progression-v4 save also learns what the tray does now.
@@ -1091,7 +1091,7 @@ test('a save from older rules is told every change since it was made', () => {
   assert.ok(ruleChangesSince({ ...PARAM_VERSIONS, build: 'build-v1' }).some((l) => /other rules/i.test(l)));
   assert.ok(ruleChangesSince({ ...PARAM_VERSIONS, waiting: 'waiting-v0' }).some((l) => /other rules/i.test(l)));
   // Unknown versions (an unreadable save): the latest changes.
-  assert.ok(ruleChangesSince(undefined).some((l) => /8\.5, 16 and 22\.5 seconds/.test(l)));
+  assert.ok(ruleChangesSince(undefined).some((l) => /8\.5, 12\.5 and 21 seconds/.test(l)));
   // Saved with newer rules than these: said, never an empty list.
   assert.deepEqual(ruleChangesSince({ ...PARAM_VERSIONS, prep: 'prep-v99-provisional' }), ['This day was saved with newer rules than this version of the game has.']);
 });
@@ -1143,7 +1143,7 @@ test('a wrong vessel is noted only when the build score shows it', () => {
   assert.ok(!wrongAll.some(vessel) && wrongAll.filter((n) => /wrong food/.test(n)).length === 3, wrongAll.join(' | '));
 });
 
-test("prep-v7's numbers don't land on values derived from the other game's", () => {
+test("prep-v8's numbers don't land on values derived from the other game's", () => {
   // The other game's recovered blend numbers (docs/nutriserve/REA_FINDINGS.md), listed only so that
   // no NutriServe prep number is derived from them: targets, tolerance, error clamp and its bound.
   const T = [900, 1800, 2700], TOL = 150, CLAMP = 900, BOUND = 3600;

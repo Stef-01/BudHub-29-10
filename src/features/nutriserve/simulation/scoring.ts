@@ -110,7 +110,7 @@ export function prepBandUnits(effects?: UpgradeEffects): number {
 }
 
 /**
- * ADAPTATION gradePrep (prep-v3 rules, prep-v7 numbers). Within the perfect window around the level's mark: 100. Short of
+ * ADAPTATION gradePrep (prep-v3 rules, prep-v8 numbers). Within the perfect window around the level's mark: 100. Short of
  * the window, the dish earns its share of the way there (a dish taken out half way scores 50, a raw
  * one 0). Past the window it loses overPointsPerSecond for every second on the flame it stayed on.
  * A dish that never went into a handi scores 0.
