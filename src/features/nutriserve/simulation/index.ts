@@ -1,7 +1,7 @@
 // Public surface of the NutriServe remaster simulation (pure TypeScript, no React).
 export * from './types.ts';
 export * from './params.ts';
-export { advanceGame, applyCommand, createGame, laterCopy, newProfile, PARAM_VERSIONS, PILOT_CUSTOMER_POOL, PREP_SLOT_COUNT, ruleChangesSince, ticketForNewDish } from './game.ts';
+export { advanceGame, applyCommand, countsAsPlay, createGame, laterCopy, newProfile, PARAM_VERSIONS, PILOT_CUSTOMER_POOL, PREP_SLOT_COUNT, ruleChangesSince, ticketForNewDish } from './game.ts';
 export { deserializeGame, deserializeGameWithNotes, salvageSave, SaveError, serializeGame, SAVE_FORMAT, type SaveSalvage } from './save.ts';
 export {
   aggregateV2,

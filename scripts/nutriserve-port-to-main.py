@@ -90,6 +90,14 @@ def fail(msg):
     raise SystemExit(f'port stopped: {msg}')
 
 
+class NotAUnion(Exception):
+    pass
+
+
+# Tokens that make a type something other than a plain union at their own level.
+NOT_UNION = {'=>', '?', ':', '&', 'extends', 'keyof', 'typeof', 'infer', 'unique', 'readonly', 'is', 'asserts', 'new', 'abstract'}
+
+
 def union_with(text, type_name, value, members_only=False):
     """`text` with the string literal `value` added to the union type alias `type_name` (None when
     the alias isn't there; `text` unchanged when the member is already in it). Reads the file as
@@ -97,7 +105,11 @@ def union_with(text, type_name, value, members_only=False):
     union may span lines in either pipe style (`| 'a'` at line starts or `'a' |` at line ends) or
     end without a ';'; a ';' or line break inside brackets (an object type, a generic spread over
     lines) doesn't end it; only the union's own members count (a literal inside `Exclude<..>` or
-    `{ kind: .. }` is not one; one inside plain parentheses is). The new member uses the union's
+    `{ kind: .. }` is not one, nor one inside parentheses that hold a function, conditional,
+    intersection or operator type or are followed by `[`; one inside parentheses around a union is).
+    A '/' after the ')' of `if (..)`, `while (..)`, `for (..)` or `with (..)` starts a regex. Raises
+    NotAUnion when the alias is something else at its own level (a function or conditional type,
+    say). The new member uses the union's
     own quotes, layout and line endings. Only a declaration at the file's top level counts (not
     one inside a namespace or other block). `members_only`: the union's members instead (a list)."""
     n = len(text)
@@ -159,6 +171,8 @@ def union_with(text, type_name, value, members_only=False):
     def tokens(i, prev=None):
         """(kind, start, end) from i: kinds ws, nl (a line break, or a comment holding one),
         comment, str, tpl, regex, word, punct. `prev` is the last significant token's text."""
+        # For each open '(': does it follow if/while/for/with? Then a '/' after its ')' is a regex.
+        parens = []
         while i < n:
             c = text[i]
             if c in LT:
@@ -216,7 +230,12 @@ def union_with(text, type_name, value, members_only=False):
                     # `++` and `--` are one token: a '/' after `i++` divides, it doesn't start a regex.
                     j = i + 2 if text.startswith(('=>', '++', '--'), i) else i + 1
                     yield 'punct', i, j
-                    prev, i = text[i:j], j
+                    t = text[i:j]
+                    if t == '(':
+                        parens.append(prev in ('if', 'while', 'for', 'with'))
+                    elif t == ')' and parens and parens.pop():
+                        t = ';'  # a statement follows the condition
+                    prev, i = t, j
 
     # The declaration: `export type <name> =` in code, at the top level (outside every brace).
     code = [t for t in tokens(0) if t[0] not in ('ws', 'nl', 'comment')]
@@ -269,10 +288,33 @@ def union_with(text, type_name, value, members_only=False):
         if close == len(expr) - 1 and close > 1:
             level, inner = 1, expr[1:-1]
 
+    # Each token's open '(' groups (indices into expr), and the groups that aren't a union.
+    opens, inside, impure, closes = [], [], set(), {}
+    for k, tok in enumerate(expr):
+        inside.append(tuple(o for o in opens if expr[o][3] == '('))
+        if tok[0] == 'punct' and tok[3] in '([{<':
+            opens.append(k)
+        elif tok[0] == 'punct' and tok[3] in ')]}>' and opens:
+            o = opens.pop()
+            if expr[o][3] == '(':
+                closes[o] = k
+        elif opens and expr[opens[-1]][3] == '(' and tok[3] in NOT_UNION:
+            impure.add(opens[-1])
+        elif not opens and tok[3] in NOT_UNION:
+            raise NotAUnion(f'{tok[3]!r} at its own level')
+    for o, c in closes.items():
+        if c + 1 < len(expr) and expr[c + 1][3] == '[':
+            impure.add(o)  # an array or indexed access type, not the union inside
+    if level and 0 in impure:
+        raise NotAUnion('the parenthesised type is not a union')
+    position = {id(tok): k for k, tok in enumerate(expr)}
+
     def literal(tok):
         kind, s, e, t, around = tok
         if any(b != '(' for b in around[level:]):
             return None  # inside a generic, object or tuple: not a member of this union
+        if any(o in impure for o in inside[position[id(tok)]]):
+            return None  # inside a function, conditional or other type in parentheses
         if kind == 'str' or (kind == 'tpl' and '${' not in t):
             return t[1:-1]
         return None
@@ -324,13 +366,16 @@ def union_with(text, type_name, value, members_only=False):
     return text[:pos] + insert + text[pos:]
 
 
-# Reads an edit back with TypeScript's own parser (main's node_modules), independently of
-# union_with: argv = before file, after file, type name, added value. Prints {"ok": true} or why not.
+# Reads an edit back with TypeScript's own parser, from the node_modules of the tree it runs in
+# (main's, for a port; never a global one), independently of union_with: argv = before file, after
+# file ('-': no edit, the union must already have the value), type name, added value. Prints
+# {"ok": true} or why not.
 TS_CHECK = r'''
 const [before, after, name, value] = process.argv.slice(1);
+const path = require('path');
 let ts;
-try { ts = require(require.resolve('typescript', { paths: [process.cwd()] })); }
-catch (e) { console.log(JSON.stringify({ ok: false, why: 'TypeScript is not installed here' })); process.exit(0); }
+try { ts = require(path.join(process.cwd(), 'node_modules', 'typescript')); }
+catch (e) { console.log(JSON.stringify({ ok: false, why: `TypeScript is not installed in ${process.cwd()}/node_modules` })); process.exit(0); }
 const fs = require('fs');
 const read = (file) => {
   const text = fs.readFileSync(file, 'utf8');
@@ -349,7 +394,13 @@ const read = (file) => {
   const next = sf.statements[sf.statements.indexOf(found[0]) + 1];
   return { text, members, from: found[0].getStart(sf), to: next ? next.getStart(sf) : text.length, errors: (sf.parseDiagnostics || []).length };
 };
-const a = read(before), b = read(after);
+const a = read(before);
+if (after === '-') {
+  const why = a.why || (a.members.includes(value) ? '' : `its members are ${JSON.stringify(a.members)}`);
+  console.log(JSON.stringify(why ? { ok: false, why } : { ok: true }));
+  process.exit(0);
+}
+const b = read(after);
 const why = a.why || b.why || (() => {
   if (JSON.stringify(b.members) !== JSON.stringify([...a.members, value])) return `members ${JSON.stringify(a.members)} became ${JSON.stringify(b.members)}`;
   // The edit as one insertion: the common prefix and suffix must cover the whole old text.
@@ -367,15 +418,18 @@ console.log(JSON.stringify(why ? { ok: false, why } : { ok: true }));
 
 def ts_check(before, after, type_name, value, cwd):
     """TypeScript's reading of the edit (see TS_CHECK): None when it is exactly `value` added to the
-    union and nothing else changed, else why not."""
+    union and nothing else changed (after None: when the union already has `value`), else why not."""
     paths = []
     try:
         for text in (before, after):
+            if text is None:
+                continue
             fd, path = tempfile.mkstemp(suffix='.ts')
             with os.fdopen(fd, 'w', newline='') as f:
                 f.write(text)
             paths.append(path)
-        r = run(['node', '-e', TS_CHECK, *paths, type_name, value], cwd=cwd, text=True, capture_output=True)
+        args = paths if after is not None else [paths[0], '-']
+        r = run(['node', '-e', TS_CHECK, *args, type_name, value], cwd=cwd, text=True, capture_output=True)
         try:
             verdict = json.loads(r.stdout.strip().splitlines()[-1])
         except (ValueError, IndexError):
@@ -390,13 +444,20 @@ def add_to_union(path, type_name, value):
     """Add the string literal `value` to a TypeScript union type alias, wherever main has put the
     other members (an unrelated new mode on main must not stop the port). The edit is read back
     twice: by union_with (the union must now have `value`), and by TypeScript's own parser, which
-    shares nothing with union_with (exactly `value` added to the union, nothing else changed)."""
+    shares nothing with union_with (exactly `value` added to the union, nothing else changed). When
+    union_with finds `value` there already, TypeScript must find it there too."""
     p = f'{W}/{path}'
     s = open(p, newline='').read()
-    out = union_with(s, type_name, value)
+    try:
+        out = union_with(s, type_name, value)
+    except NotAUnion as e:
+        fail(f'{path}: {type_name} is not a plain union ({e}); add {value!r} by hand')
     if out is None:
         fail(f'{path}: type {type_name} not found')
     if out == s:
+        why = ts_check(s, None, type_name, value, W)
+        if why:
+            fail(f'{path}: {type_name} seems to have {value!r} already, but TypeScript reads it otherwise ({why}); check it by hand')
         return
     if union_with(out, type_name, value, members_only=True) != union_with(s, type_name, value, members_only=True) + [value]:
         fail(f'{path}: could not add {value!r} to {type_name} cleanly; add it by hand')
@@ -553,6 +614,17 @@ if SELF_TEST:
         ("export type M = 'a' | 'b'\u2028export const y = 1;\n", "export type M = 'a' | 'b' | 'x'\u2028export const y = 1;\n"),
         ("// note\u2028export type M = 'a';\n", "// note\u2028export type M = 'a' | 'x';\n"),
         ("export type M = 'a' | 'b'\rexport const y = 1;\r", "export type M = 'a' | 'b' | 'x'\rexport const y = 1;\r"),
+        # Audit 16: a literal in a function or conditional type in parentheses isn't a member; a
+        # '/' after `if (..)` starts a regex; a parenthesised union followed by [] is an array.
+        ("export type M = 'a' | (() => 'x');\n", "export type M = 'a' | (() => 'x') | 'x';\n"),
+        ("export type M = 'a' | (A extends B ? 'x' : never);\n", "export type M = 'a' | (A extends B ? 'x' : never) | 'x';\n"),
+        ("export type M = 'a' | ('x' & string);\n", "export type M = 'a' | ('x' & string) | 'x';\n"),
+        ("export type M = 'a' | ('x' | 'y')[];\n", "export type M = 'a' | ('x' | 'y')[] | 'x';\n"),
+        ("export type M = 'a' | (('b' | 'x'));\n", None),
+        ("declare const flag: boolean, s: string;\nif (flag) /'/.test(s);\nexport type M = 'a';\n",
+         "declare const flag: boolean, s: string;\nif (flag) /'/.test(s);\nexport type M = 'a' | 'x';\n"),
+        ("declare let k: number;\nwhile (k) /'/g.exec('');\nexport type M = 'a' | 'b';\n",
+         "declare let k: number;\nwhile (k) /'/g.exec('');\nexport type M = 'a' | 'b' | 'x';\n"),
     ]
     bad = 0
     for text, want in cases:
@@ -566,6 +638,25 @@ if SELF_TEST:
         elif want is not None and (why := ts_check(text, got, 'M', 'x', SRC)):
             bad += 1
             print(f'FAIL (TypeScript: {why}) {text!r}')
+        elif want is None and (why := ts_check(text, None, 'M', 'x', SRC)):
+            bad += 1
+            print(f'FAIL (TypeScript, already there: {why}) {text!r}')
+    # Already there by union_with's reading but not TypeScript's: the read-back says so.
+    extra = 0
+    for text in ["export type M = 'a';\n", "export type M = 'a' | (() => 'x');\n"]:
+        extra += 1
+        if not ts_check(text, None, 'M', 'x', SRC):
+            bad += 1
+            print(f'FAIL: TypeScript should not find x in {text!r}')
+    # Not a union at its own level: stops the port.
+    for text in ["export type M = () => 'x' | 'a';\n", "export type M = (() => 'a');\n", "export type M = keyof typeof modes;\n"]:
+        extra += 1
+        try:
+            union_with(text, 'M', 'x')
+            bad += 1
+            print(f'FAIL: not a union, should raise: {text!r}')
+        except NotAUnion:
+            pass
     # A U+2029 ends a line comment, so two declarations are code: the TypeScript read-back stops the port.
     two = "// note\u2029export type M = 'z';\nexport type M = 'a';\n"
     why = ts_check(two, union_with(two, 'M', 'x'), 'M', 'x', SRC)
@@ -578,7 +669,7 @@ if SELF_TEST:
         if union_with(text, 'M', 'x') is not None:
             bad += 1
             print(f'FAIL: a missing type should give None: {text!r}')
-    total = len(cases) + len(missing) + 1
+    total = len(cases) + len(missing) + 1 + extra
     print(f'union self-test: {total - bad}/{total} pass')
     sys.exit(1 if bad else 0)
 

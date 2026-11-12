@@ -102,10 +102,12 @@ export function ruleChangesSince(saved: Record<string, unknown> | undefined): st
       continue;
     }
     const entries = RULE_HISTORY.filter((e) => e.family === family);
-    const newer = entries.filter((e) => !(e.version <= was));
+    // The same number under another name (e.g. a version no longer provisional): this version's line.
+    const renamed = was === versionNumber(current);
+    const newer = entries.filter((e) => !(e.version <= was) || (renamed && e.version === was));
     lines.push(...newer.map((e) => e.text));
-    // Changed before the record starts, or in a family it doesn't cover.
-    if (!entries.length || !(was >= entries[0].version - 1)) other = true;
+    // Changed before the record starts, in a family it doesn't cover, or renamed with no line for it.
+    if (!entries.length || !(was >= entries[0].version - 1) || (renamed && !newer.length)) other = true;
   }
   if (other) lines.push('Several other rules changed as well since this day was saved.');
   if (fromNewer) lines.push('This day was saved with newer rules than this version of the game has.');
@@ -412,14 +414,23 @@ const fail = (state: GameState, error: string) => ({ state, result: { ok: false,
  * Apply a player command at the current simulation time. Invalid commands leave the state
  * unchanged and report why.
  */
-/** Commands that don't count as playing (see GameState.rev). */
-const NOT_PLAYING = /^(pause|select|releaseHolds)/;
+/**
+ * Commands that don't count as playing (see GameState.rev): selecting, pausing, letting go of held
+ * controls, and recording that a finished day was reported (bookkeeping a kitchen does on its own
+ * when it opens the day summary; the report ledger outside the save is what prevents a second report).
+ */
+const NOT_PLAYING = /^(pause|select|releaseHolds|markDayReported)/;
+
+/** Does this command play the game (it counts in GameState.rev)? */
+export function countsAsPlay(command: Command): boolean {
+  return !NOT_PLAYING.test(command.type);
+}
 
 export function applyCommand(state: GameState, command: Command): { state: GameState; result: CommandResult } {
   const s = structuredClone(state);
   const error = run(s, command);
   if (error) return fail(state, error);
-  if (!NOT_PLAYING.test(command.type)) s.rev = (state.rev ?? 0) + 1;
+  if (countsAsPlay(command)) s.rev = (state.rev ?? 0) + 1;
   return { state: s, result: { ok: true } };
 }
 

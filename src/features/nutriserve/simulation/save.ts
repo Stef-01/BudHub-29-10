@@ -76,7 +76,7 @@ function validate(state: any): string[] {
 
   need(isStr(state.runId), 'runId');
   need(isNonNegInt(state.nowMs), 'nowMs');
-  need(state.rev === undefined || isNonNegInt(state.rev), 'rev');
+  need(state.rev === undefined || (Number.isSafeInteger(state.rev) && state.rev >= 0), 'rev');
   need(isInt(state.rngState), 'rngState');
   need(isInt(state.seed), 'seed');
   need(isInt(state.nextId) && state.nextId >= 1, 'nextId');

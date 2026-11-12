@@ -178,7 +178,7 @@ async function runDevice(browser, name, contextOptions, { touch = false } = {}) 
     return page.locator('.ns-lastserve').first().innerText();
   }
 
-  const targetFor = (prep) => (/QUICK/.test(prep) ? 8500 : /SLOW/.test(prep) ? 21000 : 12500); // prep-v8 marks (ms on the flame)
+  const targetFor = (prep) => (/QUICK/.test(prep) ? 8500 : /SLOW/.test(prep) ? 21200 : 12600); // prep-v9 marks (ms on the flame)
 
   // 1. Two concurrent orders cooking in two slots.
   await takeOrder();
@@ -1662,10 +1662,146 @@ async function runAudit15(browser) {
   }
 }
 
+async function runAudit16(browser) {
+  const tag = Date.now();
+  const { open, toStart, cont, seed, MID_DAY, told } = tabKit();
+  const gameOf = (pg) =>
+    pg.evaluate(() => {
+      const el = document.querySelector('.ns-root');
+      if (!el) return null;
+      let f = el[Object.keys(el).find((k) => k.startsWith('__reactFiber$'))];
+      while (f && !(f.type && f.type.name === 'Kitchen')) f = f.return;
+      const s = f?.memoizedState.memoizedState.current;
+      return s ? { run: s.runId, tickets: s.tickets.length, now: s.nowMs, rev: s.rev ?? 0 } : null;
+    });
+  const storedGame = (pg) =>
+    pg.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.startsWith('nutriserve.remaster.save.v1:'));
+      const raw = k && localStorage.getItem(k);
+      if (!raw) return null;
+      const s = JSON.parse(raw).state;
+      return { run: s.runId, tickets: s.tickets.length, now: s.nowMs, rev: s.rev ?? 0 };
+    });
+  const writerOf = (pg) =>
+    pg.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.startsWith('nutriserve.remaster.writer.v1:'));
+      try { return (k && JSON.parse(localStorage.getItem(k))?.tab) || null; } catch { return null; }
+    });
+  // A long task; `after` runs in the same task right after it (a page closed the moment it ends).
+  const block = (pg, ms, after) =>
+    pg.evaluate(({ ms, after }) => new Promise((r) => setTimeout(() => {
+      const t = performance.now();
+      while (performance.now() - t < ms);
+      if (after === 'pagehide') window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false }));
+      r();
+    }, 0)), { ms, after });
+  const resume = (pg) => pg.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click({ timeout: 2000 }).catch(() => {});
+
+  // M1: Save & exit clicked while the page is busy (the click runs the moment its long task ends),
+  // after another tab took the save over and played: the busy tab writes nothing over it and leaves
+  // the other tab's writer record, so a third tab asks the tab being played and opens its newest state.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate16exit${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    await cont(A);
+    await resume(A);
+    await A.waitForTimeout(4500);
+    const B = await open(context, user);
+    const C = await open(context, user);
+    const box = await A.getByRole('button', { name: 'Save & exit' }).first().boundingBox();
+    const cdp = await context.newCDPSession(A);
+    const t0 = Date.now();
+    const busy = block(A, 7000);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await resume(B);
+    const bTab = await writerOf(B);
+    while (Date.now() - t0 < 5800) await B.waitForTimeout(200);
+    const bStored = await storedGame(B);
+    for (const type of ['mousePressed', 'mouseReleased']) cdp.send('Input.dispatchMouseEvent', { type, x: box.x + box.width / 2, y: box.y + box.height / 2, button: 'left', clickCount: 1 }).catch(() => {});
+    await busy;
+    await B.waitForTimeout(1500);
+    const w = await writerOf(B), st = await storedGame(B), aLeft = (await A.locator('.ns-hud').count()) === 0, bTold = await told(B);
+    check(bTab && w === bTab && aLeft && !bTold && st && bStored && st.now >= bStored.now,
+      `regressions: Save & exit clicked while the page was busy writes nothing over the other tab's save and leaves its writer record (record kept ${w === bTab}, A left ${aLeft}, stored ${st?.now} after ${bStored?.now}, B told ${bTold})`);
+    const bLive = await gameOf(B);
+    await cont(C);
+    const c = await gameOf(C);
+    check(c && bLive && c.now >= bLive.now && (await told(B)),
+      `regressions: after that, a third tab asks the tab being played and opens its newest state (C ${c?.now}, B was at ${bLive?.now})`);
+    await context.close();
+  }
+
+  // L1: a tab takes an order, leaves and opens the kitchen again; a busy tab's older copy of the day
+  // (a fork without that order) then arrives late: the order stays.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate16fork${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    const B = await open(context, user);
+    await cont(A);
+    await resume(A);
+    for (let i = 0; i < 120; i++) {
+      const a = await gameOf(A), st = await storedGame(A);
+      if (a && st && a.now - st.now >= 2500) break;
+      await A.waitForTimeout(50);
+    }
+    const busy = block(A, 9000);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await resume(B);
+    await B.waitForTimeout(300);
+    await B.getByRole('button', { name: /^Take .* order$/ }).click({ timeout: 3000 }).catch(() => {});
+    await B.waitForTimeout(300);
+    await B.getByRole('button', { name: /^Pause/ }).first().click();
+    await B.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Save & exit' }).click();
+    await toStart(B);
+    await cont(B);
+    const reopened = await gameOf(B);
+    await busy;
+    await B.waitForTimeout(3000);
+    const b = await gameOf(B), st = await storedGame(B);
+    check(reopened && reopened.tickets >= 1 && b && st && b.tickets === reopened.tickets && st.tickets === reopened.tickets && !(await told(B)) && (await told(A)),
+      `regressions: a kitchen reopened in the tab that played keeps that play over a busy tab's late fork (reopened ${JSON.stringify(reopened)}, then ${JSON.stringify(b)}, stored ${JSON.stringify(st)})`);
+    await context.close();
+  }
+
+  // M1 (pagehide): a busy page closed the moment its long task ends can't wait, so it may write its
+  // older copy and let go of the save; the tab holding the save puts its game back and records
+  // itself again, and stays live.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate16hide${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    await cont(A);
+    await resume(A);
+    await A.waitForTimeout(4500);
+    const B = await open(context, user);
+    const t0 = Date.now();
+    const busy = block(A, 7000, 'pagehide');
+    await B.waitForTimeout(100);
+    await cont(B);
+    await resume(B);
+    const bTab = await writerOf(B);
+    while (Date.now() - t0 < 5800) await B.waitForTimeout(200);
+    const bStored = await storedGame(B);
+    await busy;
+    await B.waitForTimeout(1500);
+    const w = await writerOf(B), st = await storedGame(B), b = await gameOf(B), bTold = await told(B);
+    check(bTab && w === bTab && !bTold && b && st && st.run === b.run && st.now >= bStored.now,
+      `regressions: a busy page's write and let-go on its way out are undone by the tab holding the save (record kept ${w === bTab}, stored ${st?.now} after ${bStored?.now}, B told ${bTold})`);
+    await context.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
-  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|devices runs one part (for working on it); the gate is all of them.
+  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|audit16|devices runs one part (for working on it); the gate is all of them.
   const only = process.env.GATE_ONLY;
   const part = (name) => !only || only === name;
   if (part('regressions')) await runRegressions(browser);
@@ -1674,6 +1810,7 @@ async function runAudit15(browser) {
   if (part('audit13')) await runAudit13(browser);
   if (part('audit14')) await runAudit14(browser);
   if (part('audit15')) await runAudit15(browser);
+  if (part('audit16')) await runAudit16(browser);
   if (part('devices')) {
     results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
     results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });

@@ -27,11 +27,13 @@
 // of overwriting it. It checks again as soon as it is shown, so it says so at once.
 //
 // A page that was busy (no frame for STALL_MS) may see storage as it was before: other tabs'
-// changes reach it as queued events, and a timer can run before them. So it waits a moment
-// (SETTLE_MS) before it saves or claims the save, and those events run first. Should a busy tab
-// still write over the save, the tab holding it puts its own game back (or takes the other copy,
-// when nothing has been played there and it is a later copy of the same day), so the game being
-// played is never replaced by an older one.
+// changes reach it as queued events, and a click or a timer can run before them. So it waits a
+// moment (SETTLE_MS) before it saves or claims the save, Save & exit included, and those events run
+// first. Should a busy tab still write over the save (a page closed the moment its long task ends
+// can't wait), the tab holding it puts its own game back (or takes the other copy, when nothing has
+// been played there and it is a later copy of the same day), and records itself again when that
+// tab let go of the save on its way out, so the game being played is never replaced by an older
+// one and the next tab still asks it to hand over.
 //
 // A late handover is taken, not fought: a holder that was busy past HANDOFF_MS answers after the
 // asking tab has stopped waiting and opened (or is opening) the older save. It only sends its state
@@ -39,8 +41,10 @@
 // notices the other tab has taken the save sends it the same way. While that tab hasn't played yet (it
 // arrives paused, and nothing but selections has happened), it adopts that state when it is a
 // newer copy of the same day, instead of stopping. Once the player has played on there, it keeps
-// its own game and only the late tab stops. A holder that was busy for longer than
-// HANDOFF_FRESH_MS still answers this way, since the asking tab has taken the save by then.
+// its own game and only the late tab stops; that holds after leaving the kitchen and opening it
+// again too, since a page remembers the copy it last saved after playing (see playedHere). A holder
+// that was busy for longer than HANDOFF_FRESH_MS still answers this way, since the asking tab has
+// taken the save by then.
 //
 // That includes a handover landing while the asking tab's kitchen is still opening: the kitchen
 // compares the save with what the start screen read, and the start screen's request keeps
@@ -53,6 +57,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   advanceGame,
   applyCommand,
+  countsAsPlay,
   deserializeGameWithNotes,
   laterCopy,
   salvageSave,
@@ -123,6 +128,8 @@ function newTabId(): string {
 
 /** This page's id: the start screen and the kitchen in one tab are one writer. */
 const TAB_ID = newTabId();
+/** Kitchens opened in this page so far (the newest one is the open one). */
+let kitchenSeq = 0;
 
 /** The tab id holding the save, or null when none is recorded (or storage is unavailable). */
 function readWriter(userId: string): string | null {
@@ -155,6 +162,16 @@ function claimWriter(userId: string, tab: string): void {
   }
 }
 
+/** Has a tab other than `self` asked for the save (handoffKey) at or after `since`? */
+function askedSince(userId: string, self: string, since: number): boolean {
+  try {
+    const request = JSON.parse(window.localStorage.getItem(handoffKey(userId)) ?? 'null');
+    return typeof request?.from === 'string' && request.from !== self && typeof request.at === 'number' && request.at >= since;
+  } catch {
+    return false;
+  }
+}
+
 export interface Handoff {
   /** The save the holder sent directly: its newest state even when storage couldn't keep it (null: read storage). */
   raw: string | null;
@@ -174,6 +191,48 @@ function ownHandover(userId: string): string | null {
   if (!handedOver || handedOver.userId !== userId) return null;
   const now = readRaw(userId);
   return now !== undefined && now === handedOver.stored ? handedOver.raw : null;
+}
+
+/**
+ * The copy this page last saved after playing on it: its game, day, game time, rev and counts,
+ * kept in sessionStorage (it survives a reload of this tab, and no other tab reads it) and here. A
+ * kitchen opened from exactly that copy has been played on in this page, so it doesn't take another
+ * tab's copy of the day over it (see adoptLate), even though nothing has been played since it
+ * opened: that copy is a fork, not a later copy of this one. Forgotten once another tab has held
+ * the save (see requestHandoff): what it stored or sends from then on carries its own play.
+ */
+const playKey = (userId: string) => `nutriserve.remaster.played.v1:${userId}`;
+let ownPlay: { userId: string; mark: string } | null = null;
+const playMark = (s: GameState) => `${s.runId}|${s.day.number}|${s.nowMs}|${s.rev ?? 0}|${s.tickets.length}|${s.day.results.length}`;
+
+function rememberPlay(userId: string, s: GameState): void {
+  const mark = playMark(s);
+  ownPlay = { userId, mark };
+  try {
+    window.sessionStorage.setItem(playKey(userId), mark);
+  } catch {
+    // this page's own memory still holds it
+  }
+}
+
+function forgetPlay(userId: string): void {
+  if (ownPlay?.userId === userId) ownPlay = null;
+  try {
+    window.sessionStorage.removeItem(playKey(userId));
+  } catch {
+    // ignore
+  }
+}
+
+/** Was `s` saved by this page after playing on it (and no other tab has held the save since)? */
+function playedHere(userId: string, s: GameState): boolean {
+  const mark = playMark(s);
+  if (ownPlay?.userId === userId && ownPlay.mark === mark) return true;
+  try {
+    return window.sessionStorage.getItem(playKey(userId)) === mark;
+  } catch {
+    return false;
+  }
 }
 
 // A late handover that arrives after requestHandoff stopped waiting, before a kitchen is open to
@@ -218,10 +277,12 @@ export function takeLateHandover(userId: string): string | null {
  * state and recorded this tab as the writer) or after HANDOFF_MS (it is closed, frozen or busy).
  * Resolves at once when no other tab holds the save. With no record of a writer and storage full
  * (an open kitchen couldn't record itself), it asks anyway: a kitchen holding the save without a
- * record answers too.
+ * record answers too. With another tab holding the save, this page's memory of its own play is
+ * forgotten (see playedHere).
  */
 export function requestHandoff(userId: string): Promise<Handoff> {
   const holder = readWriter(userId);
+  if (holder !== null && holder !== TAB_ID) forgetPlay(userId);
   if (holder === TAB_ID || (holder === null && storageWorks())) return Promise.resolve({ raw: ownHandover(userId), unanswered: false });
   stopListening();
   lateHandover = null;
@@ -389,8 +450,13 @@ export interface NutriServeGame {
   superseded: boolean;
   /** Ask for the save back, load it (paused) and hold it from this tab again (false: it couldn't be read here). */
   takeOver: () => Promise<boolean>;
-  /** Save now, if this tab still holds the save (Save & exit). False only when a save was due and failed. */
+  /** Save now, if this tab still holds the save. False only when a save was due and failed. */
   saveNow: () => boolean;
+  /**
+   * Save & exit: like saveNow, but on a page that was just busy only once other tabs' storage
+   * changes have reached it (see settled); then `then` with saveNow's result.
+   */
+  saveSettled: (then: (saved: boolean) => void) => void;
   /** The last save failed (storage blocked or full): progress since the last good save would be lost. */
   saveFailed: boolean;
   /** Has another tab taken the save, or written it, since this one last wrote it? (Then this tab's state is out of date.) */
@@ -416,9 +482,11 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
   const supersededRef = useRef(false);
   const [superseded, setSuperseded] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
-  // Nothing has been played since this tab took the save (see adoptLate), and the game time then.
+  // Nothing has been played since this tab took the save (see adoptLate), the game time then, and
+  // when it took it (Date.now(), see stillHolds).
   const untouched = useRef(true);
   const heldAtMs = useRef<number | null>(null);
+  const heldSince = useRef(0);
   // The late handover last adopted (the same one can arrive by more than one route).
   const adopted = useRef<string | null>(null);
   // When the last frame ran (see STALL_MS), and the state this kitchen last wrote.
@@ -448,8 +516,8 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       }
       const { state: next, result } = outcome;
       if (next !== ref.current) {
-        // Anything but pausing or selecting counts as playing (see adoptLate).
-        if (!/^(pause|select|releaseHolds)/.test(command.type)) untouched.current = false;
+        // Anything but pausing, selecting or recording a report counts as playing (see adoptLate).
+        if (countsAsPlay(command)) untouched.current = false;
         ref.current = next;
         render(next);
       }
@@ -529,6 +597,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       window.localStorage.setItem(saveKey(userId), raw);
       lastRaw.current = raw;
       lastWritten.current = ref.current;
+      if (!untouched.current) rememberPlay(userId, ref.current);
     } catch {
       ok = false;
     }
@@ -536,20 +605,25 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
     return ok;
   }, [userId]);
 
-  /** Hold the save from this tab: record it as the writer and remember the save as found, then write. */
+  /**
+   * Hold the save from this tab: record it as the writer and remember the save as found, then write.
+   * A copy this page saved after playing on it counts as played (see playedHere).
+   */
   const hold = useCallback(() => {
     claimWriter(userId, tabId.current);
     handedOver = null;
     lastRaw.current = readRaw(userId);
-    untouched.current = true;
+    untouched.current = !playedHere(userId, ref.current);
     heldAtMs.current = ref.current.nowMs;
+    heldSince.current = Date.now();
     write();
   }, [userId, write]);
 
   /**
    * A holder that was busy past HANDOFF_MS handed its newer state over after this tab had already
    * opened the older save. If nothing has been played here since (no time has passed and nothing but
-   * selections was done), take that state instead of stopping. True when adopted.
+   * selections was done, and this page didn't play on the copy it opened), take that state instead
+   * of stopping. True when adopted.
    */
   const adoptLate = useCallback(
     (raw: string | null | undefined): boolean => {
@@ -612,15 +686,23 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
    * that copy if it is a later copy of this day and nothing has been played here (adoptLate), and
    * otherwise puts its own game back. A tab taking the save over records itself as the writer
    * before it writes, so its write never looks like this. Clearing the save (New game) is not put back.
+   *
+   * No record while this tab holds the save: a tab that didn't hold it let go of it on its way out
+   * (it was busy and saw the record as it was before this tab took the save), so this tab records
+   * itself again, putting its game back if that tab wrote too. Unless another tab has asked for
+   * the save since this one took it: that tab is taking it over and couldn't record itself
+   * (storage full), so this one stops as before.
    */
   const stillHolds = useCallback((): boolean => {
     if (fatalRef.current || supersededRef.current) return false;
     const writer = readWriter(userId);
     const changed = changedElsewhere();
-    if (writer === tabId.current && changed) {
+    const lost = writer === null && !askedSince(userId, tabId.current, heldSince.current);
+    if (writer === tabId.current || lost) {
       const now = readRaw(userId);
-      if (typeof now === 'string') {
-        if (!adoptLate(now)) write();
+      if (!changed || typeof now === 'string') {
+        if (changed && !adoptLate(now)) write();
+        if (lost) claimWriter(userId, tabId.current);
         return true;
       }
     }
@@ -656,6 +738,8 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
     }
     then();
   }, []);
+
+  const saveSettled = useCallback((then: (saved: boolean) => void) => settled(() => then(save())), [save, settled]);
 
   /**
    * Hand the save to the tab that asked for it (`at`: when it asked): pause, save the latest state,
@@ -779,6 +863,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
     const sink = { userId, take: (raw: string) => void adoptLate(raw) };
     lateSink = sink;
     // This kitchen holds the save from now on; another tab's kitchen stops writing when it sees this.
+    const mine = ++kitchenSeq;
     const found = readRaw(userId);
     hold();
     // A late handover written while this kitchen was opening (the save changed after the start
@@ -812,10 +897,20 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       window.removeEventListener('storage', onStorage);
       channel.current?.close();
       channel.current = null;
+      // Right after a long task, once other tabs' storage changes have reached this page (as in
+      // settled), unless another kitchen has opened in this page meanwhile.
+      if (performance.now() - lastFrame.current > STALL_MS) {
+        window.setTimeout(() => {
+          if (kitchenSeq !== mine) return;
+          save();
+          letGo();
+        }, SETTLE_MS);
+        return;
+      }
       save();
       letGo();
     };
   }, [adoptLate, cede, hold, save, settled, stillHolds, userId]);
 
-  return { state, dispatch, lastError, fatal, superseded, takeOver, saveNow: save, saveFailed, heldElsewhere };
+  return { state, dispatch, lastError, fatal, superseded, takeOver, saveNow: save, saveSettled, saveFailed, heldElsewhere };
 }
