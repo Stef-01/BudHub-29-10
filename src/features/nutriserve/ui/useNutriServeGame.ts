@@ -25,6 +25,10 @@
 // before every write checks that storage still holds exactly that. A tab restored from the
 // back/forward cache, or woken from a freeze, finds another tab's newer save there and stops instead
 // of overwriting it. It checks again as soon as it is shown, so it says so at once.
+//
+// A late handover is taken, not fought: a holder that was busy past HANDOFF_MS hands over after the
+// asking tab has already opened the older save. While that tab hasn't played yet (it arrives paused,
+// and nothing but selections has happened), it adopts the newer state instead of stopping.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   advanceGame,
@@ -311,6 +315,9 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
   const supersededRef = useRef(false);
   const [superseded, setSuperseded] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  // Nothing has been played since this tab took the save (see adoptLate), and the game time then.
+  const untouched = useRef(true);
+  const heldAtMs = useRef<number | null>(null);
 
   const fail = useCallback((error: unknown) => {
     fatalRef.current = true;
@@ -335,6 +342,8 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
       }
       const { state: next, result } = outcome;
       if (next !== ref.current) {
+        // Anything but pausing or selecting counts as playing (see adoptLate).
+        if (!/^(pause|select|releaseHolds)/.test(command.type)) untouched.current = false;
         ref.current = next;
         render(next);
       }
@@ -423,8 +432,30 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
   const hold = useCallback(() => {
     claimWriter(userId, tabId.current);
     lastRaw.current = readRaw(userId);
+    untouched.current = true;
+    heldAtMs.current = ref.current.nowMs;
     write();
   }, [userId, write]);
+
+  /**
+   * A holder that was busy past HANDOFF_MS handed its newer state over after this tab had already
+   * opened the older save. If nothing has been played here since (no time has passed and nothing but
+   * selections was done), take that state instead of stopping. True when adopted.
+   */
+  const adoptLate = useCallback(
+    (raw: string | null | undefined): boolean => {
+      if (fatalRef.current || supersededRef.current || typeof raw !== 'string' || raw === lastRaw.current) return false;
+      if (!untouched.current || ref.current.nowMs !== heldAtMs.current || readWriter(userId) !== tabId.current) return false;
+      const latest = readSavedGame(userId, raw);
+      if (!latest.state) return false;
+      const s = latest.state;
+      ref.current = s.paused || s.day.completed ? s : applyCommand(s, { type: 'pause' }).state;
+      hold();
+      render(ref.current);
+      return true;
+    },
+    [hold, render, userId]
+  );
 
   /** Stop if another tab holds the save or has written it since this one did. */
   const stillHolds = useCallback((): boolean => {
@@ -535,12 +566,15 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
         onAsk(request?.from, request?.at);
         return;
       }
+      if (e.key === saveKey(userId) && adoptLate(e.newValue)) return;
       if (e.key === writerKey(userId) || e.key === saveKey(userId)) stillHolds();
     };
     channel.current = openChannel(userId);
     if (channel.current) {
       channel.current.onmessage = (e: MessageEvent<TabMessage>) => {
         if (e.data?.kind === 'ask') onAsk(e.data.from, e.data.at);
+        // A handover that arrives after this tab stopped waiting for it.
+        else if (e.data?.kind === 'ceded' && e.data.to === tabId.current) adoptLate(e.data.raw);
       };
     }
     /** Leaving the page or the kitchen lets go of the save, so a tab that asks next doesn't wait for an answer that will never come. */
@@ -570,7 +604,7 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
       save();
       letGo();
     };
-  }, [cede, hold, save, stillHolds, userId]);
+  }, [adoptLate, cede, hold, save, stillHolds, userId]);
 
   return { state, dispatch, lastError, fatal, superseded, takeOver, saveNow: save, saveFailed };
 }
