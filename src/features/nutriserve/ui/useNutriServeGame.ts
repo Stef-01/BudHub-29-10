@@ -124,27 +124,33 @@ function claimWriter(userId: string, tab: string): void {
   }
 }
 
+export interface Handoff {
+  /** The save the holder sent directly: its newest state even when storage couldn't keep it (null: read storage). */
+  raw: string | null;
+  /** Another tab held the save but didn't answer in time (closed, frozen or busy): it may still hand over late. */
+  unanswered: boolean;
+}
+
 /**
  * Ask the tab holding the save to hand it over, and resolve once it has (it saved its latest
- * state and recorded this tab as the writer) or after HANDOFF_MS (it is closed or frozen). Resolves
- * with the save the holder sent directly, which is its newest state even when storage couldn't
- * keep it (null: read the save from storage). Resolves at once when no other tab holds the save.
+ * state and recorded this tab as the writer) or after HANDOFF_MS (it is closed, frozen or busy).
+ * Resolves at once when no other tab holds the save.
  */
-export function requestHandoff(userId: string): Promise<string | null> {
+export function requestHandoff(userId: string): Promise<Handoff> {
   const holder = readWriter(userId);
-  if (holder === null || holder === TAB_ID) return Promise.resolve(null);
+  if (holder === null || holder === TAB_ID) return Promise.resolve({ raw: null, unanswered: false });
   return new Promise((resolve) => {
     let done = false;
     const channel = openChannel(userId);
     let grace = 0;
-    const finish = (raw: string | null) => {
+    const finish = (raw: string | null, unanswered = false) => {
       if (done) return;
       done = true;
       window.clearTimeout(timer);
       window.clearTimeout(grace);
       window.removeEventListener('storage', onStorage);
       channel?.close();
-      resolve(raw);
+      resolve({ raw, unanswered });
     };
     const onStorage = (e: StorageEvent) => {
       if (e.key !== writerKey(userId) || readWriter(userId) !== TAB_ID) return;
@@ -158,7 +164,7 @@ export function requestHandoff(userId: string): Promise<string | null> {
         if (m?.kind === 'ceded' && m.to === TAB_ID) finish(typeof m.raw === 'string' ? m.raw : null);
       };
     }
-    const timer = window.setTimeout(() => finish(null), HANDOFF_MS);
+    const timer = window.setTimeout(() => finish(null, true), HANDOFF_MS);
     window.addEventListener('storage', onStorage);
     const request = { from: TAB_ID, at: Date.now() };
     let asked = false;
@@ -293,7 +299,7 @@ export interface NutriServeGame {
   fatal: string | null;
   /** The save is now held by a kitchen in another tab: this one has stopped saving and paused. */
   superseded: boolean;
-  /** Ask for the save back, load it and hold it from this tab again (false: it couldn't be read here). */
+  /** Ask for the save back, load it (paused) and hold it from this tab again (false: it couldn't be read here). */
   takeOver: () => Promise<boolean>;
   /** Save now, if this tab still holds the save (Save & exit). False only when a save was due and failed. */
   saveNow: () => boolean;
@@ -447,7 +453,8 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
       if (fatalRef.current || supersededRef.current || typeof raw !== 'string' || raw === lastRaw.current) return false;
       if (!untouched.current || ref.current.nowMs !== heldAtMs.current || readWriter(userId) !== tabId.current) return false;
       const latest = readSavedGame(userId, raw);
-      if (!latest.state) return false;
+      // Only a newer copy of the same day of the same game (never over a new game or a new day).
+      if (!latest.state || latest.state.runId !== ref.current.runId || latest.state.day.number !== ref.current.day.number) return false;
       const s = latest.state;
       ref.current = s.paused || s.day.completed ? s : applyCommand(s, { type: 'pause' }).state;
       hold();
@@ -505,7 +512,7 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
 
   const takeOver = useCallback(async () => {
     const handed = await requestHandoff(userId);
-    const latest = readSavedGame(userId, handed);
+    const latest = readSavedGame(userId, handed.raw);
     if (!latest.state) return false;
     // Picked up paused, so the clock waits for the player to resume here.
     const s = latest.state;

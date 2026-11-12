@@ -4,6 +4,7 @@ import { CustomerSprite } from '../assets/CustomerSprite.tsx';
 import { serviceNutritionReport } from '../nutrition/nutrition.ts';
 import {
   AGGREGATION_V2,
+  applyCommand,
   createGame,
   getCatalogCustomer,
   RANK_THRESHOLDS,
@@ -115,12 +116,12 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
   // then acts on the save as it is AFTER the handover (`latest`), never on what this screen showed
   // before it: the other tab may have played on, bought something or finished the day meanwhile.
   const [handing, setHanding] = useState(false);
-  const afterHandoff = (then: (latest: ReturnType<typeof readSavedGame>) => void) => {
+  const afterHandoff = (then: (latest: ReturnType<typeof readSavedGame>, unanswered: boolean) => void) => {
     if (handing) return;
     setHanding(true);
     requestHandoff(props.userId).then((handed) => {
       setHanding(false);
-      then(readSavedGame(props.userId, handed));
+      then(readSavedGame(props.userId, handed.raw), handed.unanswered);
     });
   };
   /** Show the start screen again for the save as it now is (it changed during the handover). */
@@ -221,8 +222,11 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
               className="ns-btn ns-btn-primary"
               disabled={handing}
               onClick={() =>
-                afterHandoff((latest) => {
-                  if (latest.state) setGame(latest.state);
+                afterHandoff((latest, unanswered) => {
+                  // A tab that held the save and didn't answer may still hand over its newer state
+                  // in a moment: open paused, so this one can take it (see adoptLate in the hook).
+                  const s = latest.state;
+                  if (s) setGame(unanswered && !s.paused && !s.day.completed ? applyCommand(s, { type: 'pause' }).state : s);
                   else refresh();
                 })
               }
