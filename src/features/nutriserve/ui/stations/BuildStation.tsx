@@ -193,14 +193,14 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
         />
       </div>
 
-      <Dockable slot="main" region={box(10, 200, 218, 146)} className="ns-gauges">
+      <Dockable slot="aside" region={box(10, 200, 218, 146)} className="ns-gauges">
         <p className="ns-caption">
-          {dish.size} vessel{ticket ? ` for #${ticket.number} ${customerName(ticket)}` : ''}
+          {dish.size[0].toUpperCase() + dish.size.slice(1)} vessel{ticket ? ` for #${ticket.number} ${customerName(ticket)}` : ''}
           {wrongSize && ticket && <b className="ns-size-warning"> · ticket wants {ticket.order.size} (−{BUILD_V1.wrongVesselPenalty})</b>}
         </p>
         {COMPONENTS.map((c) => (
           <React.Fragment key={c.id}>
-            <Gauge label={c.label} actualG={grams(c.id)} idealG={ideal?.[c.id]} band={exactBand(c.id, effects)} />
+            <Gauge label={c.label} actualG={grams(c.id)} idealG={ideal?.[c.id]} band={exactBand(c.id, effects, ideal?.[c.id])} />
           </React.Fragment>
         ))}
         {!ideal && ticket && <p className="ns-muted">Size differs from ticket #{ticket.number}</p>}

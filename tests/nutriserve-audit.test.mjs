@@ -520,7 +520,7 @@ test('every serve records plain reasons for its scores', () => {
   const notes = s.day.results[0].notes;
   assert.ok(notes.some((n) => /^Base \+40 g \(line \d+ g\)$/.test(n)), notes.join(' | '));
   assert.ok(notes.includes('No side'), notes.join(' | '));
-  assert.ok(notes.some((n) => /^Undercooked: 0 s on the flame; the mark is \d+ s$/.test(n)), notes.join(' | '));
+  assert.ok(notes.some((n) => /^Undercooked: 0 s on the flame; perfect from \d+ s \(mark \d+ s\)$/.test(n)), notes.join(' | '));
   assert.equal(s.day.results[0].complete, false);
   assert.ok(s.day.results[0].stars <= 4);
 });
@@ -864,7 +864,7 @@ test('the whistle needs a guiding ticket, and replays the same in any chunking',
   let parts = q;
   for (const dt of [1, 333, 7, 1_200, 59, 2_400]) parts = advanceGame(parts, dt);
   assert.deepEqual(parts, whole);
-  assert.equal(PREP_V1.version, 'prep-v4-provisional');
+  assert.equal(PREP_V1.version, 'prep-v5-provisional');
 });
 
 // --- Twelfth audit, 2026-11-12 -------------------------------------------------------------------
@@ -904,14 +904,17 @@ test('every station score under 100 has a note, so "No points lost" never hides 
   // Waiting: 95 is named too.
   assert.ok(all({ waiting: 95 }).some((n) => /^Waited \d+ s$/.test(n)));
   assert.deepEqual(all({}), [], 'a perfect serve has no notes');
-  // Build: any portion outside its exact band is named, including ones that cost under a point.
+  // Build: a portion is named exactly when the build score shows a loss (audit 13: a portion a hair
+  // outside its band whose loss rounded away used to be named under a build of 100).
   for (const c of ['base', 'main', 'side']) {
-    for (const f of [0.5, 0.8, 0.9, 0.92, 0.95, 1.05, 1.08, 1.1, 1.5]) {
+    for (const f of [0.5, 0.8, 0.9, 0.92, 0.925, 0.928, 0.95, 1.05, 1.07, 1.0703, 1.072, 1.08, 1.1, 1.5]) {
       const d = structuredClone(dish);
       d.build[c].mg = Math.round(order.idealG[c] * f * 1000);
-      const credit = portionCredit(d.build[c].mg / 1000, order.idealG[c], exactBand(c));
-      const named = all({ build: gradeBuild(d, order).score }, d).filter((n) => n.startsWith(`${c[0].toUpperCase()}${c.slice(1)} `));
-      assert.equal(named.length, credit < 1 ? 1 : 0, `${c} x${f}: ${named}`);
+      const credit = portionCredit(d.build[c].mg / 1000, order.idealG[c], exactBand(c, undefined, order.idealG[c]));
+      const build = gradeBuild(d, order).score;
+      const named = all({ build }, d).filter((n) => n.startsWith(`${c[0].toUpperCase()}${c.slice(1)} `));
+      assert.equal(named.length, build < 100 ? 1 : 0, `${c} x${f}: build ${build}, credit ${credit}: ${named}`);
+      if (build < 100) assert.ok(credit < 1);
     }
   }
   // Finish: penalties that are each under half a point but cost a point together are still named.
@@ -937,10 +940,75 @@ test('the drizzle amount is free within 12% of its target, then costs up to 24 p
   assert.equal(amountLost(target * 5), FINISH_V1.penalty.drizzleAmountMax);
 });
 
-test('build-v6: a fifth off costs about a quarter of the share, and the serving tools matter', () => {
-  assert.equal(BUILD_V1.version, 'build-v6');
+test('build-v7: a fifth off costs about a quarter of the share, and the serving tools matter', () => {
+  assert.equal(BUILD_V1.version, 'build-v7');
   assert.ok(Math.abs(portionCredit(80, 100, BUILD_V1.exactBand) - 0.74) < 1e-9);
   // 12% short is exact with the scoop, and costs a tenth of the share without it.
   assert.equal(portionCredit(88, 100, BUILD_V1.toolExactBand), 1);
   assert.ok(Math.abs(portionCredit(88, 100, BUILD_V1.exactBand) - 0.9) < 1e-9);
+});
+
+// --- Thirteenth audit, 2026-11-12 ----------------------------------------------------------------
+import { GARNISH_TRAY_BALANCE_SCALE, PROGRESSION_VERSION, pressGrams } from '../src/features/nutriserve/simulation/index.ts';
+
+test('prep notes never show a time inside the perfect window, and a forgotten dish reads as burnt (prep-v5)', () => {
+  const { s, dishId, ticket } = finishing(42, 4);
+  const dish = s.dishes.find((d) => d.id === dishId);
+  for (const prepLevel of ['quick', 'regular', 'slow']) {
+    for (const effects of [undefined, upgradeEffects(['copper_handis'])]) {
+      const order = { ...ticket.order, prepLevel };
+      const mark = prepTargetUnits(prepLevel), band = prepBandUnits(effects);
+      for (let u = 0; u <= PREP_V1.maxUnits; u += 13) {
+        const d = { ...dish, prep: { ...dish.prep, milliUnits: u * 1000 } };
+        const prep = gradePrep(d, order, effects);
+        const notes = serveNotes(d, order, { waiting: 100, build: 100, prep, finish: 100 }, 1, [], 30_000, effects).filter((n) => /cooked|Burnt/.test(n));
+        assert.equal(notes.length, prep < 100 ? 1 : 0, `${prepLevel} ${u}: ${notes}`);
+        if (!notes.length) continue;
+        const shown = Number(/^(?:Under|Over)cooked: ([\d.]+) s/.exec(notes[0])?.[1] ?? NaN);
+        if (u >= PREP_V1.maxUnits) assert.match(notes[0], /^Burnt: still on the flame at 32 s/);
+        else if (u < mark) assert.ok(shown * 1000 < mark - band, `${prepLevel} ${u}: "${notes[0]}" reads as inside the window`);
+        else assert.ok(shown * 1000 > mark + band, `${prepLevel} ${u}: "${notes[0]}" reads as inside the window`);
+      }
+    }
+  }
+  // A broken in-memory value never prints NaN.
+  const broken = { ...dish, prep: { ...dish.prep, milliUnits: NaN } };
+  assert.deepEqual(serveNotes(broken, ticket.order, { waiting: 100, build: 100, prep: 0, finish: 100 }, 1, [], 30_000).filter((n) => /NaN/.test(n)), []);
+});
+
+test('build-v7: a tap can land in every exact band, and a generous portion loses its share more gently', () => {
+  assert.equal(BUILD_V1.version, 'build-v7');
+  // A 60 g main: 7% is 4.2 g either side, narrower than one 9 g tap; the floor makes it 5.4 g.
+  assert.equal(pressGrams('main'), 9);
+  assert.ok(Math.abs(exactBand('main', undefined, 60) * 60 - 5.4) < 1e-9);
+  assert.equal(exactBand('main', undefined, 240), BUILD_V1.exactBand);
+  for (const c of ['base', 'main', 'side']) {
+    for (const ideal of [20, 40, 60, 100, 160, 260]) assert.ok(2 * exactBand(c, undefined, ideal) * ideal > pressGrams(c), `${c} ${ideal} g`);
+  }
+  // Overfilling a side 20% past its band costs 25 x 0.2 = 5 points (0.25 a percent).
+  assert.ok(Math.abs(25 * (1 - portionCredit(127, 100, 0.07)) - 5) < 1e-9);
+  // The audit-13 case: 137 g of base on a 128 g line costs under half a point and scores 100, with no note.
+  const { s, dishId, ticket } = finishing(42, 4);
+  const d = structuredClone(s.dishes.find((x) => x.id === dishId));
+  const order = { ...ticket.order, idealG: { ...ticket.order.idealG, base: 128 } };
+  d.build.base.mg = 137_000;
+  for (const c of ['main', 'side']) d.build[c].mg = order.idealG[c] * 1000;
+  const build = gradeBuild(d, order).score;
+  assert.equal(build, 100);
+  assert.deepEqual(serveNotes(d, order, { waiting: 100, build, prep: 100, finish: 100 }, 1, [], 30_000).filter((n) => /^Base/.test(n)), []);
+});
+
+test('the garnish tray catches dropped pieces and halves what an off-centre garnish costs (progression-v6)', () => {
+  assert.equal(PROGRESSION_VERSION, 'progression-v6');
+  assert.equal(UPGRADES.garnish_tray.cost, 30);
+  assert.equal(upgradeEffects(['garnish_tray']).garnishBalanceScale, GARNISH_TRAY_BALANCE_SCALE);
+  assert.equal(upgradeEffects([]).garnishBalanceScale, 1);
+  let { s, dishId, ticket } = finishing(42, 2);
+  for (let i = 0; i < 3; i++) s = cmd(s, { type: 'placeGarnish', dishId, garnishId: 'coriander', x: 0.6, y: 0.1 * i });
+  const dish = s.dishes.find((d) => d.id === dishId);
+  const offCentre = (effects) => gradeFinishV1(dish, ticket.order, effects).penalties.find((p) => p.reason === 'Garnish off centre')?.points ?? 0;
+  assert.ok(offCentre() > 1);
+  assert.ok(Math.abs(offCentre(upgradeEffects(['garnish_tray'])) - offCentre() / 2) < 1e-9);
+  assert.match(UPGRADES.garnish_tray.description, /off-centre garnish costs half/);
+  assert.match(UPGRADES.rice_scoop.description, /Every base/);
 });

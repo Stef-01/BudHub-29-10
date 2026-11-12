@@ -14,10 +14,17 @@
 // other's progress.
 //
 // Handing over: before a tab reads the save to open it (Continue, a new day, Continue here), it asks
-// the tab holding the save to hand it over (handoffKey). The holder pauses, saves its latest state,
-// records the asking tab as the writer and stops; the asking tab waits for that (at most HANDOFF_MS,
-// for a holder that is closed or frozen) and only then reads the save, so nothing done in the other
-// window since its last autosave is lost.
+// the tab holding the save to hand it over (handoffKey, and the tabs' BroadcastChannel). The holder
+// pauses, saves its latest state, sends that state to the asking tab directly (so it arrives even
+// when storage is full), records the asking tab as the writer and stops; the asking tab waits for
+// that (at most HANDOFF_MS, for a holder that is closed or frozen) and only then opens the save, so
+// nothing done in the other window since its last autosave is lost. When two tabs ask at once, the
+// one that asks last ends up with the save (the most recently opened kitchen holds it).
+//
+// A stale tab never writes: each kitchen remembers the save as it last wrote (or found) it, and
+// before every write checks that storage still holds exactly that. A tab restored from the
+// back/forward cache, or woken from a freeze, finds another tab's newer save there and stops instead
+// of overwriting it. It checks again as soon as it is shown, so it says so at once.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   advanceGame,
@@ -45,6 +52,31 @@ export const saveKey = (userId: string) => `nutriserve.remaster.save.v1:${userId
 export const writerKey = (userId: string) => `nutriserve.remaster.writer.v1:${userId}`;
 /** A tab asking the holder of the save to hand it over: { from: tab id, at }. */
 export const handoffKey = (userId: string) => `nutriserve.remaster.handoff.v1:${userId}`;
+/** The open tabs' message channel (where BroadcastChannel exists). */
+const channelName = (userId: string) => `nutriserve.remaster.tabs.v1:${userId}`;
+/** With a channel, how long to wait for the holder's message after its writer record changes. */
+const HANDOFF_GRACE_MS = 150;
+
+type TabMessage =
+  | { kind: 'ask'; from: string; at: number }
+  | { kind: 'ceded'; from: string; to: string; raw: string | null };
+
+function openChannel(userId: string): BroadcastChannel | null {
+  try {
+    return typeof BroadcastChannel === 'function' ? new BroadcastChannel(channelName(userId)) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The stored save as text: null when there is none, undefined when storage can't be read. */
+function readRaw(userId: string): string | null | undefined {
+  try {
+    return window.localStorage.getItem(saveKey(userId));
+  } catch {
+    return undefined;
+  }
+}
 
 function newTabId(): string {
   try {
@@ -91,41 +123,73 @@ function claimWriter(userId: string, tab: string): void {
 /**
  * Ask the tab holding the save to hand it over, and resolve once it has (it saved its latest
  * state and recorded this tab as the writer) or after HANDOFF_MS (it is closed or frozen). Resolves
- * at once when no other tab holds the save.
+ * with the save the holder sent directly, which is its newest state even when storage couldn't
+ * keep it (null: read the save from storage). Resolves at once when no other tab holds the save.
  */
-export function requestHandoff(userId: string): Promise<void> {
+export function requestHandoff(userId: string): Promise<string | null> {
   const holder = readWriter(userId);
-  if (holder === null || holder === TAB_ID) return Promise.resolve();
+  if (holder === null || holder === TAB_ID) return Promise.resolve(null);
   return new Promise((resolve) => {
     let done = false;
-    const finish = () => {
+    const channel = openChannel(userId);
+    let grace = 0;
+    const finish = (raw: string | null) => {
       if (done) return;
       done = true;
       window.clearTimeout(timer);
+      window.clearTimeout(grace);
       window.removeEventListener('storage', onStorage);
-      resolve();
+      channel?.close();
+      resolve(raw);
     };
     const onStorage = (e: StorageEvent) => {
-      if (e.key === writerKey(userId) && readWriter(userId) === TAB_ID) finish();
+      if (e.key !== writerKey(userId) || readWriter(userId) !== TAB_ID) return;
+      // The holder has let go. Its message (with its state) may still be on its way.
+      if (!channel) finish(null);
+      else if (!grace) grace = window.setTimeout(() => finish(null), HANDOFF_GRACE_MS);
     };
-    const timer = window.setTimeout(finish, HANDOFF_MS);
-    window.addEventListener('storage', onStorage);
-    try {
-      window.localStorage.setItem(handoffKey(userId), JSON.stringify({ from: TAB_ID, at: Date.now() }));
-    } catch {
-      finish(); // storage blocked: nobody can be asked
+    if (channel) {
+      channel.onmessage = (e: MessageEvent<TabMessage>) => {
+        const m = e.data;
+        if (m?.kind === 'ceded' && m.to === TAB_ID) finish(typeof m.raw === 'string' ? m.raw : null);
+      };
     }
+    const timer = window.setTimeout(() => finish(null), HANDOFF_MS);
+    window.addEventListener('storage', onStorage);
+    const request = { from: TAB_ID, at: Date.now() };
+    let asked = false;
+    try {
+      channel?.postMessage({ kind: 'ask', ...request } satisfies TabMessage);
+      asked = !!channel;
+    } catch {
+      // fall back to storage
+    }
+    try {
+      window.localStorage.setItem(handoffKey(userId), JSON.stringify(request));
+      asked = true;
+    } catch {
+      // storage blocked or full
+    }
+    if (!asked) finish(null); // nobody can be asked
   });
 }
 
-/** Can anything be stored here at all? (False in some private modes and with site data blocked.) */
+/** Bytes the start screen test-writes: roughly a mid-day save, so a nearly full store is caught. */
+const PROBE_CHARS = 8_192;
+
+/** Can a save be stored here? (False in some private modes, with site data blocked, or storage nearly full.) */
 export function storageWorks(): boolean {
+  const key = 'nutriserve.remaster.probe.v1';
   try {
-    const key = 'nutriserve.remaster.probe.v1';
-    window.localStorage.setItem(key, '1');
+    window.localStorage.setItem(key, 'x'.repeat(PROBE_CHARS));
     window.localStorage.removeItem(key);
     return true;
   } catch {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
     return false;
   }
 }
@@ -141,12 +205,16 @@ export interface StoredGame {
   notes: string[];
 }
 
-export function readSavedGame(userId: string): StoredGame {
+/** Read the save; `handed` (a save another tab sent directly, see requestHandoff) is read instead when given. */
+export function readSavedGame(userId: string, handed?: string | null): StoredGame {
   let raw: string | null = null;
-  try {
-    raw = window.localStorage.getItem(saveKey(userId));
-  } catch {
-    return { state: null, problem: null, exists: false, notes: [] };
+  if (typeof handed === 'string') raw = handed;
+  else {
+    try {
+      raw = window.localStorage.getItem(saveKey(userId));
+    } catch {
+      return { state: null, problem: null, exists: false, notes: [] };
+    }
   }
   if (!raw) return { state: null, problem: null, exists: false, notes: [] };
   try {
@@ -211,8 +279,12 @@ export interface NutriServeGame {
   state: GameState;
   /** silent: don't surface a rejection in the status line (internal bookkeeping commands). */
   dispatch: Dispatch;
-  /** Last rejected command's reason, for the status line; seq changes on every rejection. */
-  lastError: { message: string; seq: number } | null;
+  /**
+   * Rejected commands' reasons, for the status line: `messages` holds every rejection since the
+   * last render (so two in one event are both announced), `message` the latest; seq changes on
+   * every rejection.
+   */
+  lastError: { message: string; messages: string[]; seq: number } | null;
   /** Set when the simulation threw: the clock has stopped and autosave is off. */
   fatal: string | null;
   /** The save is now held by a kitchen in another tab: this one has stopped saving and paused. */
@@ -228,8 +300,9 @@ export interface NutriServeGame {
 export function useNutriServeGame(initial: GameState, userId: string): NutriServeGame {
   const ref = useRef(initial);
   const [state, setState] = useState(initial);
-  const [lastError, setLastError] = useState<{ message: string; seq: number } | null>(null);
+  const [lastError, setLastError] = useState<NutriServeGame['lastError']>(null);
   const errorSeq = useRef(0);
+  const pendingErrors = useRef<string[]>([]);
   const [fatal, setFatal] = useState<string | null>(null);
   const fatalRef = useRef(false);
   const carry = useRef(0);
@@ -265,11 +338,18 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
         ref.current = next;
         render(next);
       }
-      if (!options?.silent && 'error' in result) setLastError({ message: result.error, seq: ++errorSeq.current });
+      if (!options?.silent && 'error' in result) {
+        if (pendingErrors.current[pendingErrors.current.length - 1] !== result.error) pendingErrors.current.push(result.error);
+        setLastError({ message: result.error, messages: [...pendingErrors.current], seq: ++errorSeq.current });
+      }
       return result;
     },
     [fail, render]
   );
+  // Rejections are collected until they have been rendered.
+  useEffect(() => {
+    pendingErrors.current = [];
+  }, [lastError]);
 
   // Clock
   useEffect(() => {
@@ -310,60 +390,140 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
     return writer === null || writer === tabId.current;
   }, [userId]);
 
-  // Autosave (off once the simulation has failed, so a bad state never replaces the last good save,
-  // and off once another tab holds the save, so this one never overwrites it).
-  const save = useCallback((): boolean => {
-    if (fatalRef.current || supersededRef.current) return true;
-    if (!owns()) {
-      supersede();
-      return true;
+  // The save as this kitchen last wrote it, or found it when it took the save (undefined: unknown).
+  const lastRaw = useRef<string | null | undefined>(undefined);
+  /** Has another tab written the save since this one last wrote it (or took it)? */
+  const changedElsewhere = useCallback(() => {
+    if (lastRaw.current === undefined) return false;
+    const now = readRaw(userId);
+    return now !== undefined && now !== lastRaw.current;
+  }, [userId]);
+
+  /** Write the current state; remembers what was written. */
+  const write = useCallback((): boolean => {
+    let raw: string;
+    try {
+      raw = serializeGame(ref.current);
+    } catch {
+      setSaveFailed(true);
+      return false;
     }
-    const ok = writeSave(userId, ref.current);
+    let ok = true;
+    try {
+      window.localStorage.setItem(saveKey(userId), raw);
+      lastRaw.current = raw;
+    } catch {
+      ok = false;
+    }
     setSaveFailed(!ok);
     return ok;
-  }, [owns, supersede, userId]);
+  }, [userId]);
 
-  /** Hand the save to the tab that asked for it: pause, save the latest state, record it, stop. */
+  /** Hold the save from this tab: record it as the writer and remember the save as found, then write. */
+  const hold = useCallback(() => {
+    claimWriter(userId, tabId.current);
+    lastRaw.current = readRaw(userId);
+    write();
+  }, [userId, write]);
+
+  /** Stop if another tab holds the save or has written it since this one did. */
+  const stillHolds = useCallback((): boolean => {
+    if (fatalRef.current || supersededRef.current) return false;
+    if (!owns() || changedElsewhere()) {
+      supersede();
+      return false;
+    }
+    return true;
+  }, [changedElsewhere, owns, supersede]);
+
+  // Autosave (off once the simulation has failed, so a bad state never replaces the last good save,
+  // and off once another tab holds or has written the save, so this one never overwrites it).
+  const save = useCallback((): boolean => {
+    if (fatalRef.current || supersededRef.current) return true;
+    if (!stillHolds()) return true;
+    return write();
+  }, [stillHolds, write]);
+
+  const channel = useRef<BroadcastChannel | null>(null);
+
+  /**
+   * Hand the save to the tab that asked for it: pause, save the latest state, send it to that tab,
+   * record it as the writer, stop. A stale tab (another one wrote the save since) sends nothing.
+   */
   const cede = useCallback(
     (to: string) => {
-      if (fatalRef.current || supersededRef.current || readWriter(userId) !== tabId.current) return;
+      if (!stillHolds()) return;
       if (!ref.current.paused && !ref.current.day.completed) dispatch({ type: 'pause' }, { silent: true });
-      writeSave(userId, ref.current);
+      write();
+      let raw: string | null = null;
+      try {
+        raw = serializeGame(ref.current);
+      } catch {
+        raw = null;
+      }
+      try {
+        channel.current?.postMessage({ kind: 'ceded', from: tabId.current, to, raw } satisfies TabMessage);
+      } catch {
+        // the asking tab reads storage instead
+      }
       claimWriter(userId, to);
       supersede();
     },
-    [dispatch, supersede, userId]
+    [dispatch, stillHolds, supersede, userId, write]
   );
 
   const takeOver = useCallback(async () => {
-    await requestHandoff(userId);
-    const latest = readSavedGame(userId);
+    const handed = await requestHandoff(userId);
+    const latest = readSavedGame(userId, handed);
     if (!latest.state) return false;
     // Picked up paused, so the clock waits for the player to resume here.
     const s = latest.state;
     ref.current = s.paused || s.day.completed ? s : applyCommand(s, { type: 'pause' }).state;
-    claimWriter(userId, tabId.current);
     supersededRef.current = false;
     setSuperseded(false);
+    hold();
     render(ref.current);
     return true;
-  }, [render, userId]);
+  }, [hold, render, userId]);
 
   // Pause (and save) when hidden, so another tab opened meanwhile starts from the latest state.
+  // When shown again (or restored from the back/forward cache, or resumed after a freeze), check
+  // at once that no other tab has taken or written the save meanwhile.
   useEffect(() => {
+    const onReturn = () => {
+      if (!stillHolds()) return;
+      if (readWriter(userId) === null) claimWriter(userId, tabId.current);
+    };
     const onVisibility = () => {
-      if (!document.hidden) return;
+      if (!document.hidden) {
+        onReturn();
+        return;
+      }
       if (!ref.current.paused && !ref.current.day.completed) dispatch({ type: 'pause' });
       save();
     };
+    const onFreeze = () => save();
     document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [dispatch, save]);
+    document.addEventListener('freeze', onFreeze);
+    document.addEventListener('resume', onReturn);
+    window.addEventListener('pageshow', onReturn);
+    window.addEventListener('focus', onReturn);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('freeze', onFreeze);
+      document.removeEventListener('resume', onReturn);
+      window.removeEventListener('pageshow', onReturn);
+      window.removeEventListener('focus', onReturn);
+    };
+  }, [dispatch, save, stillHolds, userId]);
 
   useEffect(() => {
     // This kitchen holds the save from now on; another tab's kitchen stops writing when it sees this.
-    claimWriter(userId, tabId.current);
-    setSaveFailed(!writeSave(userId, ref.current));
+    hold();
+    const onAsk = (from: unknown, at: unknown) => {
+      const fresh = typeof at === 'number' && Math.abs(Date.now() - at) < HANDOFF_FRESH_MS;
+      if (fresh && typeof from === 'string' && from !== tabId.current) cede(from);
+    };
     const onStorage = (e: StorageEvent) => {
       if (e.key === handoffKey(userId)) {
         let request: { from?: unknown; at?: unknown } | null = null;
@@ -372,31 +532,45 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
         } catch {
           request = null;
         }
-        const fresh = typeof request?.at === 'number' && Math.abs(Date.now() - request.at) < HANDOFF_FRESH_MS;
-        if (fresh && typeof request?.from === 'string' && request.from !== tabId.current) cede(request.from);
+        onAsk(request?.from, request?.at);
         return;
       }
-      if ((e.key === writerKey(userId) || e.key === saveKey(userId)) && !owns()) supersede();
+      if (e.key === writerKey(userId) || e.key === saveKey(userId)) stillHolds();
+    };
+    channel.current = openChannel(userId);
+    if (channel.current) {
+      channel.current.onmessage = (e: MessageEvent<TabMessage>) => {
+        if (e.data?.kind === 'ask') onAsk(e.data.from, e.data.at);
+      };
+    }
+    /** Leaving the page or the kitchen lets go of the save, so a tab that asks next doesn't wait for an answer that will never come. */
+    const letGo = () => {
+      if (readWriter(userId) !== tabId.current) return;
+      try {
+        window.localStorage.removeItem(writerKey(userId));
+      } catch {
+        // ignore
+      }
+    };
+    // A page put in the back/forward cache lets go too; restored, it takes the save back only if
+    // nobody wrote it meanwhile (see onReturn above).
+    const onPageHide = () => {
+      save();
+      letGo();
     };
     const id = window.setInterval(save, AUTOSAVE_MS);
-    window.addEventListener('pagehide', save);
+    window.addEventListener('pagehide', onPageHide);
     window.addEventListener('storage', onStorage);
     return () => {
       window.clearInterval(id);
-      window.removeEventListener('pagehide', save);
+      window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('storage', onStorage);
+      channel.current?.close();
+      channel.current = null;
       save();
-      // Leaving the kitchen (Save & exit, Exit) lets go of the save, so a tab that asks for it next
-      // doesn't wait for an answer that will never come.
-      if (readWriter(userId) === tabId.current) {
-        try {
-          window.localStorage.removeItem(writerKey(userId));
-        } catch {
-          // ignore
-        }
-      }
+      letGo();
     };
-  }, [cede, owns, save, supersede, userId]);
+  }, [cede, hold, save, stillHolds, userId]);
 
   return { state, dispatch, lastError, fatal, superseded, takeOver, saveNow: save, saveFailed };
 }

@@ -19,12 +19,13 @@ export {
   prepTargetUnits,
   prepSeconds,
   prepUnits,
+  pressGrams,
   orderComplete,
   rewardsV1,
   rewardsV2,
   serveNotes,
 } from './scoring.ts';
-export { rankForPoints, RANK_THRESHOLDS, upgradeEffects, UPGRADES, RETIRED_UPGRADES } from './progression.ts';
+export { GARNISH_TRAY_BALANCE_SCALE, PROGRESSION_VERSION, rankForPoints, RANK_THRESHOLDS, upgradeEffects, UPGRADES, RETIRED_UPGRADES } from './progression.ts';
 export { generateOrder, wantsLowSodium } from './orders.ts';
 export { createRng, seedFrom } from './rng.ts';
 export { getCatalogCustomer, getFood, servingGrams } from './catalog.ts';

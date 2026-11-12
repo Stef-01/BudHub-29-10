@@ -11,7 +11,11 @@
 // when a dish reaches its mark (in v3 a late release under lids overcooked more than without them).
 // v5: the garnish tray catches pieces dropped outside the katori instead of adding points to the
 // finish score, and the serving tools and copper handis are described for build-v6 and prep-v4.
-export const PROGRESSION_VERSION = 'progression-v5';
+// v6: the garnish tray also halves what an off-centre garnish costs (catching dropped pieces alone
+// was worth well under a point a serve) and costs 30 instead of 35; the base scoop is described for
+// every base (it always covered idli and the rest, not only rice and roti); copper handis are
+// described for prep-v5.
+export const PROGRESSION_VERSION = 'progression-v6';
 
 /** Cumulative points needed for each rank (index 0 = rank 1). */
 export const RANK_THRESHOLDS = [0, 40, 100, 180, 280, 400, 550, 720, 920, 1150];
@@ -56,7 +60,7 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'rice_scoop',
     label: 'Brass rice scoop',
     hi: 'पीतल का चम्मच',
-    description: 'Rice and roti count as exact within 15% of the line (7% without).',
+    description: 'Every base (rice, roti, idli and the rest) counts as exact within 15% of the line (7% without).',
     cost: 20,
     unlockRank: 1,
     effect: { kind: 'portionBand', components: ['base'] },
@@ -83,7 +87,7 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'copper_handis',
     label: 'Copper handi set',
     hi: 'तांबे की हांडी',
-    description: 'A wider perfect window at each mark: 1.4 seconds on the flame either side instead of 0.8.',
+    description: 'A wider perfect window at each mark: 1.8 seconds on the flame either side instead of 1.',
     cost: 55,
     unlockRank: 3,
     effect: { kind: 'prepBand' },
@@ -92,8 +96,9 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'garnish_tray',
     label: 'Garnish tray',
     hi: 'सजावट की थाली',
-    description: 'A garnish piece dropped outside the katori lands back on the tray instead of falling off, so it costs nothing.',
-    cost: 35,
+    description:
+      'A garnish piece dropped outside the katori lands back on the tray instead of falling off, and an off-centre garnish costs half as much.',
+    cost: 30,
     unlockRank: 2,
     effect: { kind: 'catchFallen' },
   },
@@ -136,6 +141,9 @@ export const UPGRADES: Record<string, UpgradeDef> = {
   },
 };
 
+/** The garnish tray's share of the garnish balance penalty. */
+export const GARNISH_TRAY_BALANCE_SCALE = 0.5;
+
 export interface UpgradeEffects {
   /** Components whose exact band is widened (BUILD_V1.toolExactBand). */
   portionBand: { base: boolean; main: boolean; side: boolean };
@@ -144,6 +152,8 @@ export interface UpgradeEffects {
   waitingGraceMs: number;
   /** Garnish pieces dropped outside the katori are caught instead of falling off. */
   catchFallen: boolean;
+  /** Share of the garnish balance penalty charged (the garnish tray halves it). */
+  garnishBalanceScale: number;
   /** Heat added per boosting millisecond, if an upgrade lowers it (else PREP_V1.heatRisePerMs). */
   heatRisePerMs?: number;
   lobbyGraceMs: number;
@@ -160,6 +170,7 @@ export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
     prepBand: false,
     waitingGraceMs: 0,
     catchFallen: false,
+    garnishBalanceScale: 1,
     lobbyGraceMs: 0,
     ticketGraceMs: 0,
     whistle: false,
@@ -170,7 +181,10 @@ export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
     if (effect.kind === 'portionBand') effect.components.forEach((c) => (effects.portionBand[c] = true));
     else if (effect.kind === 'prepBand') effects.prepBand = true;
     else if (effect.kind === 'waitingGraceMs') effects.waitingGraceMs += effect.ms;
-    else if (effect.kind === 'catchFallen') effects.catchFallen = true;
+    else if (effect.kind === 'catchFallen') {
+      effects.catchFallen = true;
+      effects.garnishBalanceScale = Math.min(effects.garnishBalanceScale, GARNISH_TRAY_BALANCE_SCALE);
+    }
     else if (effect.kind === 'heatRisePerMs') effects.heatRisePerMs = Math.min(effects.heatRisePerMs ?? Infinity, effect.heat);
     else if (effect.kind === 'lobbyGraceMs') effects.lobbyGraceMs += effect.ms;
     else if (effect.kind === 'ticketGraceMs') effects.ticketGraceMs += effect.ms;

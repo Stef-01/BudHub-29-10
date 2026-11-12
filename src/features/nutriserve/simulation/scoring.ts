@@ -32,13 +32,21 @@ export function meterFraction(actualG: number, idealG: number): number {
   return Math.max(0, Math.min(1, actualG / (BUILD_V1.meterFullMultiple * idealG)));
 }
 
-/** How far from its line a portion may be and still count as exact (a share of the line). */
-export function exactBand(component: BuildComponent, effects?: UpgradeEffects): number {
-  return effects?.portionBand?.[component] ? BUILD_V1.toolExactBand : BUILD_V1.exactBand;
+/** Grams one minimum press of a dispenser pours, by component (8 g base, 9 g main, 5 g side). */
+export const pressGrams = (component: BuildComponent) => (BUILD_V1.pourRateMgPerMs[component] * BUILD_V1.minPressMs) / 1000;
+
+/**
+ * How far from its line a portion may be and still count as exact (a share of the line). Given the
+ * line, never narrower than exactFloorPresses of one minimum press either side (build-v7).
+ */
+export function exactBand(component: BuildComponent, effects?: UpgradeEffects, idealG?: number): number {
+  const band = effects?.portionBand?.[component] ? BUILD_V1.toolExactBand : BUILD_V1.exactBand;
+  if (!(idealG !== undefined && idealG > 0)) return band;
+  return Math.max(band, (BUILD_V1.exactFloorPresses * pressGrams(component)) / idealG);
 }
 
 /**
- * Share of a food's credit (0..1) for a portion of the right food (build-v6). Within the exact band
+ * Share of a food's credit (0..1) for a portion of the right food (build-v6 shape, build-v7 slopes). Within the exact band
  * of its line it is full credit. Past the band, a short portion loses shortSlope per portion's worth
  * missing, down to nothing (the food isn't there), and a generous one loses overSlope per extra
  * portion's worth, down to overFloor (the food is there, but too much of it).
@@ -52,7 +60,7 @@ export function portionCredit(actualG: number, idealG: number, band: number): nu
 }
 
 /**
- * ADAPTATION gradeBuild (build-v6). Base, main and side are each worth a share of 100 points
+ * ADAPTATION gradeBuild (build-v7). Base, main and side are each worth a share of 100 points
  * (BUILD_V1.share), earned in full for the right food within the exact band of its line and in part
  * otherwise (portionCredit); the wrong food or no food earns none of its share. Serving in a
  * different vessel size than the ticket asked costs wrongVesselPenalty on top. Portions are always
@@ -73,7 +81,7 @@ export function gradeBuild(dish: Dish, order: TicketOrder, effects?: UpgradeEffe
     if (!portion || portion.foodId !== wanted[c]) continue;
     const actualG = grams(portion.mg);
     signedErrorG[c] = actualG - order.idealG[c];
-    earned += BUILD_V1.share[c] * portionCredit(actualG, order.idealG[c], exactBand(c, effects));
+    earned += BUILD_V1.share[c] * portionCredit(actualG, order.idealG[c], exactBand(c, effects, order.idealG[c]));
   }
   const score = clampScore(earned - (correct.size ? 0 : BUILD_V1.wrongVesselPenalty));
   return { score, signedErrorG, correct };
@@ -81,11 +89,15 @@ export function gradeBuild(dish: Dish, order: TicketOrder, effects?: UpgradeEffe
 
 // --- Prep ----------------------------------------------------------------------
 
-/** Whole doneness units cooked so far (prep-v4: milliseconds on the flame at normal heat). */
+/** Whole doneness units cooked so far (prep-v4 on: milliseconds on the flame at normal heat). */
 export const prepUnits = (dish: Dish) => Math.floor((dish.prep?.milliUnits ?? 0) / 1000);
 
 /** Doneness units as seconds on the flame at normal heat, to one decimal place (for display). */
 export const prepSeconds = (units: number) => Math.round((units / PREP_V1.unitsPerSecond) * 10) / 10;
+/** The same, rounded down (floor) or up (ceil) to a tenth, so a time just outside a window never reads as its edge. */
+const prepSecondsDown = (units: number) => Math.floor((units / PREP_V1.unitsPerSecond) * 10) / 10;
+const prepSecondsUp = (units: number) => Math.ceil((units / PREP_V1.unitsPerSecond) * 10) / 10;
+const tenths = (seconds: number) => (Number.isInteger(seconds) ? String(seconds) : seconds.toFixed(1));
 
 /** The doneness mark for a prep level. */
 export function prepTargetUnits(level: TicketOrder['prepLevel']): number {
@@ -98,7 +110,7 @@ export function prepBandUnits(effects?: UpgradeEffects): number {
 }
 
 /**
- * ADAPTATION gradePrep (prep-v3 rules, prep-v4 units). Within the perfect window around the level's mark: 100. Short of
+ * ADAPTATION gradePrep (prep-v3 rules, prep-v5 numbers). Within the perfect window around the level's mark: 100. Short of
  * the window, the dish earns its share of the way there (a dish taken out half way scores 50, a raw
  * one 0). Past the window it loses overPointsPerSecond for every second on the flame it stayed on.
  * A dish that never went into a handi scores 0.
@@ -146,7 +158,7 @@ export function drizzleTargetG(drizzleId: string, size: DishSize): number | unde
   return lookup(FINISH_V1.drizzleTargetG, drizzleId)?.[size];
 }
 
-export function gradeFinishV1(dish: Dish, order: TicketOrder): FinishGrade {
+export function gradeFinishV1(dish: Dish, order: TicketOrder, effects?: UpgradeEffects): FinishGrade {
   const p = FINISH_V1.penalty;
   const penalties: FinishGrade['penalties'] = [];
   const add = (reason: string, points: number) => {
@@ -193,7 +205,7 @@ export function gradeFinishV1(dish: Dish, order: TicketOrder): FinishGrade {
   if (onDish.length > 0) {
     const cx = onDish.reduce((s, g) => s + g.x, 0) / onDish.length;
     const cy = onDish.reduce((s, g) => s + g.y, 0) / onDish.length;
-    add('Garnish balance', Math.min(1, Math.hypot(cx, cy)) * p.garnishBalance);
+    add('Garnish off centre', Math.min(1, Math.hypot(cx, cy)) * p.garnishBalance * (effects?.garnishBalanceScale ?? 1));
   }
 
   // Order of steps: compare the first time each ordered step was done.
@@ -287,32 +299,41 @@ export function serveNotes(
   }
   const wanted = { base: order.baseId, main: order.mainId, side: order.sideId } as const;
   if (dish.size !== order.size) notes.push(`${dish.size[0].toUpperCase()}${dish.size.slice(1)} vessel; the ticket wanted ${order.size}`);
+  // A note says what cost points, and only when the shown score is below 100: a portion a hair
+  // outside its band whose loss rounds away gets none, so a note never claims a loss the score
+  // doesn't show. Portions costing under half a point are listed only when nothing larger explains
+  // a lost point.
+  const portionNotes: Array<{ text: string; points: number }> = [];
   for (const c of ['base', 'main', 'side'] as const) {
     const portion = dish.build[c];
     const label = `${c[0].toUpperCase()}${c.slice(1)}`;
     if (!portion || portion.mg === 0) notes.push(`No ${c}`);
     else if (portion.foodId !== wanted[c]) notes.push(`${label}: wrong food`);
     else {
-      // Every portion outside its exact band costs points (build-v6), so every one gets a note.
       const actualG = portion.mg / 1000;
-      if (portionCredit(actualG, order.idealG[c], exactBand(c, effects)) < 1) {
+      const lost = BUILD_V1.share[c] * (1 - portionCredit(actualG, order.idealG[c], exactBand(c, effects, order.idealG[c])));
+      if (lost > 0) {
         const error = actualG - order.idealG[c];
-        notes.push(`${label} ${error > 0 ? '+' : '−'}${Math.max(1, Math.round(Math.abs(error)))} g (line ${order.idealG[c]} g)`);
+        portionNotes.push({ text: `${label} ${error > 0 ? '+' : '−'}${Math.max(1, Math.round(Math.abs(error)))} g (line ${order.idealG[c]} g)`, points: lost });
       }
     }
+  }
+  if (scores.build < 100 && portionNotes.length) {
+    const shown = portionNotes.filter((n) => n.points >= 0.5);
+    for (const n of shown.length ? shown : [[...portionNotes].sort((a, b) => b.points - a.points)[0]]) notes.push(n.text);
   }
   // Every station score below 100 gets at least one note, so "No points lost" is never shown when
   // points were lost.
   if (scores.prep < 100) {
-    const cooked = prepSeconds(prepUnits(dish));
-    const mark = prepSeconds(prepTargetUnits(order.prepLevel));
-    notes.push(
-      !dish.prep
-        ? 'Not cooked'
-        : prepUnits(dish) < prepTargetUnits(order.prepLevel)
-          ? `Undercooked: ${cooked} s on the flame; the mark is ${mark} s`
-          : `Overcooked: ${cooked} s on the flame; the mark is ${mark} s`
-    );
+    const units = prepUnits(dish);
+    const target = prepTargetUnits(order.prepLevel);
+    const band = prepBandUnits(effects);
+    const mark = tenths(prepSeconds(target));
+    if (!dish.prep || !Number.isFinite(units)) notes.push('Not cooked');
+    else if (units >= PREP_V1.maxUnits) notes.push(`Burnt: still on the flame at ${tenths(prepSeconds(PREP_V1.maxUnits))} s; the mark is ${mark} s`);
+    else if (units < target)
+      notes.push(`Undercooked: ${tenths(prepSecondsDown(units))} s on the flame; perfect from ${tenths(prepSeconds(target - band))} s (mark ${mark} s)`);
+    else notes.push(`Overcooked: ${tenths(prepSecondsUp(units))} s on the flame; perfect up to ${tenths(prepSeconds(target + band))} s (mark ${mark} s)`);
   }
   // Finish penalties largest first, the top three. Ones under half a point are listed only when
   // nothing larger explains a lost point.

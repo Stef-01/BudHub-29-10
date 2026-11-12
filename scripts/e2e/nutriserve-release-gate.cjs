@@ -109,7 +109,7 @@ async function runDevice(browser, name, contextOptions, { touch = false } = {}) 
     await page.locator('.ns-tray button').first().click();
   }
 
-  // Doneness units (prep-v4: ms on the flame), from the slot's progress meter.
+  // Doneness units (prep-v4 on: ms on the flame), from the slot's progress meter.
   const slotUnits = async (n) => {
     const meter = page.getByRole('meter', { name: `Slot ${n} progress` });
     if (!(await meter.count())) return null;
@@ -177,7 +177,7 @@ async function runDevice(browser, name, contextOptions, { touch = false } = {}) 
     return page.locator('.ns-lastserve').first().innerText();
   }
 
-  const targetFor = (prep) => (/QUICK/.test(prep) ? 7000 : /SLOW/.test(prep) ? 18000 : 12000); // prep-v4 marks (ms on the flame)
+  const targetFor = (prep) => (/QUICK/.test(prep) ? 8000 : /SLOW/.test(prep) ? 20000 : 13000); // prep-v5 marks (ms on the flame)
 
   // 1. Two concurrent orders cooking in two slots.
   await takeOrder();
@@ -890,7 +890,7 @@ async function runAudit12(browser) {
   const c = await cueCtx.newPage();
   await enter(c, `gate-cue-${tag}`, 'New game');
   await craft(c, AT_MARK);
-  await c.waitForTimeout(400);
+  await c.waitForTimeout(900); // the cue first speaks 600 ms after the kitchen opens
   const cueAtLoad = (await c.locator('[data-ns-cue]').innerText()).trim();
   await c.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click();
   await c.getByRole('button', { name: /^Prep station/ }).click();
@@ -966,15 +966,336 @@ async function runAudit12(browser) {
   await phone.close();
 }
 
+// --- Thirteenth audit ----------------------------------------------------------------------------
+async function runAudit13(browser) {
+  const tag = Date.now();
+  const saveKeyOf = (pg) => pg.evaluate(() => Object.keys(localStorage).find((k) => k.startsWith('nutriserve.remaster.save.v1:')));
+  const toStart = async (pg) => {
+    const play = pg.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' });
+    for (let i = 0; i < 20 && !(await play.count()); i++) {
+      await pg.getByRole('button', { name: 'Games' }).first().click().catch(() => {});
+      await pg.waitForTimeout(300);
+    }
+    await play.click();
+    await pg.waitForSelector('.ns-start');
+  };
+  const open = async (context, user) => {
+    const pg = await context.newPage();
+    pg.on('dialog', (d) => d.accept().catch(() => {}));
+    await pg.goto(`${BASE}/?user=${user}`, { waitUntil: 'networkidle' });
+    await toStart(pg);
+    return pg;
+  };
+  const cont = async (pg) => {
+    await pg.getByRole('button', { name: /^Continue day/ }).click();
+    await pg.waitForSelector('.ns-hud');
+  };
+  /** The save as stored: day, coins, upgrades, tickets. */
+  const stored = (pg) =>
+    pg.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.startsWith('nutriserve.remaster.save.v1:'));
+      if (!k) return null;
+      const s = JSON.parse(localStorage.getItem(k)).state;
+      return { day: s.day.number, done: s.day.completed, coins: s.profile.coins, ups: s.profile.upgrades.join('+') || '-', tickets: s.tickets.length };
+    });
+  /** Seed a save in a context from a body run in the page with sim and run (as craft() above). */
+  const seed = async (context, user, body) => {
+    const pg = await open(context, user);
+    await pg.getByRole('button', { name: 'New game' }).click();
+    await pg.waitForSelector('.ns-hud');
+    await pg.getByRole('button', { name: 'Save & exit' }).click();
+    const key = await saveKeyOf(pg);
+    await pg.evaluate(
+      async ({ key, body }) => {
+        const sim = await import('/src/features/nutriserve/simulation/index.ts');
+        const run = (s, c) => {
+          const r = sim.applyCommand(s, c);
+          if (!r.result.ok) throw new Error(`${c.type}: ${r.result.error}`);
+          return r.state;
+        };
+        localStorage.setItem(key, sim.serializeGame(new Function('sim', 'run', body)(sim, run)));
+      },
+      { key, body }
+    );
+    await pg.close();
+  };
+  // Day 5 with every customer served; the last one walks out, so the day ends about 2.5 s after Resume.
+  const NEAR_END = `
+    const days = [1, 2, 3, 4];
+    const profile = { ...sim.newProfile(), points: 450, rank: sim.rankForPoints(450), coins: 200, creditedDays: days, reportedDays: days };
+    let s = sim.createGame({ seed: 777, runId: 'run-gate-a13-near', profile });
+    const rate = { base: 80, main: 90, side: 50 };
+    for (let guard = 0; s.day.results.length < s.day.customers.length && guard < 5000; guard++) {
+      if (!s.day.customers.some((c) => c.phase === 'at_counter')) { s = sim.advanceGame(s, 250); continue; }
+      s = run(s, { type: 'takeOrder' });
+      const t = s.tickets.at(-1), o = t.order;
+      s = run(s, { type: 'selectTicket', ticketId: t.id });
+      s = run(s, { type: 'startDish', size: o.size });
+      const id = s.dishes.at(-1).id;
+      for (const [component, foodId] of [['base', o.baseId], ['main', o.mainId], ['side', o.sideId]]) {
+        s = run(s, { type: 'beginPour', dishId: id, component, foodId });
+        s = sim.advanceGame(s, Math.round((o.idealG[component] * 1000) / rate[component]));
+        s = run(s, { type: 'endPour' });
+      }
+      s = run(s, { type: 'finishBuild', dishId: id });
+      s = run(s, { type: 'startPrep', dishId: id, slot: 0 });
+      s = sim.advanceGame(s, Math.round((sim.prepTargetUnits(o.prepLevel) / sim.PREP_V1.unitsPerSecond) * 1000));
+      s = run(s, { type: 'finishPrep', slot: 0 });
+      s = run(s, { type: 'selectDish', dishId: id });
+      for (const f of o.finish) if (f.kind === 'garnish') for (let k = 0; k < f.count; k++) { const a = (k / f.count) * 2 * Math.PI; s = run(s, { type: 'placeGarnish', dishId: id, garnishId: f.id, x: 0.5 * Math.cos(a), y: 0.5 * Math.sin(a) }); }
+      s = run(s, { type: 'finishDish', dishId: id });
+      s = run(s, { type: 'serve', dishId: id, ticketId: t.id });
+    }
+    return run(s, { type: 'selectStation', station: 'order' });`;
+  const MID_DAY = `
+    const days = [1, 2, 3];
+    let s = sim.createGame({ seed: 4321, runId: 'run-gate-a13-mid', profile: { ...sim.newProfile(), points: 200, rank: sim.rankForPoints(200), coins: 300, creditedDays: days, reportedDays: days } });
+    while (!s.day.customers.some((c) => c.phase === 'at_counter')) s = sim.advanceGame(s, 200);
+    return s;`;
+  /** B resumes, the day ends, B buys the rice scoop and leaves with Save & exit. */
+  const finishBuyLeave = async (B) => {
+    await B.getByRole('button', { name: 'Resume' }).click().catch(() => {});
+    await B.waitForSelector('.ns-summary', { timeout: 20000 });
+    await B.locator('.ns-upgrades li', { hasText: 'Brass rice scoop' }).getByRole('button').click();
+    await B.waitForTimeout(300);
+    await B.locator('.ns-summary').getByRole('button', { name: 'Save & exit' }).click();
+    await B.waitForTimeout(400);
+  };
+  const told = async (pg) => /Open in another tab/.test((await pg.locator('.ns-overlay h2').allInnerTexts().catch(() => [])).join('|'));
+
+  // H1: a tab restored from the back/forward cache never overwrites newer progress (Playwright turns
+  // the cache off, so this browser keeps it on).
+  {
+    const bf = await chromium.launch({ ignoreDefaultArgs: ['--disable-back-forward-cache'] });
+    const context = await bf.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate13bf${tag}`;
+    await seed(context, user, NEAR_END);
+    const A = await open(context, user);
+    await cont(A);
+    await A.getByRole('button', { name: 'Resume' }).click().catch(() => {});
+    await A.waitForTimeout(300);
+    await A.evaluate(() => (window.__gateMarker = 'kept'));
+    await A.goto(`${BASE}/nutriserve-art-lab.html`, { waitUntil: 'load' });
+    const B = await open(context, user);
+    await cont(B);
+    await finishBuyLeave(B);
+    const afterB = await stored(B);
+    await A.goBack({ waitUntil: 'commit' });
+    await A.waitForTimeout(600);
+    const restored = (await A.evaluate(() => window.__gateMarker ?? null).catch(() => null)) === 'kept';
+    const aTold = await told(A).catch(() => false);
+    await A.waitForTimeout(5000);
+    const later = await stored(B);
+    const kept = afterB && later && afterB.ups === later.ups && afterB.coins === later.coins && afterB.done === later.done;
+    check(kept && (aTold || !restored), `regressions: a tab back from the back/forward cache keeps newer progress made in another tab (restored ${restored}, told ${aTold}, ${JSON.stringify(afterB)} -> ${JSON.stringify(later)})`);
+    await bf.close();
+  }
+
+  // (A frozen phone tab takes the same path when it wakes: it checks on resume and on being shown.
+  // Not emulated here: a long task standing in for the freeze stalls every same-site tab.)
+
+  // M1: with storage nearly full, a handover still carries the holder's newest state, and the
+  // can't-save warning moves with it.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate13q${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    await cont(A);
+    await A.getByRole('button', { name: 'Resume' }).click().catch(() => {});
+    await A.evaluate(() => {
+      const big = 'x'.repeat(512 * 1024);
+      try { for (let n = 0; n < 40; n++) localStorage.setItem('gateFillA' + n, big); } catch {}
+      let size = 256 * 1024;
+      for (let k = 0; size >= 1024; ) { try { localStorage.setItem('gateFillB' + k++, 'x'.repeat(size)); } catch { size /= 2; } }
+    });
+    for (let i = 0; i < 3; i++) {
+      await A.getByRole('button', { name: /^Order station/ }).click();
+      await A.getByRole('button', { name: /^Take .* order$/ }).click().catch(() => {});
+      await A.waitForTimeout(800);
+    }
+    await A.waitForTimeout(4500);
+    const aTickets = await A.evaluate(() => Number(document.querySelector('.ns-hud')?.textContent.match(/(\d+) open ticket/)?.[1] ?? -1));
+    const aWarned = await A.locator('.ns-save-warning').count();
+    const storedTickets = (await stored(A))?.tickets;
+    const B = await open(context, user);
+    await cont(B);
+    await B.waitForTimeout(600);
+    const bTickets = await B.evaluate(() => Number(document.querySelector('.ns-hud')?.textContent.match(/(\d+) open ticket/)?.[1] ?? -1));
+    const bWarned = await B.locator('.ns-save-warning').count();
+    check(aWarned === 1 && storedTickets < aTickets && bTickets === aTickets && bWarned === 1 && (await told(A)),
+      `regressions: with storage full, a handover still brings the newest state and the can't-save warning (A ${aTickets} tickets, stored ${storedTickets}, B ${bTickets}, B warned ${bWarned})`);
+    await context.close();
+  }
+
+  // L1: "Start a new day with your progress" uses the progress as it is after the handover. B stands
+  // in for a newer version (it reads the save as made under older rules) without a tab channel.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate13s${tag}`;
+    await seed(context, user, NEAR_END);
+    const A = await open(context, user);
+    await cont(A);
+    const B = await context.newPage();
+    B.on('dialog', (d) => d.accept().catch(() => {}));
+    await B.addInitScript(() => {
+      window.BroadcastChannel = undefined;
+      const get = Storage.prototype.getItem;
+      Storage.prototype.getItem = function (k) {
+        const v = get.call(this, k);
+        return v && String(k).startsWith('nutriserve.remaster.save') ? v.replace(/"build":"build-v\d+"/, '"build":"build-v1"') : v;
+      };
+    });
+    await B.goto(`${BASE}/?user=${user}`, { waitUntil: 'networkidle' });
+    await toStart(B);
+    await B.getByRole('button', { name: 'Start a new day with your progress' }).waitFor();
+    const changes = await B.locator('.ns-rule-changes li').count();
+    await A.getByRole('button', { name: 'Resume' }).click().catch(() => {});
+    await A.waitForSelector('.ns-summary', { timeout: 20000 });
+    await A.locator('.ns-upgrades li', { hasText: 'Brass rice scoop' }).getByRole('button').click();
+    await A.waitForTimeout(200);
+    await B.getByRole('button', { name: 'Start a new day with your progress' }).click();
+    await B.waitForSelector('.ns-hud');
+    const profile = await B.evaluate(() => {
+      const el = document.querySelector('.ns-root');
+      let f = el[Object.keys(el).find((k) => k.startsWith('__reactFiber$'))];
+      while (f && !(f.type && f.type.name === 'Kitchen')) f = f.return;
+      return f ? f.memoizedState.memoizedState.current.profile : null;
+    });
+    check(profile?.upgrades.includes('rice_scoop') && changes >= 4,
+      `regressions: a new day after a handover keeps what the other tab bought a moment before, and the rule changes are listed (upgrades ${profile?.upgrades.join('+')}, ${changes} changes)`);
+    await context.close();
+  }
+
+  // M5: on a phone held sideways a whole build, all four handis and the finish tools, vessel and
+  // Done fit on one screen; on a desktop the finish tools come before the vessel on screen too.
+  {
+    const phone = await browser.newContext({ ...devices['iPhone 13 landscape'] });
+    const pg = await open(phone, `gate13l${tag}`);
+    await pg.getByRole('button', { name: 'New game' }).click();
+    await pg.waitForSelector('.ns-hud');
+    await pg.getByRole('button', { name: 'Save & exit' }).click();
+    const key = await saveKeyOf(pg);
+    await pg.evaluate(async (key) => {
+      const sim = await import('/src/features/nutriserve/simulation/index.ts');
+      const run = (s, c) => {
+        const r = sim.applyCommand(s, c);
+        if (!r.result.ok) throw new Error(`${c.type}: ${r.result.error}`);
+        return r.state;
+      };
+      const days = Array.from({ length: 10 }, (_, i) => i + 1);
+      let s = sim.createGame({ seed: 4242, runId: 'run-gate-a13-land', profile: { ...sim.newProfile(), points: 560, rank: sim.rankForPoints(560), coins: 40, creditedDays: days, reportedDays: days } });
+      const rate = { base: 80, main: 90, side: 50 };
+      for (let k = 0; k < 4; k++) {
+        while (!s.day.customers.some((c) => c.phase === 'at_counter')) s = sim.advanceGame(s, 100);
+        s = run(s, { type: 'takeOrder' });
+        const t = s.tickets.at(-1);
+        s = run(s, { type: 'selectTicket', ticketId: t.id });
+        s = run(s, { type: 'startDish', size: t.order.size });
+        const d = s.dishes.at(-1).id;
+        for (const [c, f] of [['base', t.order.baseId], ['main', t.order.mainId], ['side', t.order.sideId]]) {
+          s = run(s, { type: 'beginPour', dishId: d, component: c, foodId: f });
+          s = sim.advanceGame(s, Math.round((t.order.idealG[c] * 1000) / rate[c]));
+          s = run(s, { type: 'endPour' });
+        }
+        s = run(s, { type: 'finishBuild', dishId: d });
+        s = run(s, { type: 'startPrep', dishId: d, slot: k });
+      }
+      s = sim.advanceGame(s, 1500);
+      s = run(s, { type: 'finishPrep', slot: 0 });
+      while (!s.day.customers.some((c) => c.phase === 'at_counter')) s = sim.advanceGame(s, 100);
+      s = run(s, { type: 'takeOrder' });
+      s = run(s, { type: 'selectTicket', ticketId: s.tickets.at(-1).id });
+      s = run(s, { type: 'startDish', size: s.tickets.at(-1).order.size });
+      localStorage.setItem(key, sim.serializeGame(s));
+    }, key);
+    await pg.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' }).click();
+    await pg.getByRole('button', { name: /^Continue day/ }).click();
+    await pg.waitForSelector('.ns-hud');
+    const fits = {};
+    for (const [st, sel] of [['Build', '.ns-dock .ns-dispenser, .ns-dock .ns-actions .ns-btn'], ['Prep', '.ns-dock [data-prep-done]'], ['Finish', '.ns-dock .ns-tool, .ns-dock .ns-vessel-top, .ns-dock .ns-actions .ns-btn']]) {
+      await pg.getByRole('button', { name: new RegExp(`^${st} station`) }).click();
+      await pg.waitForTimeout(500);
+      await pg.evaluate(() => scrollTo(0, 0));
+      await pg.waitForTimeout(200);
+      fits[st] = await pg.evaluate((sel) => {
+        const els = [...document.querySelectorAll(sel)];
+        const out = els.filter((e) => { const r = e.getBoundingClientRect(); return r.top < 0 || r.bottom > innerHeight || r.left < 0 || r.right > innerWidth; }).length;
+        return `${els.length - out}/${els.length}`;
+      }, sel);
+    }
+    const ok = Object.values(fits).every((f) => { const [a, b] = f.split('/'); return a === b && Number(b) > 0; });
+    check(ok, `regressions: on a phone held sideways each station's controls fit on one screen (${Object.entries(fits).map(([k, v]) => `${k} ${v}`).join(', ')})`);
+    await phone.close();
+
+    const desk = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const dp = await open(desk, `gate13d${tag}`);
+    await dp.getByRole('button', { name: 'New game' }).click();
+    await dp.waitForSelector('.ns-hud');
+    await dp.getByRole('button', { name: 'Save & exit' }).click();
+    const dkey = await saveKeyOf(dp);
+    await dp.evaluate(async (key) => {
+      const sim = await import('/src/features/nutriserve/simulation/index.ts');
+      const run = (s, c) => {
+        const r = sim.applyCommand(s, c);
+        if (!r.result.ok) throw new Error(`${c.type}: ${r.result.error}`);
+        return r.state;
+      };
+      const rate = { base: 80, main: 90, side: 50 };
+      let s = sim.createGame({ seed: 4242, runId: 'run-gate-a13-desk' });
+      while (!s.day.customers.some((c) => c.phase === 'at_counter')) s = sim.advanceGame(s, 100);
+      s = run(s, { type: 'takeOrder' });
+      const t = s.tickets.at(-1);
+      s = run(s, { type: 'startDish', size: t.order.size });
+      const d = s.dishes.at(-1).id;
+      for (const [c, f] of [['base', t.order.baseId], ['main', t.order.mainId], ['side', t.order.sideId]]) {
+        s = run(s, { type: 'beginPour', dishId: d, component: c, foodId: f });
+        s = sim.advanceGame(s, Math.round((t.order.idealG[c] * 1000) / rate[c]));
+        s = run(s, { type: 'endPour' });
+      }
+      s = run(s, { type: 'finishBuild', dishId: d });
+      s = run(s, { type: 'startPrep', dishId: d, slot: 0 });
+      s = run(s, { type: 'finishPrep', slot: 0 });
+      // A second ticket with no dish yet, so Build suggests its vessel size.
+      while (!s.day.customers.some((c) => c.phase === 'at_counter')) s = sim.advanceGame(s, 100);
+      s = run(s, { type: 'takeOrder' });
+      s = run(s, { type: 'selectStation', station: 'finish' });
+      s = run(s, { type: 'selectDish', dishId: d });
+      localStorage.setItem(key, sim.serializeGame(s));
+    }, dkey);
+    await dp.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' }).click();
+    await dp.getByRole('button', { name: /^Continue day/ }).click();
+    await dp.waitForSelector('.ns-vessel-top');
+    const order = await dp.evaluate(() => {
+      const tool = document.querySelector('.ns-tool').getBoundingClientRect();
+      const vessel = document.querySelector('.ns-vessel-top').getBoundingClientRect();
+      const before = !!(document.querySelector('.ns-tool').compareDocumentPosition(document.querySelector('.ns-vessel-top')) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return { tool: Math.round(tool.bottom), vessel: Math.round(vessel.top), before };
+    });
+    check(order.before && order.tool <= order.vessel, `regressions: on a desktop the finish tools sit above the vessel, as in Tab order (tools end ${order.tool}, vessel starts ${order.vessel})`);
+    // Forced colours: the pressed dispenser's ring and the suggested size's ring use system colours.
+    await dp.emulateMedia({ forcedColors: 'active' });
+    await dp.getByRole('button', { name: /^Build station/ }).click();
+    await dp.waitForTimeout(300);
+    const suggested = await dp.evaluate(() => {
+      const b = document.querySelector('.ns-btn-suggested');
+      return b ? getComputedStyle(b).outlineStyle : 'none-found';
+    });
+    check(suggested === 'solid', `regressions: in forced colours the suggested vessel size keeps a ring (${suggested})`);
+    await desk.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
-  // GATE_ONLY=regressions|audit11|audit12|devices runs one part (for working on it); the gate is all of them.
+  // GATE_ONLY=regressions|audit11|audit12|audit13|devices runs one part (for working on it); the gate is all of them.
   const only = process.env.GATE_ONLY;
   const part = (name) => !only || only === name;
   if (part('regressions')) await runRegressions(browser);
   if (part('audit11')) await runAudit11(browser);
   if (part('audit12')) await runAudit12(browser);
+  if (part('audit13')) await runAudit13(browser);
   if (part('devices')) {
     results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
     results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });

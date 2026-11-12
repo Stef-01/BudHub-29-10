@@ -1,16 +1,16 @@
 id,owner,task,status,dependency,acceptance
 C01,Claude,Deterministic simulation spine,implemented,,Two concurrent orders four prep slots pause replay and save restore
-C02,Claude,Build station timed portion input,implemented,C01,Wrong ingredient fixed penalty and signed grams; original scorer remains separate
-C03,Claude,Prep timing boost and heat,implemented-provisional (parity blocked on Q08),Q08,Original unit producer and boost traced; offscreen slots continue
-C04,Claude,Finish deposition and garnish,implemented-provisional (parity blocked on Q09; A03 masks),Q09,Distribution order rotation amount and spill assessed with reference cases
-C05,Claude,Serving day and progression,implemented (aggregation provisional; R02),C01 C02 C03 C04,Wrong ticket permitted and graded; no duplicate reward; aggregation verified
+C02,Claude,Build station timed portion input,implemented,C01,Wrong ingredient fixed penalty and signed grams; graded by NutriServe's own rules (build-v7)
+C03,Claude,Prep timing boost and heat,implemented-provisional,,NutriServe's own marks boost and heat (prep-v5); offscreen slots continue
+C04,Claude,Finish deposition and garnish,implemented-provisional (A03 masks),A03,Distribution order amount and spill graded by NutriServe's own rules (finish-v4); rotation not modelled
+C05,Claude,Serving day and progression,implemented (aggregation provisional),C01 C02 C03 C04,Wrong ticket permitted and graded; no duplicate reward; aggregation is NutriServe's own
 C06,Claude,Canonical nutrition adapter,implemented,,Prepared food counted once; required IDs validated; no medical guarantees
 C07,Claude,Accessible responsive renderer,implemented (layout studies until A02-A05),C01,Six approved idle sprites and four-slot layout; shared pointer keyboard commands
-C08,Claude,End-to-end release gate,mechanics gate passed; visual sign-off pending,C01 C02 C03 C04 C05 C06 C07,One complete day desktop mobile reload wrong ticket and visual comparison
+C08,Claude,End-to-end release gate,mechanics gate passed; visual sign-off pending,C01 C02 C03 C04 C05 C06 C07,One complete day desktop mobile reload wrong ticket; final art reviewed in game against NutriServe's own masters
 A01,Codex,Six pilot idle characters,reviewed,,Native-size cast and alpha checks; source hashes recorded
 A02,Codex,Reaction and walk states,queued,A01,Preserve identities scale and anchors; no idle aliases
 A03,Codex,Vessel masks and pilot foods,queued,,Approved camera and layering; each food identifiable at native scale
-A04,Codex,Final station and equipment art,queued,C03 C04,Four machines and editable interaction hit areas; original visual comparison
-A05,Codex,Full catalog and optimized derivatives,queued,A02 A03,Current-main IDs reconciled; lazy loading and derivative visual comparison
-R01,Codex,Mix unit producer and boost trace,open,Q08,Byte ranges and original runtime timing corroborate conversion
-R02,Codex,Waiting topping and total-score trace,open,Q09,Control paths and golden original-runtime cases recorded
+A04,Codex,Final station and equipment art,queued,C03 C04,Four machines and editable interaction hit areas; reviewed against NutriServe's own masters
+A05,Codex,Full catalog and optimized derivatives,queued,A02 A03,Current-main IDs reconciled; lazy loading and derivatives checked against their NutriServe masters
+R01,Codex,Mix unit producer and boost trace,retired 2026-11-12 (no parity target),,Retired: Byte ranges and original runtime timing corroborate conversion
+R02,Codex,Waiting topping and total-score trace,retired 2026-11-12 (no parity target),,Retired: Control paths and golden original-runtime cases recorded

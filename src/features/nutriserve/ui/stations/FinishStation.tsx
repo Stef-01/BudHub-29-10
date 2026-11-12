@@ -374,7 +374,8 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
       <span className="sr-only" role="status" aria-live="polite">
         {live}
       </span>
-      <Dockable slot="main" as="aside" region={box(8, 40, 148, 384)} className="ns-tray ns-tray-column" aria-label="Dishes at the finish counter">
+      {/* The dishes at the counter: beside the tools and vessel (the left column on a phone held sideways). */}
+      <Dockable slot="aside" as="aside" region={box(8, 40, 148, 384)} className="ns-tray ns-tray-column" aria-label="Dishes at the finish counter">
         <span className="ns-tray-label">To finish</span>
         {working.length === 0 && <span className="ns-muted">Prep a dish first</span>}
         {working.map((d) => (
@@ -419,9 +420,9 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
 
       {dish ? (
         <>
-          {/* The tools come before the vessel: pick one, then use it (the reading and Tab order;
-              on a phone the tools sit just above the vessel instead of below it). */}
-          <Dockable slot="main" region={box(164, 318, 316, 70)} className="ns-tools" role="toolbar" aria-label="Finish tools">
+          {/* The tools come before the vessel: pick one, then use it. They sit above it (beside it
+              on a phone held sideways), so the reading, Tab and visual orders agree everywhere. */}
+          <Dockable slot="main" region={box(164, 40, 316, 70)} className="ns-tools" role="toolbar" aria-label="Finish tools">
             {drizzles.map((d) => (
               <button
                 key={d.id}
@@ -451,7 +452,7 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
           </Dockable>
           <Dockable
             slot="main"
-            region={box(164, 44, 268, 268)}
+            region={box(164, 116, 268, 268)}
             ref={vesselRef}
             className={`ns-vessel-top${tool ? ` ns-tool-${tool.kind}` : ' ns-tool-none'}`}
             tabIndex={0}

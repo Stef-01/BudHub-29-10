@@ -17,11 +17,15 @@ Safety:
   than inserting a second copy;
 - files deleted on the branch are deleted on main;
 - any failure, Ctrl-C or SIGTERM/SIGHUP (a closed terminal, a killed job) puts the worktree back as
-  it was (the same branch or commit checked out, clean).
+  it was (the same branch or commit checked out, clean). A signal never kills a git command half way
+  (that would leave .git/index.lock behind and the worktree half changed): the command that is
+  running finishes, then the port stops and rolls back. The rollback checks every step and says
+  plainly when it could not finish, with what to run.
 
 It does not commit: run the tests and the release gate on the result, then commit and push.
 
 Usage: scripts/nutriserve-port-to-main.py <source repo> <main worktree> [--assume-source <commit>]
+       scripts/nutriserve-port-to-main.py --self-test   (checks the union editing on sample text)
   (a main worktree: git worktree add <dir> origin/main, with node_modules linked in)
   --assume-source: the commit main was last ported from, for a main that has no PORT_SOURCE yet.
 """
@@ -37,6 +41,9 @@ PORT_SOURCE = 'docs/nutriserve/PORT_SOURCE'
 REWRITTEN = {'docs/nutriserve/CLAUDE_STATUS.md', 'src/features/nutriserve/data/catalog.generated.ts', PORT_SOURCE}
 
 args = sys.argv[1:]
+SELF_TEST = args == ['--self-test']
+if SELF_TEST:
+    args = ['.', '.']
 assume = None
 if '--assume-source' in args:
     i = args.index('--assume-source')
@@ -45,8 +52,29 @@ if '--assume-source' in args:
 SRC, W = args
 
 
+# Signals received while the port runs (see _interrupted).
+STOP = []
+
+
+class Interrupted(Exception):
+    pass
+
+
+def checkpoint():
+    """Stop here if a signal arrived (between commands, never during one)."""
+    if STOP:
+        raise Interrupted(f'signal {STOP[0]}')
+
+
+def run(cmd, **kw):
+    """subprocess.run, then stop if a signal arrived while it ran."""
+    r = subprocess.run(cmd, **kw)
+    checkpoint()
+    return r
+
+
 def sh(*cmd, cwd=W, check=True):
-    r = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
+    r = run(cmd, cwd=cwd, text=True, capture_output=True)
     if check and r.returncode:
         raise SystemExit(f'port stopped: {" ".join(cmd)[:120]} failed: {r.stderr.strip()[:300]}')
     return r.stdout
@@ -56,25 +84,95 @@ def fail(msg):
     raise SystemExit(f'port stopped: {msg}')
 
 
-def add_to_union(path, type_name, member):
-    """Add `member` to a TypeScript union type alias, wherever main has put the other members (an
-    unrelated new mode on main must not stop the port). Does nothing when it is already there."""
+def union_with(text, type_name, value):
+    """`text` with the string literal `value` added to the union type alias `type_name` (None when
+    the alias isn't there; `text` unchanged when the member is already in it). Reads the union as
+    code: members in comments don't count, a ';' in a comment or string doesn't end it, it may
+    span lines (Prettier's leading-pipe style) or end without a ';', and either quote style counts.
+    The new member uses the union's own quotes and layout."""
+    m = re.search(rf'\bexport\s+type\s+{re.escape(type_name)}\s*=', text)
+    if not m:
+        return None
+    i, n = m.end(), len(text)
+
+    def next_code(k):
+        """Index of the next character that isn't whitespace or inside a comment."""
+        while k < n:
+            if text[k] in ' \t\r\n':
+                k += 1
+            elif text.startswith('//', k):
+                j = text.find('\n', k)
+                k = n if j < 0 else j
+            elif text.startswith('/*', k):
+                j = text.find('*/', k + 2)
+                k = n if j < 0 else j + 2
+            else:
+                break
+        return k
+
+    literals, quote = [], None
+    last_code = i  # just after the union's last code character
+    while i < n:
+        c = text[i]
+        if text.startswith('//', i):
+            j = text.find('\n', i)
+            i = n if j < 0 else j
+            continue
+        if text.startswith('/*', i):
+            j = text.find('*/', i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        if c in '\'"`':
+            j = i + 1
+            while j < n and text[j] != c:
+                j += 2 if text[j] == '\\' else 1
+            literals.append(text[i + 1:j])
+            quote = quote or c
+            i = j + 1
+            last_code = i
+            continue
+        if c == ';':
+            break
+        if c == '\n' and literals:
+            # Without a ';' the union ends at a line break, unless the next code continues it with '|'.
+            if not text.startswith('|', next_code(i)):
+                break
+        if not c.isspace():
+            last_code = i + 1
+        i += 1
+    if value in literals:
+        return text
+    q = quote or "'"
+    body = text[m.end():last_code]
+    pipes = [line for line in body.split('\n') if line.strip().startswith('|')]
+    if '\n' in body and pipes:
+        indent = pipes[-1][: len(pipes[-1]) - len(pipes[-1].lstrip())]
+        insert = f'\n{indent}| {q}{value}{q}'
+    else:
+        insert = f' | {q}{value}{q}'
+    return text[:last_code] + insert + text[last_code:]
+
+
+def add_to_union(path, type_name, value):
+    """Add the string literal `value` to a TypeScript union type alias, wherever main has put the
+    other members (an unrelated new mode on main must not stop the port)."""
     p = f'{W}/{path}'
     s = open(p).read()
-    m = re.search(rf'export type {type_name} = ([^;]*);', s)
-    if not m:
+    out = union_with(s, type_name, value)
+    if out is None:
         fail(f'{path}: type {type_name} not found')
-    if member not in m.group(1):
-        s = s[:m.end(1)] + f' | {member}' + s[m.end(1):]
-        open(p, 'w').write(s)
+    if out != s:
+        open(p, 'w').write(out)
 
 
 def _interrupted(signum, _frame):
-    # Turn SIGTERM/SIGHUP into an exception, so the rollback below runs as it does for Ctrl-C.
-    raise KeyboardInterrupt(f'signal {signum}')
+    # Remember the signal and let the command that is running finish: killing git half way leaves
+    # .git/index.lock and a half-changed worktree that the rollback can't repair. The port stops at
+    # the next checkpoint (after every command) and rolls back.
+    STOP.append(signum)
 
 
-for _sig in (signal.SIGTERM, signal.SIGHUP):
+for _sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
     signal.signal(_sig, _interrupted)
 
 
@@ -125,6 +223,7 @@ def ported_paths(ref):
         'docs/nutriserve/REA_FINDINGS.md',
         'docs/nutriserve/asset-prompts.json',
         'docs/nutriserve/evidence-index.json',
+        'public/assets/nutriserve/manifest.json',
     ]
 
 
@@ -153,6 +252,34 @@ def blob(ref, path, cwd):
     return _trees[key].get(path)
 
 
+if SELF_TEST:
+    cases = [
+        ("export type M = 'a' | 'b';", "export type M = 'a' | 'b' | 'x';"),
+        ("export type M = 'a' | 'x' | 'b';", None),
+        ('export type M = "a" | "b";', 'export type M = "a" | "b" | "x";'),
+        ('export type M = "a" | "x";', None),
+        ("export type M =\n  | 'a'\n  | 'b';\n", "export type M =\n  | 'a'\n  | 'b'\n  | 'x';\n"),
+        ("export type M =\n  | 'a'\n  // | 'x' (paused)\n  | 'b';", "export type M =\n  | 'a'\n  // | 'x' (paused)\n  | 'b'\n  | 'x';"),
+        ("export type M =\n  | 'a' // keep; used\n  | 'b';", "export type M =\n  | 'a' // keep; used\n  | 'b'\n  | 'x';"),
+        ("export type M = 'a' /* p; q */ | 'b';", "export type M = 'a' /* p; q */ | 'b' | 'x';"),
+        ("export type M = 'a' /* | 'x' */ | 'b';", "export type M = 'a' /* | 'x' */ | 'b' | 'x';"),
+        ("export type M = 'a' | 'b' /* last */;", "export type M = 'a' | 'b' | 'x' /* last */;"),
+        ("export type M =\n  | 'a'\n  | 'b'\n\nexport const y = 1;", "export type M =\n  | 'a'\n  | 'b'\n  | 'x'\n\nexport const y = 1;"),
+        ("export type M = 'a' | 'b' // note\nexport const y = 1;", "export type M = 'a' | 'b' | 'x' // note\nexport const y = 1;"),
+        ("export type M =\n  | 'a'\n  /* gap */\n  | 'b'\nconst z = 2;", "export type M =\n  | 'a'\n  /* gap */\n  | 'b'\n  | 'x'\nconst z = 2;"),
+    ]
+    bad = 0
+    for text, want in cases:
+        got = union_with(text, 'M', 'x')
+        if got != (text if want is None else want):
+            bad += 1
+            print(f'FAIL {text!r}\n  got  {got!r}\n  want {(text if want is None else want)!r}')
+    if union_with("export type N = 'a';", 'M', 'x') is not None:
+        bad += 1
+        print('FAIL: a missing type should give None')
+    print(f'union self-test: {len(cases) + 1 - bad}/{len(cases) + 1} pass')
+    sys.exit(1 if bad else 0)
+
 # 0. Preconditions (nothing here changes the worktree).
 if sh('git', 'status', '--porcelain'):
     fail(f'{W} has uncommitted changes; commit or discard them first')
@@ -160,7 +287,7 @@ sh('git', 'fetch', '--quiet', 'origin', 'main', SOURCE_REF, cwd=SRC)
 source = sh('git', 'rev-parse', SOURCE_REF, cwd=SRC).strip()
 pushed = sh('git', 'rev-parse', f'origin/{SOURCE_REF}', cwd=SRC).strip()
 if source != pushed:
-    behind = subprocess.run(['git', 'merge-base', '--is-ancestor', source, pushed], cwd=SRC).returncode == 0
+    behind = run(['git', 'merge-base', '--is-ancestor', source, pushed], cwd=SRC).returncode == 0
     fail(f'{SOURCE_REF} ({source[:8]}) differs from origin/{SOURCE_REF} ({pushed[:8]}); '
          + ('it is behind: pull it first' if behind else 'push it first'))
 sh('git', 'fetch', '--quiet', 'origin', 'main')
@@ -188,7 +315,7 @@ try:
     paths = ported_paths(source)
     on_main = ported_files('HEAD', W)
     if recorded:
-        if subprocess.run(['git', 'cat-file', '-e', f'{recorded}^{{commit}}'], cwd=SRC, capture_output=True).returncode:
+        if run(['git', 'cat-file', '-e', f'{recorded}^{{commit}}'], cwd=SRC, capture_output=True).returncode:
             fail(f'recorded source commit {recorded} is not in {SRC}')
         problems = []
         for f in sorted(on_main - REWRITTEN):
@@ -218,10 +345,11 @@ try:
 
     # 4. The NutriServe files, as committed on the source branch.
     present = [p for p in paths if p in on_source or any(f.startswith(p + '/') for f in on_source)]
-    archive = subprocess.run(['git', 'archive', source, *present], cwd=SRC, check=True, capture_output=True).stdout
-    subprocess.run(['tar', '-x', '-C', W], input=archive, check=True)
+    archive = run(['git', 'archive', source, *present], cwd=SRC, check=True, capture_output=True).stdout
+    run(['tar', '-x', '-C', W], input=archive, check=True)
 
     # 5. Catalog source fixes (customers that required ids that don't exist), on main's own file.
+    checkpoint()
     p = f'{W}/services/nutriserveCharacters.ts'
     s = open(p).read()
     s = s.replace("required_items: ['brown_rice']", "required_items: ['rice_brown']").replace("required_items: ['red_rice']", "required_items: ['rice_red']")
@@ -239,7 +367,8 @@ try:
     open(p, 'w').write(json.dumps(pkg, indent=2) + '\n')
 
     # 7. App shell (main's own files; small, explicit edits).
-    add_to_union('types.ts', 'GameMode', "'nutriserve_remaster'")
+    checkpoint()
+    add_to_union('types.ts', 'GameMode', 'nutriserve_remaster')
     patch('components/GameScreen.tsx', [(
         "    nutriserve: 'NutriServe Chef',",
         "    nutriserve: 'NutriServe Chef',\n    nutriserve_remaster: 'NutriServe Kitchen',",
@@ -310,6 +439,7 @@ try:
     print(sh('node', 'scripts/generate-nutriserve-catalog.mjs').strip())
 
     # 9. The status doc's head, for main (fixed wording: it reads the same on every re-port).
+    checkpoint()
     p = f'{W}/{STATUS_DOC}'
     s = open(p).read()
     head_end = s.index('## Task status')
@@ -318,7 +448,7 @@ try:
         'This is the NutriServe Kitchen remaster on `main`. It was developed on `claude/continue-building-j1mrs7` and ported here without that '
         "branch's unrelated `old` history, as the build track asks; `docs/nutriserve/PORT_SOURCE` names the branch commit it came from. "
         'Ported as is: `src/features/nutriserve/`, `tests/nutriserve-*`, the catalog generator and release gate in `scripts/`, '
-        '`tsconfig.nutriserve-sim.json` and this folder\'s status, README, build track (CSV and handoff), asset workflow, and the historical reference and prompt records. Adapted for `main`: a small entry in the app shell '
+        '`tsconfig.nutriserve-sim.json` and this folder\'s status, README, build track (CSV and handoff), asset workflow, and the historical reference and prompt records, and the asset manifest of the pilot sprites (`public/assets/nutriserve/manifest.json`). Adapted for `main`: a small entry in the app shell '
         '(`App.tsx`, `types.ts`, `components/GameScreen.tsx`, `components/GamesView.tsx`), four scripts in `package.json`, and '
         '`services/nutriserveCharacters.ts`, where customers that required foods that do not exist (`brown_rice`, `red_rice`) now require '
         '`rice_brown` and `rice_red`. The simulation catalog is regenerated from `main`\'s own catalog sources. On `main` the remaster keeps '
@@ -329,14 +459,37 @@ try:
 
     counts = sh('node', '--experimental-strip-types', '-e',
                 "import('./src/features/nutriserve/data/catalog.generated.ts').then(m=>console.log(m.CATALOG_FOODS.length+' foods, '+m.CATALOG_CUSTOMERS.length+' customers'))").strip()
+    checkpoint()
     print(f'ported {SOURCE_REF} {source[:8]}; catalog {counts}; removed {len(removed)} file(s){": " + ", ".join(removed) if removed else ""}')
-except BaseException:
-    # Put the worktree back as it was: the same branch (never moved) or commit, clean. A second
-    # signal must not interrupt the rollback itself.
+except BaseException as error:
+    # Put the worktree back as it was: the same branch (never moved) or commit, clean. Signals are
+    # ignored from here on (git commands started now inherit that), so nothing interrupts it.
     for _sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(_sig, signal.SIG_IGN)
-    subprocess.run(['git', 'checkout', '--quiet', '--force', orig_branch or '--detach', *([] if orig_branch else [orig_commit])], cwd=W)
-    subprocess.run(['git', 'reset', '--quiet', '--hard', 'HEAD'], cwd=W)
-    subprocess.run(['git', 'clean', '-fdq', '-e', 'node_modules'], cwd=W)
-    print(f'rolled back to {orig_branch or orig_commit[:8]}', file=sys.stderr)
+    target = orig_branch or orig_commit[:8]
+    steps = [
+        ['git', 'checkout', '--quiet', '--force', orig_branch or '--detach', *([] if orig_branch else [orig_commit])],
+        ['git', 'reset', '--quiet', '--hard', 'HEAD'],
+        ['git', 'clean', '-fdq', '-e', 'node_modules'],
+    ]
+    problems = []
+    for cmd in steps:
+        r = subprocess.run(cmd, cwd=W, text=True, capture_output=True)
+        if r.returncode:
+            problems.append(f'{" ".join(cmd)}: {r.stderr.strip()[:200]}')
+    head = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=W, text=True, capture_output=True).stdout.strip()
+    branch = subprocess.run(['git', 'symbolic-ref', '--quiet', '--short', 'HEAD'], cwd=W, text=True, capture_output=True).stdout.strip() or None
+    dirty = subprocess.run(['git', 'status', '--porcelain'], cwd=W, text=True, capture_output=True).stdout.strip()
+    if head != orig_commit or branch != orig_branch:
+        problems.append(f'HEAD is {head[:8] or "?"} ({branch or "detached"}), not {target}')
+    if dirty:
+        problems.append(f'{len(dirty.splitlines())} file(s) still changed')
+    if problems:
+        print(f'ROLLBACK INCOMPLETE in {W}:\n  ' + '\n  '.join(problems)
+              + f'\nCheck that no other git command is running there, then: git -C {W} checkout --force {target}'
+              + f' && git -C {W} reset --hard && git -C {W} clean -fd -e node_modules', file=sys.stderr)
+        sys.exit(2)
+    print(f'rolled back to {target}', file=sys.stderr)
+    if isinstance(error, Interrupted):
+        sys.exit(130)
     raise
