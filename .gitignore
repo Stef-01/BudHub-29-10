@@ -27,3 +27,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python bytecode (scripts/nutriserve-port-to-main.py)
+__pycache__/
