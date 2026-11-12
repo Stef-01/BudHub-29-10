@@ -45,6 +45,32 @@ function dispenserFoods(component: (typeof COMPONENTS)[number], tickets: Ticket[
   return [...options].sort((a, b) => foodLabel(a).localeCompare(foodLabel(b)));
 }
 
+/**
+ * Each dish keeps the dispenser rows it started with, so nothing moves under the player's finger
+ * when a ticket arrives or is served, or when they leave the station and come back. Foods a new
+ * ticket needs are added at the end of their row; nothing is removed. Keyed by game and dish
+ * (dish ids repeat between days and games); only the latest few dishes are kept.
+ */
+const frozenRows = new Map<string, Record<BuildComponent, string[]>>();
+const FROZEN_ROWS_KEPT = 12;
+
+function dishRows(state: GameState, dish: GameState['dishes'][number], open: Ticket[]): Record<BuildComponent, string[]> {
+  const key = `${state.runId}:${state.seed}:${state.day.number}:${dish.id}`;
+  let rows = frozenRows.get(key);
+  if (!rows) {
+    rows = Object.fromEntries(COMPONENTS.map((c) => [c.id, dispenserFoods(c, open, dish.id)])) as Record<BuildComponent, string[]>;
+    frozenRows.set(key, rows);
+    while (frozenRows.size > FROZEN_ROWS_KEPT) frozenRows.delete(frozenRows.keys().next().value as string);
+  }
+  for (const c of COMPONENTS) {
+    const field = `${c.id}Id` as 'baseId' | 'mainId' | 'sideId';
+    // The dish's own food stays offered too (a restored save may have started it with other tickets open).
+    const wanted = [dish.build[c.id]?.foodId, ...open.map((t) => t.order[field])];
+    for (const id of wanted) if (id && !rows[c.id].includes(id)) rows[c.id] = [...rows[c.id], id];
+  }
+  return rows;
+}
+
 function Gauge({ label, actualG, idealG, kind }: { label: string; actualG: number; idealG?: number; kind: 'fill' | 'meter' }) {
   // fill: ratio 0..2 with the ideal at the middle; meter: the reference meter fraction (ideal at 0.5).
   const position = idealG ? (kind === 'fill' ? Math.min(2, actualG / idealG) / 2 : meterFraction(actualG, idealG)) : 0;
@@ -85,10 +111,14 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
   // selected (or oldest) open ticket, which is the one startDish will record.
   const ticket = dish ? dishTicket(state, dish) : ticketForNewDish(state);
   const options = useMemo(
-    () => (dish ? COMPONENTS.map((c) => ({ ...c, foods: dispenserFoods(c, open, dish.id) })) : []),
-    // Recompute when the dish or the set of open tickets changes, not every frame.
+    () => {
+      if (!dish) return [];
+      const rows = dishRows(state, dish, open);
+      return COMPONENTS.map((c) => ({ ...c, foods: rows[c.id] }));
+    },
+    // Recompute when the dish, its foods or the set of open tickets changes, not every frame.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dish?.id, open.map((t) => t.id).join(',')],
+    [dish?.id, state.runId, state.seed, state.day.number, open.map((t) => t.id).join(','), COMPONENTS.map((c) => dish?.build[c.id]?.foodId).join(',')],
   );
 
   // Click-only (latched) pours are announced: started, at the line, past it. A sighted player
@@ -218,8 +248,9 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                     // Says why this dispenser is locked; works the reason out without touching the game.
                     onBlocked={() => {
                       let text: string | undefined;
-                      if (held && !(held.component === c.id && held.foodId === foodId)) text = `Stop ${foodLabel(held.foodId)} first: it is still pouring`;
-                      else if (chosen && chosen !== foodId && locked(c.id)) text = `${c.label} is ${foodLabel(chosen)}: trash the dish to change it`;
+                      // Key words first: the notice is one line and its end may be cut off on a phone.
+                      if (held && !(held.component === c.id && held.foodId === foodId)) text = `Stop ${foodLabel(held.foodId)} first: still pouring`;
+                      else if (chosen && chosen !== foodId && locked(c.id)) text = `Locked to ${foodLabel(chosen)}: trash the dish to change ${c.label.toLowerCase()}`;
                       if (!text) return;
                       setBlocked({ component: c.id, text });
                       setLive(text);
@@ -251,7 +282,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
                         setLive(
                           ideal
                             ? `Pouring ${foodLabel(foodId)} to the line at ${ideal[c.id]} grams; it stops by itself.`
-                            : `Pouring ${foodLabel(foodId)}. No fill line: this vessel size isn't the ticket's. Click again to stop.`,
+                            : `Pouring ${foodLabel(foodId)}. No fill line: ${ticket ? "this vessel size isn't the ticket's" : 'no ticket for this dish'}. Click again to stop.`,
                         );
                       }
                     }}

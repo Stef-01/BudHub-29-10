@@ -134,7 +134,12 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
                 <small>{problem.reason}</small>
               </p>
             </details>
-            {problem.droppedUpgrades?.length ? <p>Retired upgrades not carried over: {problem.droppedUpgrades.join(', ')}.</p> : null}
+            {problem.droppedUpgrades?.length ? (
+              <p>
+                Retired upgrades not carried over: {problem.droppedUpgrades.join(', ')}.
+                {problem.refundedCoins ? ` Their ${problem.refundedCoins} coins are refunded.` : ''}
+              </p>
+            ) : null}
             {problem.profile ? (
               <p>
                 Your progress is safe: rank {problem.profile.rank}, {problem.profile.coins} coins
@@ -483,7 +488,7 @@ function Kitchen({
 
         {compact && (
           <div className="ns-dock" inert={modalOpen}>
-            <div ref={slotRefs.tabs} />
+            <div ref={slotRefs.tabs} className="ns-dock-tabs" />
             <LastServe result={latest} modal={modalOpen} />
             <div ref={slotRefs.top} className="ns-dock-top" />
             <div ref={slotRefs.main} className="ns-dock-main" />

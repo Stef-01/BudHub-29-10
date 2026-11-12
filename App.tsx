@@ -47,7 +47,8 @@ const AppContent: React.FC = () => {
   // with the day's average score; a day of empty katoris earns none.
   const handleRemasterDay = useCallback(
     ({ averageScore, xpTier }: { day: number; averageScore: number; xpTier: 'Low' | 'Medium' | 'High' | null }) => {
-      scoresCtx.saveScore('nutriserve_remaster', averageScore);
+      // A failed score save (offline, storage full) must not break the day summary.
+      Promise.resolve(scoresCtx.saveScore('nutriserve_remaster', averageScore)).catch(() => {});
       if (xpTier) addXp(xpTier, 'add');
     },
     [scoresCtx, addXp]

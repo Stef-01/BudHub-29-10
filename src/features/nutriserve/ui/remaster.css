@@ -226,8 +226,16 @@
 .ns-dock .ns-why { min-height: 28px; padding: 0 14px; }
 /* Landscape phones: the scene would be taller than the screen; keep it to about half the height. */
 .ns-compact .ns-stage-wrap { max-width: calc(48svh * 4 / 3); margin: 0 auto; }
-/* At 320 px the count badge sits under the label instead of over it. */
+/* At 320 px the count badge sits under the label instead of over it. Every tab keeps the badge's
+   line, so the row's height never changes when a badge appears. */
 .ns-dock .ns-tab em { position: static; margin: 2px auto 0; }
+.ns-dock .ns-tab { height: 64px; padding: 2px; overflow: hidden; }
+.ns-dock .ns-tab > span, .ns-dock .ns-tab small { line-height: 1.2; }
+/* Upright phones: the dock is taller than the screen, so the station tabs stay pinned at the top
+   while the controls scroll under them, and a "Done!" badge is never scrolled away. */
+.ns-root.ns-compact:not(.ns-side-dock) .ns-dock-tabs { position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 6px #0005; border-radius: 8px; }
+/* ...and a control scrolled into view (keyboard focus, find-in-page) lands below them, not under them. */
+.ns-root.ns-compact:not(.ns-side-dock) .ns-dock :is(button, summary, [tabindex], fieldset, .ns-gauges) { scroll-margin-top: 76px; }
 .ns-dock .ns-order-counter { padding: 4px 0; }
 .ns-dock .ns-provisional { font-size: 12px; }
 /* Backing plates only matter over stage scenery; in the dock the text already sits on the page. */
@@ -272,7 +280,7 @@
 
 /* A locked dispenser's reason: over the row's legend, so the dispenser grid never moves. */
 .ns-dispenser-row { position: relative; }
-.ns-blocked-msg { position: absolute; left: 0.3em; right: 0.3em; top: -0.9em; z-index: 5; margin: 0; padding: 0 0.5em; font-size: 0.7em; line-height: 1.4; font-weight: 700; color: #6b2208; background: #fff0e8; border: 2px solid var(--warn); border-radius: 0.4em; pointer-events: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ns-blocked-msg { position: absolute; left: 0.3em; right: 0.3em; top: -0.9em; z-index: 5; margin: 0; padding: 0 0.5em; font-size: 0.7em; line-height: 1.4; font-weight: 700; color: #6b2208; background: #fff0e8; border: 2px solid var(--warn); border-radius: 0.4em; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ns-dock .ns-blocked-msg { font-size: 12px; top: -12px; }
 
 /* The portion being poured, on its own dispenser (the gauges can be off screen on a phone held sideways). */
@@ -280,7 +288,9 @@
 /* A handi at its mark: on its slot and on the Prep tab. */
 .ns-at-mark { border-color: #1d7a4a; box-shadow: 0 0 0 0.2em #1d7a4a66; }
 .ns-take-out { color: #1d7a4a; }
-.ns-tab .ns-tab-alert { background: #1d7a4a; min-width: auto; padding: 0 0.4em; font-size: 0.7em; }
+.ns-tab .ns-tab-alert { background: #1d7a4a; min-width: auto; padding: 0 0.4em; font-size: 0.7em; height: 1.6em; } /* the count badge's height: 1.4em of 0.8em */
 /* Side by side at 560-600 px: tab labels fit, and the status line never changes height. */
-.ns-side-dock .ns-dock .ns-tab { font-size: 13px; }
+.ns-side-dock .ns-dock .ns-tab { font-size: 13px; height: 54px; padding: 2px 0; } /* label, Hindi and badge lines at 13 px: 53 px */
+/* At 560 px each tab is about 40 px wide: no side padding and thin gaps, so "Finish" (38 px) fits. */
+.ns-side-dock .ns-dock .ns-tabs { gap: 2px; padding: 2px; }
 .ns-side-dock > .ns-status { height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

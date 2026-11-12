@@ -464,6 +464,18 @@ async function runRegressions(browser) {
     return { side: root.classList.contains('ns-side-dock'), tabs: document.querySelector('.ns-tabs').getBoundingClientRect().bottom + scrollY };
   });
   check(side.side && side.tabs <= 600, `regressions: a 1280x600 window puts the controls beside the scene (tabs end at ${Math.round(side.tabs)} px)`);
+  // The narrowest side-by-side window: every tab label fits inside its tab.
+  await page.setViewportSize({ width: 560, height: 400 });
+  await page.waitForTimeout(300);
+  const narrow = await page.evaluate(() => ({
+    side: document.querySelector('.ns-root').classList.contains('ns-side-dock'),
+    fit: [...document.querySelectorAll('.ns-tab')].map((t) => {
+      const cs = getComputedStyle(t);
+      const inner = t.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      return [Math.ceil(Math.max(...[...t.querySelectorAll('span, small')].map((c) => c.getBoundingClientRect().width))), Math.floor(inner)];
+    }),
+  }));
+  check(narrow.side && narrow.fit.every(([w, room]) => w <= room), `regressions: side by side at 560 px every tab label fits (${narrow.fit.map(([w, r]) => `${w}/${r}`).join(' ')})`);
 
   check(errors.length === 0, `regressions: no app errors${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   await context.close();
@@ -530,6 +542,38 @@ async function runRegressions(browser) {
   await p.waitForTimeout(1500);
   const afterWiggle = await grams();
   check(afterWiggle === beforeWiggle, `regressions: a wiggled touch on a dispenser pours nothing (${beforeWiggle} -> ${afterWiggle} g)`);
+  // A tap on a locked dispenser says why, on one line that starts with what matters.
+  const other = p.getByRole('button', { name: /^Hold to add .* as main$/ }).nth(1);
+  await other.scrollIntoViewIfNeeded();
+  const ob = await other.boundingBox();
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: ob.x + ob.width / 2, y: ob.y + ob.height / 2 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await p.waitForTimeout(150);
+  const notice = await p.evaluate(() => {
+    const el = document.querySelector('.ns-blocked-msg');
+    return el ? { text: el.textContent, lines: Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)) } : null;
+  });
+  check(!!notice && notice.lines === 1 && /^Locked to /.test(notice.text), `regressions: a locked dispenser's reason is one line, key words first (${notice && `${notice.lines} line: ${notice.text}`})`);
+  // Station tabs: one fixed height whether or not a badge shows; pinned at the top while the
+  // controls scroll under them.
+  const tabs = await p.evaluate(() => [...document.querySelectorAll('.ns-tab')].map((t) => ({ h: Math.round(t.getBoundingClientRect().height), badge: !!t.querySelector('em'), clipped: t.scrollHeight > t.clientHeight + 1 })));
+  check(tabs.some((t) => t.badge) && tabs.some((t) => !t.badge) && new Set(tabs.map((t) => t.h)).size === 1 && !tabs.some((t) => t.clipped), `regressions: phone station tabs keep one height with and without badges (${tabs.map((t) => `${t.h}${t.badge ? '*' : ''}${t.clipped ? '!' : ''}`).join(' ')})`);
+  await p.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }));
+  await p.waitForTimeout(300);
+  const pinned = await p.evaluate(() => ({ y: scrollY, top: document.querySelector('.ns-tabs').getBoundingClientRect().top }));
+  check(pinned.y > 100 && Math.abs(pinned.top) <= 1, `regressions: phone station tabs stay pinned while the controls scroll (scrolled ${pinned.y}, tabs at ${Math.round(pinned.top)} px)`);
+  // A dish keeps its dispenser rows when a ticket arrives: the new ticket's foods join at the end.
+  const rows = () => p.evaluate(() => [...document.querySelectorAll('.ns-dispenser-row')].map((r) => [...r.querySelectorAll('.ns-dispenser-name')].map((n) => n.textContent)));
+  const rowsBefore = await rows();
+  await p.getByRole('button', { name: /^Order station/ }).click();
+  await p.getByRole('button', { name: /^Take .* order$/ }).click({ timeout: 90_000 });
+  await p.getByRole('button', { name: /^Build station/ }).click();
+  await p.waitForTimeout(200);
+  const rowsAfter = await rows();
+  const wanted = await p.locator('.ns-ticket-foods li').allTextContents();
+  const kept_ = rowsBefore.every((row, i) => row.every((food, j) => rowsAfter[i][j] === food));
+  const offered = wanted.length === 3 && wanted.every((food, i) => rowsAfter[i].includes(food.trim()));
+  check(kept_ && offered, `regressions: dispenser rows keep their order when a ticket arrives, and offer its foods (${rowsBefore.map((r) => r.length).join('/')} -> ${rowsAfter.map((r) => r.length).join('/')}; wants ${wanted.join(', ')})`);
   await phone.close();
 }
 

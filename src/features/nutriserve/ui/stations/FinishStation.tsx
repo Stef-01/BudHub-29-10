@@ -125,6 +125,8 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
   });
   const vesselRef = useCallback((el: HTMLElement | null) => {
     vesselEl.current?.removeEventListener('touchmove', blockScroll.current);
+    // A press on the old element can never be released there: forget it, or no later press starts.
+    if (el !== vesselEl.current) clearPress();
     vesselEl.current = el;
     el?.addEventListener('touchmove', blockScroll.current, { passive: false });
   }, []);
@@ -147,6 +149,23 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
       window.removeEventListener('pointercancel', end);
     };
   }, [drizzling, stop]);
+  // A press released off the vessel (a touch garnish press has no capture) or on an element that has
+  // since been replaced is forgotten once the release has passed the vessel's own handlers (this
+  // listener bubbles to the window after them), so the next press on the vessel starts normally.
+  useEffect(() => {
+    const end = (e: PointerEvent) => {
+      const pr = press.current;
+      if (!pr || pr.id !== e.pointerId) return;
+      clearPress();
+      if (pr.started) stop();
+    };
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    return () => {
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+    };
+  }, [stop]);
   // Leaving the station or unmounting never leaves a drizzle running.
   useEffect(
     () => () => {
