@@ -527,8 +527,8 @@ async function runRegressions(browser) {
   await p.getByRole('button', { name: 'Medium', exact: true }).click();
   const cdp = await phone.newCDPSession(p);
   const target = p.getByRole('button', { name: /^Hold to add .* as main$/ }).first();
+  // The dispensers now start on the first screen, so the swipe goes up (the page scrolls down).
   await target.scrollIntoViewIfNeeded();
-  await p.evaluate(() => window.scrollBy(0, -120));
   await p.waitForTimeout(200);
   const tb = await target.boundingBox();
   const grams = async () => Number(((await p.locator('.ns-gauges').innerText()).match(/Main (\d+) g/) || [])[1]);
@@ -536,14 +536,14 @@ async function runRegressions(browser) {
   const [x, y] = [tb.x + tb.width / 2, tb.y + tb.height / 2];
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
   for (let i = 1; i <= 10; i++) {
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + 12 * i }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 12 * i }] });
     await p.waitForTimeout(16);
   }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await p.waitForTimeout(400);
   const y1 = await p.evaluate(() => scrollY);
   const swiped = await grams();
-  check(y1 < y0 && swiped === 0, `regressions: phone swipe on a dispenser scrolls (${y0} -> ${y1}) and pours nothing (${swiped} g)`);
+  check(y1 > y0 && swiped === 0, `regressions: phone swipe on a dispenser scrolls (${y0} -> ${y1}) and pours nothing (${swiped} g)`);
   await target.scrollIntoViewIfNeeded();
   const tb2 = await target.boundingBox();
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: tb2.x + tb2.width / 2, y: tb2.y + tb2.height / 2 }] });
@@ -635,15 +635,17 @@ async function runAudit11(browser) {
   await enter(b, user, /^Continue day/);
   await a.waitForTimeout(600);
   const told = await a.getByRole('alertdialog', { name: 'Open in another tab' }).count();
+  // The handed-over game arrives paused; play on in B for a moment.
+  await b.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click();
   await b.waitForTimeout(1500);
-  await b.getByRole('button', { name: 'Save & exit' }).click();
+  await b.locator('.ns-hud').getByRole('button', { name: 'Save & exit' }).click();
   const key = await saveKeyOf(b);
   const byB = await b.evaluate((k) => localStorage.getItem(k), key);
   await a.waitForTimeout(4600); // longer than an autosave
   const later = await a.evaluate((k) => localStorage.getItem(k), key);
   check(told === 1 && later === byB, `regressions: a second tab takes over the save; the first says so and stops writing (dialog ${told}, overwritten ${later !== byB})`);
   await a.getByRole('button', { name: 'Continue here' }).click();
-  await a.waitForTimeout(300);
+  await a.waitForTimeout(1200); // B has left the kitchen; at most one handover wait
   const hudA = (await a.locator('.ns-hud').innerText()).replace(/\s+/g, ' ');
   const wantClock = clock(JSON.parse(byB).state.nowMs);
   const pausedA = await a.getByRole('dialog', { name: 'Paused' }).count();
@@ -792,7 +794,10 @@ async function runAudit12(browser) {
         const rate = { base: 80, main: 90, side: 50 };
         const helpers = {
           toCounter: (s) => {
-            while (!s.day.customers.some((c) => c.phase === 'at_counter')) s = sim.advanceGame(s, 100);
+            for (let i = 0; !s.day.customers.some((c) => c.phase === 'at_counter'); i++) {
+              if (i > 6_000) throw new Error('no customer came to the counter in 10 minutes');
+              s = sim.advanceGame(s, 100);
+            }
             return s;
           },
           build: (s, o, size = o.size) => {
@@ -817,32 +822,23 @@ async function runAudit12(browser) {
   // Two handis (1 and 2) inside their perfect windows, paused, at the Order station.
   const AT_MARK = `
     let s = sim.createGame({ seed: 9, runId: 'run-gate-a12' });
-    const dishes = [];
-    for (const slot of [0, 1]) {
+    const made = [];
+    for (let i = 0; i < 2; i++) {
       s = h.toCounter(s);
       s = run(s, { type: 'takeOrder' });
       const t = s.tickets.at(-1);
       const b = h.build(s, t.order);
       s = run(b.s, { type: 'finishBuild', dishId: b.dishId });
-      s = run(s, { type: 'startPrep', dishId: b.dishId, slot });
-      dishes.push([b.dishId, t]);
+      made.push({ id: b.dishId, mark: sim.prepTargetUnits(t.order.prepLevel) });
     }
-    // Run until both are past the start of their windows (and neither past its end).
+    // The longer one goes on first, the other when the first has that much left (a unit is a ms
+    // on the flame), and both are taken to half a window short of their marks.
     const band = sim.prepBandUnits(sim.upgradeEffects(s.profile.upgrades));
-    const inWindow = (id, t) => {
-      const u = s.dishes.find((d) => d.id === id).prep.milliUnits / 1000, m = sim.prepTargetUnits(t.order.prepLevel);
-      return u >= m - band && u <= m + band;
-    };
-    for (let i = 0; i < 400 && !dishes.every(([id, t]) => inWindow(id, t)); i++) {
-      // Hold back whichever is ahead by taking turns boosting the one behind.
-      const [[a, ta], [b, tb]] = dishes;
-      const left = (id, t) => sim.prepTargetUnits(t.order.prepLevel) - band - s.dishes.find((d) => d.id === id).prep.milliUnits / 1000;
-      s = run(s, { type: 'setBoost', slot: 0, held: left(a, ta) > left(b, tb) + 200 });
-      s = run(s, { type: 'setBoost', slot: 1, held: left(b, tb) > left(a, ta) + 200 });
-      s = sim.advanceGame(s, 50);
-    }
-    s = run(s, { type: 'setBoost', slot: 0, held: false });
-    s = run(s, { type: 'setBoost', slot: 1, held: false });
+    made.sort((x, y) => y.mark - x.mark);
+    s = run(s, { type: 'startPrep', dishId: made[0].id, slot: 0 });
+    s = sim.advanceGame(s, made[0].mark - made[1].mark);
+    s = run(s, { type: 'startPrep', dishId: made[1].id, slot: 1 });
+    s = sim.advanceGame(s, made[1].mark - band / 2);
     s = run(s, { type: 'selectStation', station: 'order' });
     s = run(s, { type: 'pause' });
     return s;
@@ -896,7 +892,7 @@ async function runAudit12(browser) {
   await craft(c, AT_MARK);
   await c.waitForTimeout(400);
   const cueAtLoad = (await c.locator('[data-ns-cue]').innerText()).trim();
-  await c.getByRole('button', { name: 'Resume' }).click();
+  await c.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click();
   await c.getByRole('button', { name: /^Prep station/ }).click();
   await c.getByRole('region', { name: 'Prep slot 1' }).getByRole('button', { name: 'Done' }).click();
   await c.waitForTimeout(200);
@@ -920,20 +916,18 @@ async function runAudit12(browser) {
     p,
     AT_MARK.replace(
       "s = run(s, { type: 'selectStation', station: 'order' });",
-      `// A dish ready to finish (in slot 3, done) and one on the build counter in the wrong size.
+      `// The first handi's dish goes on to Finish, and the third ticket's dish is on the build
+      // counter in the wrong size (day 1 has three customers).
+      s = run(s, { type: 'finishPrep', slot: 0 });
       s = h.toCounter(s);
       s = run(s, { type: 'takeOrder' });
       const t3 = s.tickets.at(-1);
-      let b3 = h.build(s, t3.order);
-      s = run(b3.s, { type: 'finishBuild', dishId: b3.dishId });
-      s = run(s, { type: 'startPrep', dishId: b3.dishId, slot: 2 });
-      s = run(s, { type: 'finishPrep', slot: 2 });
-      const wrong = t3.order.size === 'small' ? 'large' : 'small';
-      s = run(s, { type: 'startDish', size: wrong });
+      s = run(s, { type: 'selectTicket', ticketId: t3.id });
+      s = run(s, { type: 'startDish', size: t3.order.size === 'small' ? 'large' : 'small' });
       s = run(s, { type: 'selectStation', station: 'order' });`
     )
   );
-  await p.getByRole('button', { name: 'Resume' }).click();
+  await p.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click();
   await p.getByRole('button', { name: /^Prep station/ }).click();
   await p.waitForTimeout(400);
   await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
@@ -975,12 +969,17 @@ async function runAudit12(browser) {
 (async () => {
   const browser = await chromium.launch();
   const results = {};
-  await runRegressions(browser);
-  await runAudit11(browser);
-  await runAudit12(browser);
-  results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
-  results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });
-  results.phone = await runDevice(browser, 'phone', { ...devices['iPhone 13'] }, { touch: true });
+  // GATE_ONLY=regressions|audit11|audit12|devices runs one part (for working on it); the gate is all of them.
+  const only = process.env.GATE_ONLY;
+  const part = (name) => !only || only === name;
+  if (part('regressions')) await runRegressions(browser);
+  if (part('audit11')) await runAudit11(browser);
+  if (part('audit12')) await runAudit12(browser);
+  if (part('devices')) {
+    results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
+    results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });
+    results.phone = await runDevice(browser, 'phone', { ...devices['iPhone 13'] }, { touch: true });
+  }
   await browser.close();
   fs.writeFileSync(path.join(OUT, 'gate.json'), JSON.stringify({ checks, results }, null, 2));
   const failed = checks.filter((c) => !c.ok);

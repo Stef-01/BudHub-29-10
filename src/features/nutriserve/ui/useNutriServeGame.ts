@@ -386,6 +386,15 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
       window.removeEventListener('pagehide', save);
       window.removeEventListener('storage', onStorage);
       save();
+      // Leaving the kitchen (Save & exit, Exit) lets go of the save, so a tab that asks for it next
+      // doesn't wait for an answer that will never come.
+      if (readWriter(userId) === tabId.current) {
+        try {
+          window.localStorage.removeItem(writerKey(userId));
+        } catch {
+          // ignore
+        }
+      }
     };
   }, [cede, owns, save, supersede, userId]);
 
