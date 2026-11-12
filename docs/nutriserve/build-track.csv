@@ -1,7 +1,7 @@
 id,owner,task,status,dependency,acceptance
 C01,Claude,Deterministic simulation spine,implemented,,Two concurrent orders four prep slots pause replay and save restore
 C02,Claude,Build station timed portion input,implemented,C01,Wrong ingredient fixed penalty and signed grams; graded by NutriServe's own rules (build-v7)
-C03,Claude,Prep timing boost and heat,implemented-provisional,,NutriServe's own marks boost and heat (prep-v5); offscreen slots continue
+C03,Claude,Prep timing boost and heat,implemented-provisional,,NutriServe's own marks boost and heat (prep-v6); offscreen slots continue
 C04,Claude,Finish deposition and garnish,implemented-provisional (A03 masks),A03,Distribution order amount and spill graded by NutriServe's own rules (finish-v4); rotation not modelled
 C05,Claude,Serving day and progression,implemented (aggregation provisional),C01 C02 C03 C04,Wrong ticket permitted and graded; no duplicate reward; aggregation is NutriServe's own
 C06,Claude,Canonical nutrition adapter,implemented,,Prepared food counted once; required IDs validated; no medical guarantees

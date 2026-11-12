@@ -78,7 +78,9 @@ const LATE_LISTEN_MS = 5_000;
 
 type TabMessage =
   | { kind: 'ask'; from: string; at: number }
-  | { kind: 'ceded'; from: string; to: string; raw: string | null };
+  // anyHolder: a late handover, for whichever tab holds the save now (`to` is the sender's guess,
+  // and its own record of the writer may be out of date).
+  | { kind: 'ceded'; from: string; to: string; raw: string | null; anyHolder?: boolean };
 
 function openChannel(userId: string): BroadcastChannel | null {
   try {
@@ -179,7 +181,7 @@ function keepListening(userId: string, channel: BroadcastChannel): void {
   lateChannel = channel;
   channel.onmessage = (e: MessageEvent<TabMessage>) => {
     const m = e.data;
-    if (m?.kind !== 'ceded' || m.to !== TAB_ID || typeof m.raw !== 'string') return;
+    if (m?.kind !== 'ceded' || typeof m.raw !== 'string' || !(m.to === TAB_ID || (m.anyHolder && readWriter(userId) === TAB_ID))) return;
     if (lateSink?.userId === userId) lateSink.take(m.raw);
     else lateHandover = { userId, raw: m.raw };
   };
@@ -553,9 +555,10 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
   const channel = useRef<BroadcastChannel | null>(null);
 
   /**
-   * Send this tab's state to `to`, the tab that has taken the save, when it is a newer copy of the
-   * same day than the save stored there (a tab that slept through newer saves has nothing to give).
-   * That tab takes it if nothing has been played there yet (see adoptLate). Never writes.
+   * Send this tab's state to the tab that has taken the save (`to`, or whichever tab holds it by
+   * the time it arrives: this tab's own record of the writer may be out of date), when it is a newer
+   * copy of the same day than the save stored there (a tab that slept through newer saves has
+   * nothing to give). That tab takes it if nothing has been played there yet (see adoptLate). Never writes.
    */
   const handLate = useCallback(
     (to: string | null) => {
@@ -571,7 +574,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       }
       handedOver = { userId, raw, stored: readRaw(userId) };
       try {
-        channel.current?.postMessage({ kind: 'ceded', from: tabId.current, to, raw } satisfies TabMessage);
+        channel.current?.postMessage({ kind: 'ceded', from: tabId.current, to, raw, anyHolder: true } satisfies TabMessage);
       } catch {
         // nothing more can be done from here
       }
@@ -614,7 +617,9 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       if (fatalRef.current || supersededRef.current) return;
       const late = readWriter(userId) === to || (typeof at === 'number' && Date.now() - at >= HANDOFF_MS);
       if (late) {
-        handLate(to);
+        // To whichever tab holds the save now: the asking one may have handed it on meanwhile.
+        const holder = readWriter(userId);
+        handLate(holder && holder !== tabId.current ? holder : to);
         supersede();
         return;
       }
@@ -712,7 +717,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
       channel.current.onmessage = (e: MessageEvent<TabMessage>) => {
         if (e.data?.kind === 'ask') onAsk(e.data.from, e.data.at);
         // A handover that arrives after this tab stopped waiting for it.
-        else if (e.data?.kind === 'ceded' && e.data.to === tabId.current) adoptLate(e.data.raw);
+        else if (e.data?.kind === 'ceded' && (e.data.to === tabId.current || (e.data.anyHolder && readWriter(userId) === tabId.current))) adoptLate(e.data.raw);
       };
     }
     // The channel is open before this kitchen takes the save, so a holder that answers the moment
