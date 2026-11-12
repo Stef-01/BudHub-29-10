@@ -1467,9 +1467,11 @@ async function runAudit14(browser) {
     await context.close();
   }
 
-  // L: the port's union edit reads code (comments, strings, trailing pipes, generics, CRLF).
-  {
-    const r = require('node:child_process').spawnSync('python3', [path.join(__dirname, '..', 'nutriserve-port-to-main.py'), '--self-test'], { encoding: 'utf8' });
+  // L: the port's union edit reads code (comments, strings, trailing pipes, generics, CRLF). The port
+  // script is branch tooling and isn't carried to main, so main's gate has no such check.
+  const portScript = path.join(__dirname, '..', 'nutriserve-port-to-main.py');
+  if (fs.existsSync(portScript)) {
+    const r = require('node:child_process').spawnSync('python3', [portScript, '--self-test'], { encoding: 'utf8' });
     check(r.status === 0, `regressions: the port's union self-test passes (${(r.stdout || r.stderr || '').trim().split('\n').pop()})`);
   }
 }
