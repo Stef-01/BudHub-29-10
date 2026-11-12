@@ -4,7 +4,10 @@
 
 // v2: four upgrades at ranks 5-8 with effects a strong player still feels (in v1 everything was
 // bought by about day 6 and ranks 5-10 unlocked nothing).
-export const PROGRESSION_VERSION = 'progression-v2';
+// v3: the rank 5-8 upgrades help where busy days actually cost points (waiting for food, and
+// cooking time). v2's serving trolley (coins, which pile up unused by then) and head chef's
+// whites (rank points, when ranks unlock nothing more) are retired, and the chai stall is cheaper.
+export const PROGRESSION_VERSION = 'progression-v3';
 
 /** Cumulative points needed for each rank (index 0 = rank 1). */
 export const RANK_THRESHOLDS = [0, 40, 100, 180, 280, 400, 550, 720, 920, 1150];
@@ -30,10 +33,19 @@ export interface UpgradeDef {
     | { kind: 'waitingGraceMs'; ms: number }
     | { kind: 'finishBonus'; points: number }
     | { kind: 'heatRisePerMs'; heat: number }
-    | { kind: 'completeTip'; coins: number }
     | { kind: 'lobbyGraceMs'; ms: number }
-    | { kind: 'pointsBonusPct'; pct: number };
+    | { kind: 'ticketGraceMs'; ms: number }
+    | { kind: 'boostMultiplier'; times: number };
 }
+
+/**
+ * Upgrades that earlier rules sold and this version retired, with what they cost. A save that owned
+ * one gets those coins back instead of losing them.
+ */
+export const RETIRED_UPGRADES: Record<string, { label: string; cost: number }> = {
+  serving_trolley: { label: 'Serving trolley', cost: 90 }, // progression-v2
+  head_chef_whites: { label: "Head chef's whites", cost: 140 }, // progression-v2
+};
 
 export const UPGRADES: Record<string, UpgradeDef> = {
   rice_scoop: {
@@ -90,32 +102,32 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     unlockRank: 5,
     effect: { kind: 'heatRisePerMs', heat: 3 },
   },
-  serving_trolley: {
-    id: 'serving_trolley',
-    label: 'Serving trolley',
-    hi: 'परोसने की ट्रॉली',
-    description: 'Every complete order earns 2 extra coins.',
-    cost: 90,
-    unlockRank: 6,
-    effect: { kind: 'completeTip', coins: 2 },
-  },
   chai_stall: {
     id: 'chai_stall',
     label: 'Chai stall by the queue',
     hi: 'चाय की दुकान',
     description: 'Customers queuing at the counter stay patient 12 seconds longer.',
-    cost: 110,
-    unlockRank: 7,
+    cost: 50,
+    unlockRank: 6,
     effect: { kind: 'lobbyGraceMs', ms: 12_000 },
   },
-  head_chef_whites: {
-    id: 'head_chef_whites',
-    label: "Head chef's whites",
-    hi: 'मुख्य रसोइये की वर्दी',
-    description: 'Every serve earns 20% more rank points.',
-    cost: 140,
+  tiffin_rack: {
+    id: 'tiffin_rack',
+    label: 'Tiffin rack',
+    hi: 'टिफ़िन रैक',
+    description: 'Customers waiting for their food stay patient 15 seconds longer.',
+    cost: 90,
+    unlockRank: 7,
+    effect: { kind: 'ticketGraceMs', ms: 15_000 },
+  },
+  pressure_lid: {
+    id: 'pressure_lid',
+    label: 'Pressure lids',
+    hi: 'प्रेशर ढक्कन',
+    description: 'Boost cooks three times as fast instead of two and a half.',
+    cost: 120,
     unlockRank: 8,
-    effect: { kind: 'pointsBonusPct', pct: 20 },
+    effect: { kind: 'boostMultiplier', times: 3 },
   },
 };
 
@@ -126,9 +138,10 @@ export interface UpgradeEffects {
   finishBonus: number;
   /** Heat added per boosting millisecond, if an upgrade lowers it (else PREP_V1.heatRisePerMs). */
   heatRisePerMs?: number;
-  completeTip: number;
   lobbyGraceMs: number;
-  pointsBonusPct: number;
+  ticketGraceMs: number;
+  /** Boost speed, if an upgrade raises it (else PREP_V1.boostMultiplier). */
+  boostMultiplier?: number;
 }
 
 export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
@@ -137,9 +150,8 @@ export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
     prepFurniture: false,
     waitingGraceMs: 0,
     finishBonus: 0,
-    completeTip: 0,
     lobbyGraceMs: 0,
-    pointsBonusPct: 0,
+    ticketGraceMs: 0,
   };
   for (const id of owned) {
     const effect = Object.hasOwn(UPGRADES, id) ? UPGRADES[id].effect : undefined;
@@ -149,9 +161,9 @@ export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
     else if (effect.kind === 'waitingGraceMs') effects.waitingGraceMs += effect.ms;
     else if (effect.kind === 'finishBonus') effects.finishBonus += effect.points;
     else if (effect.kind === 'heatRisePerMs') effects.heatRisePerMs = Math.min(effects.heatRisePerMs ?? Infinity, effect.heat);
-    else if (effect.kind === 'completeTip') effects.completeTip += effect.coins;
     else if (effect.kind === 'lobbyGraceMs') effects.lobbyGraceMs += effect.ms;
-    else if (effect.kind === 'pointsBonusPct') effects.pointsBonusPct += effect.pct;
+    else if (effect.kind === 'ticketGraceMs') effects.ticketGraceMs += effect.ms;
+    else if (effect.kind === 'boostMultiplier') effects.boostMultiplier = Math.max(effects.boostMultiplier ?? 0, effect.times);
   }
   return effects;
 }

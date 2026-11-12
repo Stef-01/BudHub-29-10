@@ -352,6 +352,18 @@ test('a save that cannot be restored still yields its progress', () => {
   const loaded = deserializeGameWithNotes(JSON.stringify(current));
   assert.deepEqual(loaded.state.profile.upgrades, ['rice_scoop']);
   assert.deepEqual(loaded.notes, ['Retired upgrade removed: retired_thing']);
+  // Upgrades retired by a rules change (progression-v3) are named and their coins come back.
+  const bought = JSON.parse(text);
+  bought.state.profile.upgrades = ['rice_scoop', 'serving_trolley', 'head_chef_whites'];
+  const refunded = salvageSave(JSON.stringify(bought), 'rules changed');
+  assert.deepEqual(refunded.droppedUpgrades, ['Serving trolley', "Head chef's whites"]);
+  assert.equal(refunded.refundedCoins, 230);
+  assert.equal(refunded.profile.coins, 41 + 230);
+  const sameRules = JSON.parse(serializeGame(s));
+  sameRules.state.profile.upgrades = ['serving_trolley'];
+  const restored = deserializeGameWithNotes(JSON.stringify(sameRules));
+  assert.equal(restored.state.profile.coins, s.profile.coins + 90);
+  assert.deepEqual(restored.notes, ['Retired upgrade removed: Serving trolley (90 coins refunded)']);
   const garbage = JSON.parse(text);
   garbage.state.profile.coins = 'lots';
   assert.equal(salvageSave(JSON.stringify(garbage), 'x').profile, undefined);
@@ -711,7 +723,7 @@ test('a stop-at-line pour stopped early never goes past its line through the min
 
 // --- Ninth audit, 2026-11-11 -------------------------------------------------------------------
 import { arrivalGapRange, DAY_V2 } from '../src/features/nutriserve/simulation/params.ts';
-import { upgradeEffects, UPGRADES } from '../src/features/nutriserve/simulation/index.ts';
+import { upgradeEffects, UPGRADES, gradeWaitingV1 } from '../src/features/nutriserve/simulation/index.ts';
 
 test('later days get busier: arrival gaps shrink to a floor (day-v2)', () => {
   assert.deepEqual(arrivalGapRange(1), [22_000, 38_000]);
@@ -724,14 +736,19 @@ test('later days get busier: arrival gaps shrink to a floor (day-v2)', () => {
   assert.equal(createGame({ seed: 3, day: 15 }).day.customers.length, DAY_V2.maxCustomers);
 });
 
-test('rank 5-8 upgrades have effects a strong player still feels (progression-v2)', () => {
-  for (const id of ['insulated_handis', 'serving_trolley', 'chai_stall', 'head_chef_whites']) assert.ok(UPGRADES[id].unlockRank >= 5);
-  const e = upgradeEffects(['insulated_handis', 'serving_trolley', 'chai_stall', 'head_chef_whites']);
+test('rank 5-8 upgrades help where busy days cost points (progression-v3)', () => {
+  for (const id of ['insulated_handis', 'chai_stall', 'tiffin_rack', 'pressure_lid']) assert.ok(UPGRADES[id].unlockRank >= 5, id);
+  assert.equal(UPGRADES.serving_trolley, undefined);
+  assert.equal(UPGRADES.head_chef_whites, undefined);
+  const e = upgradeEffects(['insulated_handis', 'chai_stall', 'tiffin_rack', 'pressure_lid']);
   assert.equal(e.heatRisePerMs, 3);
-  assert.deepEqual(rewardsV2(100, 'medium', true, e), { tip: 6 + 3 + 2, points: 12, stars: 5 });
-  assert.deepEqual(rewardsV2(100, 'medium', false, e).tip, 6, 'the trolley pays only for complete orders');
+  assert.equal(e.boostMultiplier, 3);
+  assert.equal(e.lobbyGraceMs, 12_000);
+  assert.equal(e.ticketGraceMs, 15_000);
+  assert.equal(upgradeEffects([]).boostMultiplier, undefined, 'without lids the prep-v2 boost rate applies');
+  const profile = (upgrades) => ({ ...newProfile(), rank: 8, points: 720, upgrades });
   // Insulated handis: boosting from cold overheats after 3333 ms instead of 2000 ms.
-  let p = advanceUntil(game(11, { profile: { ...newProfile(), rank: 5, points: 280, upgrades: ['insulated_handis'] } }), atCounter);
+  let p = advanceUntil(game(11, { profile: profile(['insulated_handis']) }), atCounter);
   p = cmd(p, { type: 'takeOrder' });
   const { s: b, dishId } = buildPerfect(p, p.tickets[0]);
   p = cmd(b, { type: 'startPrep', dishId, slot: 0 });
@@ -740,4 +757,66 @@ test('rank 5-8 upgrades have effects a strong player still feels (progression-v2
   assert.equal(p.prepSlots[0].overheated, false);
   p = advanceGame(p, 1_000);
   assert.equal(p.prepSlots[0].overheated, true);
+  // Pressure lids: a boosted millisecond cooks 450 milli-units instead of 375.
+  let q = advanceUntil(game(11, { profile: profile(['pressure_lid']) }), atCounter);
+  q = cmd(q, { type: 'takeOrder' });
+  const r = buildPerfect(q, q.tickets[0]);
+  q = cmd(r.s, { type: 'startPrep', dishId: r.dishId, slot: 0 });
+  q = cmd(q, { type: 'setBoost', slot: 0, held: true });
+  q = advanceGame(q, 1_000);
+  assert.equal(q.dishes.find((d) => d.id === r.dishId).prep.milliUnits, 450_000);
+});
+
+test('the tiffin rack adds 15 s of ticket grace, and only ticket grace (progression-v3)', () => {
+  const ticket = { takenAtMs: 10_000, atCounterMs: 10_000, order: { prepLevel: 'regular' } };
+  const rack = upgradeEffects(['tiffin_rack']);
+  const lateBy15 = 10_000 + 45_000 + 12_000 + 15_000;
+  assert.ok(gradeWaitingV1(ticket, lateBy15) < 100);
+  assert.equal(gradeWaitingV1(ticket, lateBy15, rack), 100);
+  assert.ok(gradeWaitingV1(ticket, lateBy15 + 5_000, rack) < 100);
+  // The lobby wait is not covered by it.
+  const slowToOrder = { ...ticket, atCounterMs: 0, takenAtMs: 40_000 };
+  assert.equal(gradeWaitingV1(slowToOrder, 41_000, rack), gradeWaitingV1(slowToOrder, 41_000));
+});
+
+// --- Tenth audit, 2026-11-11 -------------------------------------------------------------------
+test('notes never name a portion or finish error that owned upgrades made free', () => {
+  const { s, dishId, ticket } = finishing(42, 4);
+  const order = ticket.order;
+  // Portions: find a base error the rice scoop forgives but the bare reference meter does not.
+  const scoop = upgradeEffects(['rice_scoop']);
+  const at = (g) => {
+    const d = structuredClone(s.dishes.find((x) => x.id === dishId));
+    d.build.base.mg = Math.round((order.idealG.base + g) * 1000);
+    return d;
+  };
+  const perfect = gradeIndianBuildV1(at(0), order, scoop).score;
+  const g = [2, 4, 6, 8, 10, 12, 14, 16].find((e) => gradeIndianBuildV1(at(e), order, scoop).score === perfect && gradeIndianBuildV1(at(e), order).score < gradeIndianBuildV1(at(0), order).score);
+  assert.ok(g, 'some base error is free only with the rice scoop');
+  const scores = (d, effects) => ({ waiting: 100, build: gradeIndianBuildV1(d, order, effects).score, prep: 100, finish: 100 });
+  const base = (notes) => notes.filter((n) => /^Base [+−]/.test(n));
+  assert.deepEqual(base(serveNotes(at(g), order, scores(at(g), scoop), 1, [], 0, scoop)), []);
+  assert.equal(base(serveNotes(at(g), order, scores(at(g)), 1, [], 0)).length, 1);
+  // Finish: a small garnish slip the garnish tray's bonus covers is not named.
+  const tray = upgradeEffects(['garnish_tray']);
+  const d = structuredClone(s.dishes.find((x) => x.id === dishId));
+  const finishOrder = { ...order, finish: [{ kind: 'garnish', id: 'coriander', count: 3 }] };
+  // Three coriander, the last one turned a little off the even spread: a small balance penalty.
+  const place = (deg) => {
+    const r = (Math.PI / 180) * deg;
+    d.finish.garnishes = [0, 120, deg].map((t, i) => ({ id: 'coriander', x: 0.5 * Math.cos(i < 2 ? (Math.PI / 180) * t : r), y: 0.5 * Math.sin(i < 2 ? (Math.PI / 180) * t : r), fell: false }));
+  };
+  const turn = [235, 230, 225, 220, 215, 210, 205, 200].find((deg) => {
+    place(deg);
+    const b = gradeFinishV1(d, finishOrder).score;
+    return b < 100 && gradeFinishV1(d, finishOrder, tray).score === 100;
+  });
+  assert.ok(turn, 'some off-balance spread is free only with the garnish tray');
+  place(turn);
+  const withTray = gradeFinishV1(d, finishOrder, tray);
+  const bare = gradeFinishV1(d, finishOrder);
+  assert.ok(bare.score < 100 && withTray.score === 100, `bare ${bare.score}, with tray ${withTray.score}`);
+  const fin = (grade) => serveNotes(d, finishOrder, { waiting: 100, build: 100, prep: 100, finish: grade.score }, 1, grade.penalties, 0).filter((n) => /\(−\d+\)$/.test(n));
+  assert.deepEqual(fin(withTray), []);
+  assert.ok(fin(bare).length >= 1);
 });

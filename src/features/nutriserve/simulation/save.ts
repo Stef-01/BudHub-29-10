@@ -8,7 +8,7 @@ import { FINISH_V1 } from './params.ts';
 import { getCatalogCustomer, getFood } from './catalog.ts';
 import { PARAM_VERSIONS, PREP_SLOT_COUNT, releaseHeld } from './game.ts';
 import { lookup } from './lookup.ts';
-import { rankForPoints, UPGRADES } from './progression.ts';
+import { rankForPoints, RETIRED_UPGRADES, UPGRADES } from './progression.ts';
 import { SCHEMA_VERSION, type GameState, type Profile } from './types.ts';
 
 export const SAVE_FORMAT = 'nutriserve-remaster-save';
@@ -211,8 +211,22 @@ export interface SaveSalvage {
   /** Progress that can seed a fresh day (rank, coins, upgrades, credited days), if readable. */
   profile?: Profile;
   runId?: string;
-  /** Upgrade ids in the save that this version doesn't have (retired or renamed); not carried over. */
+  /** Upgrades in the save that this version doesn't have (retired or renamed), by name; not carried over. */
   droppedUpgrades?: string[];
+  /** Coins given back for retired upgrades (already included in `profile.coins`). */
+  refundedCoins?: number;
+}
+
+/** Names for upgrade ids this version doesn't sell, and the coins owed back for the retired ones. */
+function dropUpgrades(ids: string[]): { names: string[]; refund: number } {
+  const names: string[] = [];
+  let refund = 0;
+  for (const id of ids) {
+    const retired = lookup(RETIRED_UPGRADES, id);
+    names.push(retired?.label ?? id);
+    refund += retired?.cost ?? 0;
+  }
+  return { names, refund };
 }
 
 /**
@@ -228,17 +242,23 @@ export function salvageSave(text: string, reason: string): SaveSalvage {
     const p = state.profile;
     // Keep what is still meaningful: known upgrades (once each); rank recomputed from points.
     const upgrades = [...new Set<string>(p.upgrades)].filter((u) => !!lookup(UPGRADES, u));
-    const droppedUpgrades = [...new Set<string>(p.upgrades)].filter((u) => !lookup(UPGRADES, u));
+    const dropped = dropUpgrades([...new Set<string>(p.upgrades)].filter((u) => !lookup(UPGRADES, u)));
     const profile: Profile = {
       rank: rankForPoints(p.points),
       points: p.points,
-      coins: p.coins,
+      coins: p.coins + dropped.refund,
       upgrades,
       creditedDays: [...new Set<number>(p.creditedDays)],
       reportedDays: [...new Set<number>(p.reportedDays)],
       bestDayScore: p.bestDayScore,
     };
-    return { reason, profile, runId: isStr(state.runId) ? state.runId : undefined, ...(droppedUpgrades.length ? { droppedUpgrades } : {}) };
+    return {
+      reason,
+      profile,
+      runId: isStr(state.runId) ? state.runId : undefined,
+      ...(dropped.names.length ? { droppedUpgrades: dropped.names } : {}),
+      ...(dropped.refund ? { refundedCoins: dropped.refund } : {}),
+    };
   } catch {
     return { reason };
   }
@@ -254,8 +274,12 @@ export function deserializeGameWithNotes(text: string): { state: GameState; note
     const p = isObj(raw) ? raw.profile : undefined;
     if (!isObj(p) || !Array.isArray(p.upgrades) || !p.upgrades.every(isStr)) return;
     const unique = [...new Set<string>(p.upgrades)];
-    const dropped = unique.filter((u) => !lookup(UPGRADES, u));
-    if (dropped.length) notes.push(`Retired upgrade${dropped.length === 1 ? '' : 's'} removed: ${dropped.join(', ')}`);
+    const dropped = dropUpgrades(unique.filter((u) => !lookup(UPGRADES, u)));
+    if (dropped.names.length) {
+      const refund = dropped.refund ? ` (${dropped.refund} coins refunded)` : '';
+      notes.push(`Retired upgrade${dropped.names.length === 1 ? '' : 's'} removed: ${dropped.names.join(', ')}${refund}`);
+    }
+    if (dropped.refund && isInt(p.coins)) p.coins += dropped.refund;
     p.upgrades = unique.filter((u) => !!lookup(UPGRADES, u));
   });
   return { state, notes };

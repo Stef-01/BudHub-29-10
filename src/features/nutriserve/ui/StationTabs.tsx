@@ -9,7 +9,10 @@ import { Dockable } from './Dockable.tsx';
 
 export const STATIONS: StationId[] = ['order', 'build', 'prep', 'finish'];
 
-/** Prep units this close to a slot's target count as "at its mark" (the last half second of cooking). */
+/**
+ * Prep units this close to a slot's target count as "at its mark": the last half second of cooking
+ * at the base rate, about a fifth of a second while boosting (less with pressure lids).
+ */
 const MARK_WINDOW_UNITS = 75;
 
 /** Prep slots whose dish has reached its ticket's mark (and is still cooking): take it out now. */

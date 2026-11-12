@@ -190,7 +190,7 @@ export function gradeWaitingV1(ticket: Ticket, servedAtMs: number, effects?: Upg
   const extraGrace = effects?.waitingGraceMs ?? 0;
   const lobbyMs = Math.max(0, ticket.takenAtMs - ticket.atCounterMs - WAITING_V1.lobbyGraceMs - extraGrace - (effects?.lobbyGraceMs ?? 0));
   const prepMs = (prepTargetUnits(ticket.order.prepLevel) / PREP_V1.unitsPerSecond) * 1000;
-  const ticketMs = Math.max(0, servedAtMs - ticket.takenAtMs - WAITING_V1.ticketGraceBaseMs - prepMs - extraGrace);
+  const ticketMs = Math.max(0, servedAtMs - ticket.takenAtMs - WAITING_V1.ticketGraceBaseMs - prepMs - extraGrace - (effects?.ticketGraceMs ?? 0));
   return clampScore(
     100 - (lobbyMs / 1000) * WAITING_V1.lobbyPointsPerSecond - (ticketMs / 1000) * WAITING_V1.ticketPointsPerSecond
   );
@@ -241,16 +241,12 @@ export function orderComplete(dish: Dish, order: TicketOrder): boolean {
   );
 }
 
-/**
- * economy-v3: the great bonus and five stars need a complete order. Upgrades (progression-v2) can
- * add coins to complete orders and a share of extra rank points.
- */
-export function rewardsV2(total: number, size: DishSize, complete: boolean, effects?: UpgradeEffects): { tip: number; points: number; stars: number } {
+/** economy-v3: the great bonus and five stars need a complete order. */
+export function rewardsV2(total: number, size: DishSize, complete: boolean): { tip: number; points: number; stars: number } {
   const great = complete && total >= ECONOMY_V1.greatScore;
-  const tip = Math.round((ECONOMY_V1.baseTip[size] * total) / 100) + (great ? ECONOMY_V1.greatBonus : 0) + (complete ? effects?.completeTip ?? 0 : 0);
+  const tip = Math.round((ECONOMY_V1.baseTip[size] * total) / 100) + (great ? ECONOMY_V1.greatBonus : 0);
   const stars = Math.max(0, Math.min(complete ? 5 : ECONOMY_V1.incompleteStarCap, Math.round(total / 20)));
-  const points = Math.round(((total / ECONOMY_V1.pointsDivisor) * (100 + (effects?.pointsBonusPct ?? 0))) / 100);
-  return { tip, points, stars };
+  return { tip, points: Math.round(total / ECONOMY_V1.pointsDivisor), stars };
 }
 
 /** Short plain-language reasons for a serve's scores, most important first (shown to the player). */
@@ -260,7 +256,8 @@ export function serveNotes(
   scores: Omit<StationScores, 'total'>,
   share: number,
   finishPenalties: FinishGrade['penalties'],
-  waitedMs: number
+  waitedMs: number,
+  effects?: UpgradeEffects
 ): string[] {
   const notes: string[] = [];
   if (share < AGGREGATION_V2.fullCreditShare) {
@@ -278,7 +275,7 @@ export function serveNotes(
       // (The reference meter forgives small errors, so a few grams off is often free.)
       const error = portion.mg / 1000 - order.idealG[c];
       const perfect = { ...dish, build: { ...dish.build, [c]: { ...portion, mg: Math.round(order.idealG[c] * 1000) } } };
-      if (Math.abs(error) >= 1 && gradeIndianBuildV1(perfect, order).score > gradeIndianBuildV1(dish, order).score) {
+      if (Math.abs(error) >= 1 && gradeIndianBuildV1(perfect, order, effects).score > gradeIndianBuildV1(dish, order, effects).score) {
         notes.push(`${label} ${error > 0 ? '+' : '−'}${Math.round(Math.abs(error))} g`);
       }
     }
@@ -288,8 +285,10 @@ export function serveNotes(
     const target = prepTargetUnits(order.prepLevel);
     notes.push(units < target ? `Undercooked: ${units} of ${target} prep units` : `Overcooked: ${units} of ${target} prep units`);
   }
-  // Finish penalties that cost at least a point after rounding, largest first.
-  for (const p of [...finishPenalties].sort((a, b) => b.points - a.points).filter((p) => Math.round(p.points) >= 1).slice(0, 3)) {
+  // Finish penalties that cost at least a point after rounding, largest first (none when the
+  // finish scored full marks, e.g. with the garnish tray's bonus).
+  const finishLost = scores.finish < 100;
+  for (const p of [...finishPenalties].sort((a, b) => b.points - a.points).filter((p) => finishLost && Math.round(p.points) >= 1).slice(0, 3)) {
     notes.push(`${p.reason} (−${Math.round(p.points)})`);
   }
   if (scores.waiting < 90) notes.push(`Waited ${Math.round(waitedMs / 1000)} s`);

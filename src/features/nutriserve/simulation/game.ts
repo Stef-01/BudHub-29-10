@@ -255,7 +255,7 @@ function emptyDeposit(): Deposit {
 const dishById = (s: GameState, id: string | undefined) => (id ? s.dishes.find((d) => d.id === id) : undefined);
 
 /** Integrate continuous processes over [nowMs, nowMs + 1). */
-function stepOneMs(s: GameState, heatRisePerMs: number): void {
+function stepOneMs(s: GameState, heatRisePerMs: number, boostMultiplier: number): void {
   const held = s.held;
   if (held?.kind === 'pour') {
     const dish = dishById(s, held.dishId);
@@ -275,7 +275,7 @@ function stepOneMs(s: GameState, heatRisePerMs: number): void {
 
   // N units per second is exactly N milli-units per millisecond.
   const baseRate = PREP_V1.unitsPerSecond;
-  const boostRate = baseRate * PREP_V1.boostMultiplier;
+  const boostRate = Math.round(baseRate * boostMultiplier);
   for (const slot of s.prepSlots) {
     const dish = dishById(s, slot.dishId);
     const boosting = !!dish && slot.boostHeld && !slot.overheated;
@@ -306,10 +306,12 @@ export function advanceGame(state: GameState, dtMs: number): GameState {
   const end = s.nowMs + dtMs;
   processDiscrete(s);
   // Owned upgrades don't change during an advance (only commands buy them).
-  const heatRisePerMs = upgradeEffects(s.profile.upgrades).heatRisePerMs ?? PREP_V1.heatRisePerMs;
+  const owned = upgradeEffects(s.profile.upgrades);
+  const heatRisePerMs = owned.heatRisePerMs ?? PREP_V1.heatRisePerMs;
+  const boostMultiplier = owned.boostMultiplier ?? PREP_V1.boostMultiplier;
   while (s.nowMs < end && !s.day.completed) {
     if (hasContinuousWork(s)) {
-      stepOneMs(s, heatRisePerMs);
+      stepOneMs(s, heatRisePerMs, boostMultiplier);
       s.nowMs += 1;
     } else {
       s.nowMs = Math.min(end, nextDiscreteEventMs(s) ?? end);
@@ -651,9 +653,9 @@ function run(s: GameState, c: Command): string | undefined {
       const share = contentShare(dish, ticket.order);
       const total = aggregateV2({ waiting, build, prep, finish }, share);
       const complete = orderComplete(dish, ticket.order);
-      const reward = rewardsV2(total, ticket.order.size, complete, effects);
+      const reward = rewardsV2(total, ticket.order.size, complete);
       const finishGrade = gradeFinishV1(dish, ticket.order, effects);
-      const notes = serveNotes(dish, ticket.order, { waiting, build, prep, finish }, share, finishGrade.penalties, s.nowMs - ticket.atCounterMs);
+      const notes = serveNotes(dish, ticket.order, { waiting, build, prep, finish }, share, finishGrade.penalties, s.nowMs - ticket.atCounterMs, effects);
       ticket.servedAtMs = s.nowMs;
       ticket.servedDishId = dish.id;
       dish.stage = 'served';

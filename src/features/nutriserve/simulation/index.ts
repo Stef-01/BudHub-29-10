@@ -20,7 +20,7 @@ export {
   rewardsV2,
   serveNotes,
 } from './scoring.ts';
-export { rankForPoints, RANK_THRESHOLDS, upgradeEffects, UPGRADES } from './progression.ts';
+export { rankForPoints, RANK_THRESHOLDS, upgradeEffects, UPGRADES, RETIRED_UPGRADES } from './progression.ts';
 export { generateOrder, wantsLowSodium } from './orders.ts';
 export { createRng, seedFrom } from './rng.ts';
 export { getCatalogCustomer, getFood, servingGrams } from './catalog.ts';
