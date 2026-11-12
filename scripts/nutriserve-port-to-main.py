@@ -30,6 +30,7 @@ Usage: scripts/nutriserve-port-to-main.py <source repo> <main worktree> [--assum
   --assume-source: the commit main was last ported from, for a main that has no PORT_SOURCE yet.
 """
 import json
+import os
 import re
 import signal
 import subprocess
@@ -174,6 +175,18 @@ def _interrupted(signum, _frame):
 
 for _sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
     signal.signal(_sig, _interrupted)
+
+
+def _uncaught(kind, value, tb):
+    # A signal during the checks before step 1 stops the port before it has changed anything.
+    if issubclass(kind, Interrupted):
+        print(f'port stopped before changing anything ({value})', file=sys.stderr)
+        sys.stderr.flush()
+        os._exit(130)
+    sys.__excepthook__(kind, value, tb)
+
+
+sys.excepthook = _uncaught
 
 
 def patch(path, pairs, upgrades=()):
