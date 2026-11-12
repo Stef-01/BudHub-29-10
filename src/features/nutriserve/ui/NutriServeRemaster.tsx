@@ -4,9 +4,11 @@ import { CustomerSprite } from '../assets/CustomerSprite.tsx';
 import { serviceNutritionReport } from '../nutrition/nutrition.ts';
 import {
   AGGREGATION_V2,
+  applyCommand,
   createGame,
   getCatalogCustomer,
   RANK_THRESHOLDS,
+  RULE_CHANGES,
   seedFrom,
   UPGRADES,
   type GameState,
@@ -14,7 +16,7 @@ import {
   type ServeResult,
 } from '../simulation/index.ts';
 import { StationBackdrop } from './LayoutStudy.tsx';
-import { revealPrepDone, slotsAtMark, STATIONS, StationTabs } from './StationTabs.tsx';
+import { revealStation, slotsAtMark, STATIONS, StationTabs } from './StationTabs.tsx';
 import { TicketRail } from './TicketRail.tsx';
 import { BuildStation } from './stations/BuildStation.tsx';
 import { FinishStation } from './stations/FinishStation.tsx';
@@ -58,6 +60,8 @@ const SIDE_DOCK_MIN_WIDTH = 560;
 const STATUS_MS = 6_000;
 /** Recent messages kept in the status region (all but the newest are visually hidden). */
 const STATUS_KEPT = 3;
+/** How long after the kitchen opens its prep cue may first speak (see cueReady). */
+const CUE_READY_MS = 600;
 import './remaster.css';
 
 export interface NutriServeRemasterProps {
@@ -108,16 +112,20 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
   const saved = stored.state;
   const problem = stored.problem;
   const canSave = useMemo(() => storageWorks(), [session, storageSeq]);
-  // While another open tab hands the save over (at most a moment), the buttons wait.
+  // While another open tab hands the save over (at most a moment), the buttons wait. Each button
+  // then acts on the save as it is AFTER the handover (`latest`), never on what this screen showed
+  // before it: the other tab may have played on, bought something or finished the day meanwhile.
   const [handing, setHanding] = useState(false);
-  const afterHandoff = (then: () => void) => {
+  const afterHandoff = (then: (latest: ReturnType<typeof readSavedGame>, unanswered: boolean) => void) => {
     if (handing) return;
     setHanding(true);
-    requestHandoff(props.userId).then(() => {
+    requestHandoff(props.userId).then((handed) => {
       setHanding(false);
-      then();
+      then(readSavedGame(props.userId, handed.raw), handed.unanswered);
     });
   };
+  /** Show the start screen again for the save as it now is (it changed during the handover). */
+  const refresh = () => setStorageSeq((n) => n + 1);
   useEffect(() => {
     if (game) return;
     const onStorage = (e: StorageEvent) => {
@@ -172,6 +180,16 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
                 <small>{problem.reason}</small>
               </p>
             </details>
+            {/paramVersions/.test(problem.reason) && (
+              <>
+                <p>What changed:</p>
+                <ul className="ns-rule-changes">
+                  {RULE_CHANGES.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </>
+            )}
             {problem.droppedUpgrades?.length ? (
               <p>
                 Retired upgrades not carried over: {problem.droppedUpgrades.join(', ')}.
@@ -203,13 +221,31 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
               type="button"
               className="ns-btn ns-btn-primary"
               disabled={handing}
-              onClick={() => afterHandoff(() => setGame(readSavedGame(props.userId).state ?? saved))}
+              onClick={() =>
+                afterHandoff((latest, unanswered) => {
+                  // A tab that held the save and didn't answer may still hand over its newer state
+                  // in a moment: open paused, so this one can take it (see adoptLate in the hook).
+                  const s = latest.state;
+                  if (s) setGame(unanswered && !s.paused && !s.day.completed ? applyCommand(s, { type: 'pause' }).state : s);
+                  else refresh();
+                })
+              }
             >
               Continue day {saved.day.number}
             </button>
           )}
           {problem?.profile && (
-            <button type="button" className="ns-btn ns-btn-primary" disabled={handing} onClick={() => afterHandoff(() => begin(problem.profile, problem.runId))}>
+            <button
+              type="button"
+              className="ns-btn ns-btn-primary"
+              disabled={handing}
+              onClick={() =>
+                afterHandoff((latest) => {
+                  if (latest.problem?.profile) begin(latest.problem.profile, latest.problem.runId);
+                  else refresh();
+                })
+              }
+            >
               Start a new day with your progress
             </button>
           )}
@@ -261,8 +297,17 @@ function Kitchen({
   // Prep cues have a region of their own: a handi at its mark overcooks in seconds, so its cue must
   // never be replaced by an arrival or a serve before it is read. It names every handi at its mark.
   const [cue, setCue] = useState<{ text: string; id: number }>({ text: '', id: 0 });
+  // The cue's live region is in the page from the start, but its first words wait CUE_READY_MS:
+  // text that lands a few milliseconds after a live region appears is often not read (a restored
+  // game's handis already at their mark). A restored game arrives paused, so nothing overcooks meanwhile.
+  const [cueReady, setCueReady] = useState(false);
   useEffect(() => {
-    if (lastError) say(lastError.message);
+    const id = window.setTimeout(() => setCueReady(true), CUE_READY_MS);
+    return () => window.clearTimeout(id);
+  }, []);
+  useEffect(() => {
+    // Every rejection since the last render (two in one event are both announced).
+    if (lastError) for (const message of lastError.messages.length ? lastError.messages : [lastError.message]) say(message);
   }, [lastError, say]);
   const previous = useRef(state);
   // The at-mark slots the cue last described ('' = none yet, so handis already at their mark in a
@@ -314,7 +359,7 @@ function Kitchen({
   const [slots, setSlots] = useState<Partial<Record<DockSlot, HTMLElement | null>>>({});
   const slotRefs = useMemo(() => {
     const make = (name: DockSlot) => (el: HTMLElement | null) => setSlots((prev) => (prev[name] === el ? prev : { ...prev, [name]: el }));
-    return { top: make('top'), main: make('main'), tabs: make('tabs') };
+    return { top: make('top'), aside: make('aside'), main: make('main'), tabs: make('tabs') };
   }, []);
   const layout = useMemo(() => ({ compact, slots }), [compact, slots]);
 
@@ -403,10 +448,10 @@ function Kitchen({
       if (target.closest('input, textarea, select')) return;
       const index = ['1', '2', '3', '4'].indexOf(e.key);
       if (index >= 0) {
-        // Only coming to Prep from another station scrolls (not pressing 3 again while there).
+        // Only coming from another station scrolls (not pressing 3 again while on Prep).
         const from = latestState.current.selected.station;
         dispatch({ type: 'selectStation', station: STATIONS[index] });
-        if (STATIONS[index] === 'prep' && from !== 'prep') revealPrepDone(latestState.current);
+        if (STATIONS[index] !== from) revealStation(latestState.current, STATIONS[index]);
       }
       else if (isP) dispatch({ type: 'pause' });
     };
@@ -554,11 +599,10 @@ function Kitchen({
         <div className="ns-stage-wrap">
           {!compact && <LastServe result={latest} inert={modalOpen} modal={modalOpen} />}
           <div
-            // Prep and Finish have no scene of their own in the dock layout, and on an upright phone
-            // Build's scene (the vessel from the side) gives way to its gauges, which say the same.
-            className={`ns-stage ns-station-${station}${
-              compact && (station === 'prep' || station === 'finish' || (station === 'build' && !sideDock)) ? ' ns-scene-empty' : ''
-            }`}
+            // Prep and Finish have no scene of their own in the dock layout, and Build's scene (the
+            // vessel from the side) gives way to its gauges, which say the same: on a phone held
+            // sideways they take its place in the left column, so the dispensers and Send fit beside them.
+            className={`ns-stage ns-station-${station}${compact && (station === 'prep' || station === 'finish' || station === 'build') ? ' ns-scene-empty' : ''}`}
             aria-label={`${station} station`}
           >
             <div className="ns-stage-content" inert={modalOpen}>
@@ -596,13 +640,14 @@ function Kitchen({
           <div className="ns-dock" inert={modalOpen}>
             <div ref={slotRefs.tabs} className="ns-dock-tabs" />
             <div ref={slotRefs.top} className="ns-dock-top" />
+            <div ref={slotRefs.aside} className="ns-dock-aside" />
             <div ref={slotRefs.main} className="ns-dock-main" />
             <LastServe result={latest} modal={modalOpen} />
           </div>
         )}
 
         <p className="sr-only" aria-live="polite" data-ns-cue>
-          {cue.text && <span key={cue.id}>{cue.text}</span>}
+          {cueReady && cue.text && <span key={cue.id}>{cue.text}</span>}
         </p>
         <p className="ns-status" role="status" aria-live="polite">
           {/* Older messages stay in the region (so one already being read isn't cut off) but are
@@ -789,8 +834,8 @@ function OtherTabOverlay({ onContinue, onExit }: { onContinue: () => void; onExi
     <Modal label="Open in another tab" alert>
       <h2>Open in another tab</h2>
       <p>
-        This kitchen was opened in another tab or window, and your progress was handed over to it. This tab has stopped saving so the two never overwrite
-        each other.
+        This kitchen was opened in another tab or window, which now holds your latest progress. This tab has stopped saving so the two never overwrite each
+        other.
       </p>
       <div className="ns-row">
         <button type="button" className="ns-btn ns-btn-primary" autoFocus onClick={onContinue}>

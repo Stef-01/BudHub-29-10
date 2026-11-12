@@ -651,7 +651,7 @@ function run(s: GameState, c: Command): string | undefined {
       const x = clampLocal(c.x);
       const y = clampLocal(c.y);
       const outside = x * x + y * y > 1;
-      // Garnish tray (progression-v5): a piece dropped outside the katori lands back on the tray.
+      // Garnish tray (progression-v5 on): a piece dropped outside the katori lands back on the tray.
       if (outside && effects.catchFallen) return 'Caught by the garnish tray: place it inside the katori';
       dish.stage = 'finishing';
       dish.finish.garnishes.push({ id: c.garnishId, x, y, fell: outside });
@@ -677,7 +677,7 @@ function run(s: GameState, c: Command): string | undefined {
       const buildGrade = gradeBuild(dish, ticket.order, effects);
       const build = buildGrade.score;
       const prep = gradePrep(dish, ticket.order, effects);
-      const finishGrade = gradeFinishV1(dish, ticket.order);
+      const finishGrade = gradeFinishV1(dish, ticket.order, effects);
       const finish = finishGrade.score;
       const waiting = gradeWaitingV1(ticket, s.nowMs, effects);
       const share = contentShare(dish, ticket.order);

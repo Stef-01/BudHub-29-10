@@ -5,7 +5,12 @@
 import React, { createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
 
-export type DockSlot = 'top' | 'main' | 'tabs';
+/**
+ * Where a control goes in the dock: 'tabs' (station tabs), 'top' (ticket rail and ticket), 'aside'
+ * (what a station shows beside its controls, such as Build's gauges: in the left column when the
+ * dock is side by side, else just before the controls) and 'main' (the station's controls).
+ */
+export type DockSlot = 'top' | 'aside' | 'main' | 'tabs';
 
 export interface LayoutMode {
   compact: boolean;

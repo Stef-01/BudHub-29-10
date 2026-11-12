@@ -25,7 +25,10 @@ export const BUILD_V1 = {
   // v6: a narrower exact band and steeper losses outside it, so a portion a fifth off costs about a
   // quarter of its share (v5 cost about a tenth, and the serving tools barely mattered). The band is
   // still wider than one minimum press of the smallest portion, so taps can always land in it.
-  version: 'build-v6',
+  // v7: a generous portion loses its credit more gently (overSlope 1 instead of 1.2), and the exact
+  // band is never narrower than exactFloorPresses of one minimum press either side of the line, so
+  // a tap can land in it on every catalog portion (a 60 g main's 7% band was narrower than one tap).
+  version: 'build-v7',
   /** Pour rates while a dispenser is held, in milligrams per millisecond (= grams per second). */
   pourRateMgPerMs: { base: 80, main: 90, side: 50 },
   /** The least one press pours, in ms of pouring (100 ms = 8 g base, 9 g main, 5 g side). */
@@ -39,7 +42,9 @@ export const BUILD_V1 = {
   /** Past the band, a short portion loses this share of its credit per portion's worth missing. */
   shortSlope: 2,
   /** Past the band, a generous portion loses this share of its credit per extra portion's worth. */
-  overSlope: 1.2,
+  overSlope: 1,
+  /** The exact band reaches at least this many minimum presses either side of the line. */
+  exactFloorPresses: 0.6,
   /** A generous portion never drops below this share of its credit (the food is there). */
   overFloor: 0.2,
   /** Points off for serving in a different vessel size than the ticket asked for. */
@@ -55,9 +60,13 @@ export const PREP_V1 = {
   // v3: NutriServe's own doneness marks and grading (see gradePrep): each level has a mark, a
   // window around it counts as perfect, an undercooked dish earns its share of the way there, and
   // an overcooked one loses points for every second it stayed on.
-  // v4: doneness is counted in milliseconds on the flame at normal heat (v3 used an abstract unit),
-  // and the marks are 7, 12 and 18 seconds: slower dishes need disproportionately longer.
-  version: 'prep-v4-provisional',
+  // v4: doneness is counted in milliseconds on the flame at normal heat (v3 used an abstract unit).
+  // v5: new marks from NutriServe's own pacing: a quick dish is about one build long (8 s), a
+  // regular one five seconds more (13 s), a slow one seven more again (20 s). The perfect window is a
+  // second either side (1.8 s with copper handis), overcooking costs 10 points a second, and a dish
+  // stops cooking at 32 s, by when every dish has lost all its prep points (a forgotten dish reads
+  // as burnt, not as 26 points kept).
+  version: 'prep-v5-provisional',
   /** Doneness units gained per second on the flame: one unit is one millisecond at normal heat. */
   unitsPerSecond: 1000,
   /** PROVISIONAL: units accrue this many times faster while boost is held. */
@@ -68,16 +77,16 @@ export const PREP_V1 = {
   heatCoolPerMs: 2,
   /** After overheating, boost is locked and nothing cooks until heat falls back to this level. */
   heatUnlockLevel: 3_000,
-  /** A dish stops gaining doneness here (25 s on the flame). */
-  maxUnits: 25_000,
-  /** PROVISIONAL: doneness mark for each prep level, in ms on the flame (7, 12 and 18 seconds). */
-  targetUnits: { quick: 7_000, regular: 12_000, slow: 18_000 },
-  /** Units either side of the mark that count as perfect (0.8 s on the flame). */
-  perfectBandUnits: 800,
-  /** The same window with copper handis (1.4 s on the flame). */
-  wideBandUnits: 1_400,
+  /** A dish stops gaining doneness here (32 s on the flame): burnt. */
+  maxUnits: 32_000,
+  /** PROVISIONAL: doneness mark for each prep level, in ms on the flame (8, 13 and 20 seconds). */
+  targetUnits: { quick: 8_000, regular: 13_000, slow: 20_000 },
+  /** Units either side of the mark that count as perfect (1 s on the flame). */
+  perfectBandUnits: 1_000,
+  /** The same window with copper handis (1.8 s on the flame). */
+  wideBandUnits: 1_800,
   /** Past the window, points lost per second on the flame of overcooking. */
-  overPointsPerSecond: 12,
+  overPointsPerSecond: 10,
 } as const;
 
 export const FINISH_V1 = {
@@ -221,3 +230,15 @@ export function arrivalGapRange(day: number): [number, number] {
     Math.max(DAY_V2.gapFloorMs[1], DAY_V2.arrivalGapMs[1] - d * DAY_V2.gapShrinkPerDayMs[1]),
   ];
 }
+
+/**
+ * What the current rule versions changed, in the player's words. The start screen lists these when
+ * a save from earlier rules is carried over to a new day, so an upgrade the player already owns
+ * doesn't start working differently without notice.
+ */
+export const RULE_CHANGES: readonly string[] = [
+  'Prep marks are now 8, 13 and 20 seconds on the flame, with a perfect window of 1 second either side (1.8 seconds with copper handis).',
+  'A dish left on the flame stops cooking at 32 seconds and is burnt: it scores 0 for prep.',
+  'A generous portion costs fewer points than before, and every exact band is at least as wide as one tap of its dispenser.',
+  'The garnish tray also halves what an off-centre garnish costs, and now costs 30 coins.',
+];

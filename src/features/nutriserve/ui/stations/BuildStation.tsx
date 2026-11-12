@@ -73,7 +73,7 @@ function dishRows(state: GameState, dish: GameState['dishes'][number], open: Tic
   return rows;
 }
 
-function Gauge({ label, actualG, idealG, band }: { label: string; actualG: number; idealG?: number; band: number }) {
+function Gauge({ label, food, actualG, idealG, band }: { label: string; food?: string; actualG: number; idealG?: number; band: number }) {
   // The line sits at 1 / meterFullMultiple of the track; the shaded zone around it is the exact band.
   const position = idealG ? meterFraction(actualG, idealG) : 0;
   const line = 1 / BUILD_V1.meterFullMultiple;
@@ -90,6 +90,9 @@ function Gauge({ label, actualG, idealG, band }: { label: string; actualG: numbe
             {Math.round(error)}
           </small>
         )}
+        {/* On a phone: the food the ticket wants, so the gauges read on their own when the ticket is
+            scrolled away (last, so a long name is the part that gets cut short). */}
+        {food && <span className="ns-gauge-food"> · {food}</span>}
       </span>
       <span
         className="ns-gauge-track"
@@ -193,14 +196,20 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
         />
       </div>
 
-      <Dockable slot="main" region={box(10, 200, 218, 146)} className="ns-gauges">
+      <Dockable slot="aside" region={box(10, 200, 218, 146)} className="ns-gauges">
         <p className="ns-caption">
-          {dish.size} vessel{ticket ? ` for #${ticket.number} ${customerName(ticket)}` : ''}
+          {dish.size[0].toUpperCase() + dish.size.slice(1)} vessel{ticket ? ` for #${ticket.number} ${customerName(ticket)}` : ''}
           {wrongSize && ticket && <b className="ns-size-warning"> · ticket wants {ticket.order.size} (−{BUILD_V1.wrongVesselPenalty})</b>}
         </p>
         {COMPONENTS.map((c) => (
           <React.Fragment key={c.id}>
-            <Gauge label={c.label} actualG={grams(c.id)} idealG={ideal?.[c.id]} band={exactBand(c.id, effects)} />
+            <Gauge
+              label={c.label}
+              food={ticket ? foodLabel(c.id === 'base' ? ticket.order.baseId : c.id === 'main' ? ticket.order.mainId : ticket.order.sideId) : undefined}
+              actualG={grams(c.id)}
+              idealG={ideal?.[c.id]}
+              band={exactBand(c.id, effects, ideal?.[c.id])}
+            />
           </React.Fragment>
         ))}
         {!ideal && ticket && <p className="ns-muted">Size differs from ticket #{ticket.number}</p>}

@@ -1,4 +1,4 @@
-# Reference-driven asset production
+# Asset production
 
 Revision: 10 November 2026. Owner: Codex for generation and visual acceptance; Claude for consuming approved assets and implementing mechanics. This supersedes the earlier soft hand-painted art direction.
 
@@ -9,12 +9,13 @@ The owner's direction is a game **inspired by** the kitchen-serving genre, not a
 - Don't use another game's screenshots, sprites, UI or logos as image-generation inputs or style references, and don't trace, paint over or match them. References are NutriServe's own approved masters, real Indian food and kitchenware, and the written brief.
 - NutriServe's characters, faces, station screens, tabs, tickets and colours are its own. Genre conventions (taking orders at a counter, a ticket, several stations, a cartoon cast) are fine; another game's specific character design or screen layout is not.
 - The six accepted idle sprites were made under the earlier brief, which used another game's screenshots as a style reference. Whether to redraw or rework them is the art owner's decision; engineering hasn't changed them.
+- The earlier brief's character proportions (very large heads, narrow limbs, heavy dark contours, a head of about 36–40% of body height) came from prompts aimed at another game's style. They are recorded below as history, not as targets: the art owner sets NutriServe's own proportions and records them here.
 
 ## The style contract
 
 A flat, outlined, friendly cartoon look for original NutriServe characters and Indian food — not modern realistic food illustration or a mobile advertising portrait.
 
-Characters use large heads, narrow limbs, simplified hands, clear dark contours and restrained flat color shapes. Give the cast NutriServe's own face design (eyes, brows, mouth) rather than one borrowed from another game. A working head-to-full-body target of roughly 35–40% is an art direction choice, not a measured constant. Preserve individual face/hair/clothing silhouettes; do not clone the same head across the full cast. Richer character/body/age variation is still needed beyond the six-person pilot.
+Characters use simplified, readable shapes, clear outlines and restrained flat color. Their proportions, line weight and face design are NutriServe's own, set by the art owner (the earlier brief's large-head proportions came from prompts aimed at another game's style and are not a target; see Originality). Preserve individual face/hair/clothing silhouettes; do not clone the same head across the full cast. Richer character/body/age variation is still needed beyond the six-person pilot.
 
 At the 640 × 480 stage, the sprite must remain readable at 120–180 CSS pixels in a queue and at larger serving scale. Gameplay machinery needs distinct silhouettes and high-contrast controls. The code-native UI has a paper order ticket on a rail and compact station tabs. Four prep slots are required. Order/build/prep/finish use NutriServe's own colours: peacock teal, turmeric, terracotta and rani pink (`STATION_COLORS` in `src/features/nutriserve/ui/LayoutStudy.tsx`).
 
@@ -51,7 +52,7 @@ Sprite source files are approximately 1.1–1.2 MB each. This pass preserves the
 | Vessel master | Steel katori in three sizes, back shell/front rim/food mask | Camera pitch, fill geometry and pointer target approved together |
 | Food pilot | `rice_white`, `rice_brown`, `rice_red`, `chana_masala`, `palak_dal`, `rajma_masala`, `paneer_butter_masala`, `mixed_veg_curry`, `raita`, `roti`, `sprouts_salad`, `samosa` | Fixed camera and light; native-size identification; food IDs must exist in current main catalog |
 | Food states | Portion/pour/prepared/garnish layers only where reachable by mechanics | Vessel masks and recipe adapter locked; prepared food nutrients counted once |
-| Stations | Order background, build dispensers, four prep machines, finish shelves/tools | Placement contract and original station UI audit; no interactive text baked into images |
+| Stations | Order background, build dispensers, four prep machines, finish shelves/tools | Placement contract and a NutriServe station UI review; no interactive text baked into images |
 | UI | Ticket icons, tool cursors, meter face, stars, buttons, upgrade icons | Code-native geometry/text where practical; keyboard focus and large touch targets |
 | Decor/progression | Shop props and placements for implemented upgrades | Only generate items reachable in the progression model |
 | Audio | Original bowl/ladle/pour/counter Foley, UI cues, ambience, music | Provenance and source project, levels/loop checks; image generation does not create audio |
@@ -60,6 +61,6 @@ The TypeScript AST reconciliation of the exact current-main `FOOD_LIBRARY` and `
 
 ## Prompt family
 
-The source prompts and per-character identities are retained in `asset-prompts.json` as a provenance record of how the pilot sprites were made (they used another game's screenshot as a style input; new prompts must not, see Originality above). The decisive constraints for new work are: flat outlined cartoon, head roughly 36–39% of total height, NutriServe's own face design, narrow arms, dark uniform outlines, one hard-edged shadow at most, full-body left-facing idle, transparent padding, no realistic portrait/irises/texture/lighting.
+The source prompts and per-character identities are retained in `asset-prompts.json` as a provenance record of how the pilot sprites were made (they used another game's screenshot as a style input and aimed at its proportions; new prompts must not, see Originality above). The constraints that carry over to new work are the technical and originality ones: a flat outlined cartoon in NutriServe's own proportions and face design, one hard-edged shadow at most, full-body left-facing idle, transparent padding, no realistic portrait/irises/texture/lighting.
 
 For each later pose, pass the exact approved identity as the edit target and change only pose/expression. Asset IDs, states and dimensions are part of the contract. Claude should request a missing asset by ID/state and proceed with unrelated mechanics, rather than fabricate or recolor a substitute and mark it complete.

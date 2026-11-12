@@ -38,7 +38,7 @@ test('perfect build scores 100 (build-v5)', () => {
   for (const c of ['base', 'main', 'side']) assert.ok(Math.abs(grade.signedErrorG[c]) < 0.5, `${c} near ideal`);
 });
 
-test('underfill and overfill are distinguished by sign, and a short portion costs more (build-v6)', () => {
+test('underfill and overfill are distinguished by sign, and a short portion costs more (build-v7)', () => {
   const { s, ticket } = withTicket();
   const make = (factor) => {
     let x = cmd(s, { type: 'startDish', size: ticket.order.size });
@@ -53,8 +53,8 @@ test('underfill and overfill are distinguished by sign, and a short portion cost
   assert.ok(Math.abs(under.signedErrorG.main + over.signedErrorG.main) < 1, 'same magnitude');
   assert.equal(close.score, 100, 'inside the exact band is free');
   assert.ok(under.score < over.score && over.score < 100, `${under.score} < ${over.score} < 100`);
-  // 40 + 35 x (1 - 2 x 0.33) + 25 and 40 + 35 x (1 - 1.2 x 0.33) + 25, give or take the pour rounding.
-  assert.ok(Math.abs(under.score - 77) <= 1 && Math.abs(over.score - 86) <= 1, `${under.score} ${over.score}`);
+  // 40 + 35 x (1 - 2 x 0.33) + 25 and 40 + 35 x (1 - 1 x 0.33) + 25, give or take the pour rounding.
+  assert.ok(Math.abs(under.score - 77) <= 1 && Math.abs(over.score - 88) <= 1, `${under.score} ${over.score}`);
 });
 
 test('portion credit: full inside the band, steeper when short than when generous, floored when generous', () => {
@@ -63,11 +63,11 @@ test('portion credit: full inside the band, steeper when short than when generou
   assert.equal(portionCredit(93, 100, 0.07), 1);
   assert.equal(portionCredit(107, 100, 0.07), 1);
   near(portionCredit(80, 100, 0.07), 1 - 2 * 0.13); // a fifth short costs about a quarter
-  near(portionCredit(120, 100, 0.07), 1 - 1.2 * 0.13);
+  near(portionCredit(120, 100, 0.07), 1 - 1 * 0.13);
   near(portionCredit(63, 100, 0.07), 0.4);
   assert.equal(portionCredit(40, 100, 0.07), 0, 'well under half a portion earns nothing');
   assert.equal(portionCredit(0, 100, 0.07), 0);
-  near(portionCredit(160, 100, 0.07), 1 - 1.2 * 0.53);
+  near(portionCredit(160, 100, 0.07), 1 - 1 * 0.53);
   assert.equal(portionCredit(1000, 100, 0.07), BUILD_V1.overFloor);
   assert.equal(portionCredit(50, 0, 0.07), 0);
   assert.equal(portionCredit(Number.NaN, 100, 0.07), 0, 'a non-number portion earns nothing');
@@ -208,10 +208,16 @@ test('prep grade: perfect at the mark, a share of the way when short, points per
   assert.equal(at(mark + band), 100);
   assert.equal(at(0), 0);
   assert.equal(at((mark - band) / 2), 50);
-  // Two seconds on the flame past the window: 2 x 12 points.
+  // Two seconds on the flame past the window: 2 x 10 points.
   assert.equal(at(mark + band + 2 * RATE), 100 - 2 * PREP_V1.overPointsPerSecond);
-  // The marks: 7, 12 and 18 seconds on the flame, unevenly spaced (prep-v4).
-  assert.deepEqual(['quick', 'regular', 'slow'].map((l) => prepTargetUnits(l) / RATE), [7, 12, 18]);
+  // The marks: 8, 13 and 20 seconds on the flame, each step longer than the last (prep-v5).
+  assert.deepEqual(['quick', 'regular', 'slow'].map((l) => prepTargetUnits(l) / RATE), [8, 13, 20]);
+  // Every dish has lost all its prep points by the time it stops cooking, with or without copper.
+  for (const l of ['quick', 'regular', 'slow']) {
+    for (const effects of [undefined, { prepBand: true }]) {
+      assert.equal(gradePrep({ ...dish, prep: { ...dish.prep, milliUnits: PREP_V1.maxUnits * 1000 } }, { ...ticket.order, prepLevel: l }, effects), 0, `${l} at the cap`);
+    }
+  }
   // Copper handis widen the window.
   const wide = { portionBand: { base: false, main: false, side: false }, prepBand: true, waitingGraceMs: 0, catchFallen: false, lobbyGraceMs: 0, ticketGraceMs: 0, whistle: false };
   assert.equal(gradePrep({ ...dish, prep: { ...dish.prep, milliUnits: (mark + PREP_V1.wideBandUnits) * 1000 } }, { ...ticket.order, prepLevel: 'regular' }, wide), 100);
