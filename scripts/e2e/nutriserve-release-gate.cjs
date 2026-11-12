@@ -175,7 +175,7 @@ async function runDevice(browser, name, contextOptions, { touch = false } = {}) 
     return page.locator('.ns-lastserve').first().innerText();
   }
 
-  const targetFor = (prep) => (/QUICK/.test(prep) ? 900 : /SLOW/.test(prep) ? 2700 : 1800);
+  const targetFor = (prep) => (/QUICK/.test(prep) ? 1050 : /SLOW/.test(prep) ? 2850 : 1950); // prep-v3 marks
 
   // 1. Two concurrent orders cooking in two slots.
   await takeOrder();

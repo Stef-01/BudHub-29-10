@@ -7,6 +7,13 @@
     scroll-behavior: smooth;
   }
 
+  /* Smooth scrolling is motion too: jump instead for people who asked for less of it. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
   body {
     font-family: 'Inter', sans-serif;
     overscroll-behavior-y: none;

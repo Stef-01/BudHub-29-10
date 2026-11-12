@@ -1,7 +1,7 @@
 // Regression tests for the first independent audit of the simulation core (2026-11-11).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceGame, createGame, deserializeGame, deserializeGameWithNotes, serializeGame, gradeIndianBuildV1, gradeFinishV1, newProfile, SaveError } from '../src/features/nutriserve/simulation/index.ts';
+import { advanceGame, createGame, deserializeGame, deserializeGameWithNotes, serializeGame, gradeBuild, gradeFinishV1, newProfile, SaveError } from '../src/features/nutriserve/simulation/index.ts';
 import { game, cmd, reject, advanceUntil, atCounter, pour, buildPerfect } from './nutriserve-helpers.mjs';
 
 const withTicket = (seed = 42) => {
@@ -34,7 +34,7 @@ test('a wrong vessel never outscores the right vessel with a wrong or missing ba
     if (baseFood) x = pour(x, id, 'base', baseFood, baseMs);
     x = pour(x, id, 'main', ticket.order.mainId, Math.round((ticket.order.idealG.main * 1000) / 90));
     x = pour(x, id, 'side', ticket.order.sideId, Math.round((ticket.order.idealG.side * 1000) / 50));
-    return gradeIndianBuildV1(x.dishes.at(-1), ticket.order).score;
+    return gradeBuild(x.dishes.at(-1), ticket.order).score;
   };
   const wrongVessel = build(otherSize, undefined, 0);
   for (const [food, ms] of [[undefined, 0], [otherBase, 5_000], [otherBase, 100], [ticket.order.baseId, 9_000]]) {
@@ -42,15 +42,26 @@ test('a wrong vessel never outscores the right vessel with a wrong or missing ba
   }
 });
 
-test('the rice scoop bonus needs the right base food', () => {
+test('the rice scoop widens the exact band only for the right base food (build-v5)', () => {
   const { s, ticket } = withTicket();
   const otherBase = ticket.order.baseId === 'rice_white' ? 'rice_brown' : 'rice_white';
-  let x = cmd(s, { type: 'startDish', size: ticket.order.size });
-  const id = x.dishes.at(-1).id;
-  x = pour(x, id, 'base', otherBase, Math.round((ticket.order.idealG.base * 1000) / 80));
-  const dish = x.dishes.at(-1);
-  const effects = { buildFurniture: { cup: true, mixable: false, syrup: false }, prepFurniture: false, waitingGraceMs: 0, finishBonus: 0 };
-  assert.equal(gradeIndianBuildV1(dish, ticket.order, effects).score, gradeIndianBuildV1(dish, ticket.order).score);
+  const scoop = upgradeEffects(['rice_scoop']);
+  const withBase = (food, factor) => {
+    let x = cmd(s, { type: 'startDish', size: ticket.order.size });
+    const id = x.dishes.at(-1).id;
+    x = pour(x, id, 'base', food, Math.round((ticket.order.idealG.base * factor * 1000) / 80));
+    x = pour(x, id, 'main', ticket.order.mainId, Math.round((ticket.order.idealG.main * 1000) / 90));
+    x = pour(x, id, 'side', ticket.order.sideId, Math.round((ticket.order.idealG.side * 1000) / 50));
+    return x.dishes.at(-1);
+  };
+  const wrong = withBase(otherBase, 1);
+  assert.equal(gradeBuild(wrong, ticket.order, scoop).score, gradeBuild(wrong, ticket.order).score);
+  // 15% over the line: exact with the scoop (20% band), not without (10%).
+  const generous = withBase(ticket.order.baseId, 1.15);
+  assert.equal(gradeBuild(generous, ticket.order, scoop).score, 100);
+  assert.ok(gradeBuild(generous, ticket.order).score < 100);
+  // The ladles widen the main and side bands, not the base's.
+  assert.ok(gradeBuild(generous, ticket.order, upgradeEffects(['steel_ladles'])).score < 100);
 });
 
 test('an even ghee tadka of the right amount can reach full marks', () => {
@@ -790,10 +801,10 @@ test('notes never name a portion or finish error that owned upgrades made free',
     d.build.base.mg = Math.round((order.idealG.base + g) * 1000);
     return d;
   };
-  const perfect = gradeIndianBuildV1(at(0), order, scoop).score;
-  const g = [2, 4, 6, 8, 10, 12, 14, 16].find((e) => gradeIndianBuildV1(at(e), order, scoop).score === perfect && gradeIndianBuildV1(at(e), order).score < gradeIndianBuildV1(at(0), order).score);
+  const perfect = gradeBuild(at(0), order, scoop).score;
+  const g = [2, 4, 6, 8, 10, 12, 14, 16].find((e) => gradeBuild(at(e), order, scoop).score === perfect && gradeBuild(at(e), order).score < gradeBuild(at(0), order).score);
   assert.ok(g, 'some base error is free only with the rice scoop');
-  const scores = (d, effects) => ({ waiting: 100, build: gradeIndianBuildV1(d, order, effects).score, prep: 100, finish: 100 });
+  const scores = (d, effects) => ({ waiting: 100, build: gradeBuild(d, order, effects).score, prep: 100, finish: 100 });
   const base = (notes) => notes.filter((n) => /^Base [+−]/.test(n));
   assert.deepEqual(base(serveNotes(at(g), order, scores(at(g), scoop), 1, [], 0, scoop)), []);
   assert.equal(base(serveNotes(at(g), order, scores(at(g)), 1, [], 0)).length, 1);
@@ -819,4 +830,61 @@ test('notes never name a portion or finish error that owned upgrades made free',
   const fin = (grade) => serveNotes(d, finishOrder, { waiting: 100, build: 100, prep: 100, finish: grade.score }, 1, grade.penalties, 0).filter((n) => /\(−\d+\)$/.test(n));
   assert.deepEqual(fin(withTray), []);
   assert.ok(fin(bare).length >= 1);
+});
+
+// --- Eleventh audit, 2026-11-12 ------------------------------------------------------------------
+import { PREP_V1, prepTargetUnits, prepBandUnits, gradePrep } from '../src/features/nutriserve/simulation/index.ts';
+
+test('pressure lids let go of a latched boost at the start of the perfect window (progression-v4)', () => {
+  const profile = (upgrades) => ({ ...newProfile(), rank: 8, points: 720, upgrades });
+  const run = (upgrades) => {
+    let q = advanceUntil(game(11, { profile: profile(upgrades) }), atCounter);
+    q = cmd(q, { type: 'takeOrder' });
+    const ticket = q.tickets[0];
+    const r = buildPerfect(q, ticket);
+    q = cmd(r.s, { type: 'startPrep', dishId: r.dishId, slot: 0 });
+    q = cmd(q, { type: 'setBoost', slot: 0, held: true }); // latched and left alone
+    // Cool the handi between bursts so the boost never overheats: a held boost re-pressed as
+    // soon as it was let go would otherwise mask the whistle.
+    const target = prepTargetUnits(ticket.order.prepLevel);
+    const band = prepBandUnits(upgradeEffects(upgrades));
+    let released;
+    for (let t = 0; t < 40_000 && released === undefined; t += 1) {
+      q = advanceGame(q, 1);
+      const units = q.dishes.find((d) => d.id === r.dishId).prep.milliUnits;
+      if (!q.prepSlots[0].boostHeld) released = units;
+    }
+    return { q, ticket, dishId: r.dishId, released, target, band };
+  };
+  const lid = run(['pressure_lid', 'insulated_handis']);
+  // The boost lets go on the millisecond the dish reaches mark - band (450 milli-units a ms).
+  const at = (lid.target - lid.band) * 1000;
+  assert.ok(lid.released >= at && lid.released < at + 450, `${lid.released} vs ${at}`);
+  assert.equal(lid.q.prepSlots[0].overheated, false, 'the whistle, not overheating, let go');
+  // Left on the flame at the base rate from there, the dish stays perfect for 1.6 s.
+  let after = advanceGame(lid.q, 1_500);
+  after = cmd(after, { type: 'finishPrep', slot: 0 });
+  assert.equal(gradePrep(after.dishes.find((d) => d.id === lid.dishId), lid.ticket.order, upgradeEffects(['pressure_lid'])), 100);
+  // Boosting again past the whistle is the player's choice: it is not let go a second time.
+  let again = cmd(lid.q, { type: 'setBoost', slot: 0, held: true });
+  again = advanceGame(again, 200);
+  assert.equal(again.prepSlots[0].boostHeld, true);
+  // Without lids a latched boost keeps going until the handi overheats.
+  const plain = run(['insulated_handis']);
+  assert.ok(plain.released > (plain.target + plain.band) * 1000 || plain.q.prepSlots[0].overheated, `released at ${plain.released}`);
+  assert.equal(plain.q.prepSlots[0].overheated, true);
+});
+
+test('the whistle needs a guiding ticket, and replays the same in any chunking', () => {
+  const profile = { ...newProfile(), rank: 8, points: 720, upgrades: ['pressure_lid'] };
+  let q = advanceUntil(game(12, { profile }), atCounter);
+  q = cmd(q, { type: 'takeOrder' });
+  const r = buildPerfect(q, q.tickets[0]);
+  q = cmd(r.s, { type: 'startPrep', dishId: r.dishId, slot: 0 });
+  q = cmd(q, { type: 'setBoost', slot: 0, held: true });
+  const whole = advanceGame(q, 4_000);
+  let parts = q;
+  for (const dt of [1, 333, 7, 1_200, 59, 2_400]) parts = advanceGame(parts, dt);
+  assert.deepEqual(parts, whole);
+  assert.equal(PREP_V1.version, 'prep-v3-provisional');
 });

@@ -29,10 +29,12 @@ import {
   contentShare,
   dishMatchesOrder,
   gradeFinishV1,
-  gradeIndianBuildV1,
-  gradeIndianPrepV1,
+  gradeBuild,
+  gradePrep,
   gradeWaitingV1,
   orderComplete,
+  prepBandUnits,
+  prepTargetUnits,
   rewardsV2,
   serveNotes,
 } from './scoring.ts';
@@ -254,8 +256,23 @@ function emptyDeposit(): Deposit {
 
 const dishById = (s: GameState, id: string | undefined) => (id ? s.dishes.find((d) => d.id === id) : undefined);
 
+/** Continuous-process settings from owned upgrades (they only change between advances). */
+interface StepRules {
+  heatRisePerMs: number;
+  boostMultiplier: number;
+  /** Pressure lids: the boost lets go when a dish reaches the start of its perfect window. */
+  whistle: boolean;
+  bandUnits: number;
+}
+
+/** The units at which a dish's whistle blows: the start of its guiding ticket's perfect window. */
+function whistleMilliUnits(s: GameState, dish: Dish, bandUnits: number): number | undefined {
+  const ticket = dish.forTicketId ? s.tickets.find((t) => t.id === dish.forTicketId && t.servedAtMs === undefined) : undefined;
+  return ticket ? (prepTargetUnits(ticket.order.prepLevel) - bandUnits) * 1000 : undefined;
+}
+
 /** Integrate continuous processes over [nowMs, nowMs + 1). */
-function stepOneMs(s: GameState, heatRisePerMs: number, boostMultiplier: number): void {
+function stepOneMs(s: GameState, rules: StepRules): void {
   const held = s.held;
   if (held?.kind === 'pour') {
     const dish = dishById(s, held.dishId);
@@ -275,16 +292,21 @@ function stepOneMs(s: GameState, heatRisePerMs: number, boostMultiplier: number)
 
   // N units per second is exactly N milli-units per millisecond.
   const baseRate = PREP_V1.unitsPerSecond;
-  const boostRate = Math.round(baseRate * boostMultiplier);
+  const boostRate = Math.round(baseRate * rules.boostMultiplier);
   for (const slot of s.prepSlots) {
     const dish = dishById(s, slot.dishId);
     const boosting = !!dish && slot.boostHeld && !slot.overheated;
     // An overheated handi is off the flame: nothing cooks until it has cooled (prep-v2).
     if (dish?.prep && !slot.overheated) {
-      dish.prep.milliUnits = Math.min(PREP_V1.maxUnits * 1000, dish.prep.milliUnits + (boosting ? boostRate : baseRate));
+      const before = dish.prep.milliUnits;
+      dish.prep.milliUnits = Math.min(PREP_V1.maxUnits * 1000, before + (boosting ? boostRate : baseRate));
+      if (boosting && rules.whistle) {
+        const at = whistleMilliUnits(s, dish, rules.bandUnits);
+        if (at !== undefined && before < at && dish.prep.milliUnits >= at) slot.boostHeld = false;
+      }
     }
     if (boosting) {
-      slot.heat = Math.min(PREP_V1.heatMax, slot.heat + heatRisePerMs);
+      slot.heat = Math.min(PREP_V1.heatMax, slot.heat + rules.heatRisePerMs);
       if (slot.heat >= PREP_V1.heatMax) {
         slot.overheated = true;
         slot.boostHeld = false; // a held or latched boost lets go; boosting again takes a new press
@@ -307,11 +329,15 @@ export function advanceGame(state: GameState, dtMs: number): GameState {
   processDiscrete(s);
   // Owned upgrades don't change during an advance (only commands buy them).
   const owned = upgradeEffects(s.profile.upgrades);
-  const heatRisePerMs = owned.heatRisePerMs ?? PREP_V1.heatRisePerMs;
-  const boostMultiplier = owned.boostMultiplier ?? PREP_V1.boostMultiplier;
+  const rules: StepRules = {
+    heatRisePerMs: owned.heatRisePerMs ?? PREP_V1.heatRisePerMs,
+    boostMultiplier: owned.boostMultiplier ?? PREP_V1.boostMultiplier,
+    whistle: owned.whistle,
+    bandUnits: prepBandUnits(owned),
+  };
   while (s.nowMs < end && !s.day.completed) {
     if (hasContinuousWork(s)) {
-      stepOneMs(s, heatRisePerMs, boostMultiplier);
+      stepOneMs(s, rules);
       s.nowMs += 1;
     } else {
       s.nowMs = Math.min(end, nextDiscreteEventMs(s) ?? end);
@@ -645,9 +671,9 @@ function run(s: GameState, c: Command): string | undefined {
       if (!ticket) return 'No such ticket';
       if (ticket.servedAtMs !== undefined) return 'That ticket was already served';
       const customer = s.day.customers.find((x) => x.id === ticket.customerId);
-      const buildGrade = gradeIndianBuildV1(dish, ticket.order, effects);
+      const buildGrade = gradeBuild(dish, ticket.order, effects);
       const build = buildGrade.score;
-      const prep = gradeIndianPrepV1(dish, ticket.order, effects);
+      const prep = gradePrep(dish, ticket.order, effects);
       const finish = gradeFinishV1(dish, ticket.order, effects).score;
       const waiting = gradeWaitingV1(ticket, s.nowMs, effects);
       const share = contentShare(dish, ticket.order);

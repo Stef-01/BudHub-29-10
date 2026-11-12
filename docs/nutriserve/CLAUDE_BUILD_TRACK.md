@@ -2,7 +2,9 @@
 
 Start from current `main`, on a dedicated `claude/nutriserve-mechanics` branch. This is a ready-to-execute handoff, **not a claim that a Claude process has been dispatched**. No Claude executable/service was available in this Codex session.
 
-User objective: remaster the nutrition serving game around the classic Freezeria station structure and mechanics, adapted to Indian food. Read `REA_FINDINGS.md`, `ASSET_WORKFLOW.md`, `evidence-index.json`, `asset-roadmap.json`, and `build-track.csv` first. Current-main catalogs contain 49 foods and 33 customers; six idle sprites are accepted. The accidental Word document is irrelevant. The repository default branch was `old`; this work is based on `main`. Do not merge unrelated `old` history.
+> **Update, 12 November 2026.** The owner clarified the goal as a game *inspired by* Freezeria-style kitchen-serving games, not a recreation of one. The engineering track therefore uses NutriServe's own rules (build-v5, prep-v3 and the provisional finish/waiting rules) instead of the transcribed reference contract, which was removed with its tests, and the station UI uses its own colours. See `CLAUDE_STATUS.md` (audit 11) and the Originality section of `ASSET_WORKFLOW.md`.
+
+User objective: a nutrition serving game inspired by the genre's four-station structure (order, build, cook, finish), adapted to Indian food. Read `REA_FINDINGS.md`, `ASSET_WORKFLOW.md`, `evidence-index.json`, `asset-roadmap.json`, and `build-track.csv` first. Current-main catalogs contain 49 foods and 33 customers; six idle sprites are accepted. The accidental Word document is irrelevant. The repository default branch was `old`; this work is based on `main`. Do not merge unrelated `old` history.
 
 ## Ownership
 
@@ -19,9 +21,9 @@ Claude must not mark unavailable assets complete, generate fake image filenames,
 
 - `src/features/nutriserve/assets/characters.ts` / `CustomerSprite.tsx`: six original pilot idle sprites, shared component, deterministic identity lookup.
 - `public/assets/nutriserve/manifest.json`: source hashes, sizes, alpha measurements, visible bounds, foot anchors, review status, missing pose states.
-- `src/features/nutriserve/domain/referenceScoring.ts`: static Build/Mix contracts. Do not treat internal blend units as milliseconds.
+- ~~`src/features/nutriserve/domain/referenceScoring.ts`~~: removed 12 November 2026; the game's rules live in `simulation/params.ts` and `simulation/scoring.ts`.
 - `nutriserve-art-lab.html`: responsive scene/cast/alpha review and interactive arithmetic probes. This is a review bench, not a playable remaster.
-- `tests/nutriserve-reference.test.mjs`: golden arithmetic/boundary cases from recovered rules.
+- ~~`tests/nutriserve-reference.test.mjs`~~: removed with it.
 - `scripts/check-nutriserve-assets.mjs`: hash, PNG decoding, alpha, identity and review-gate validation.
 
 ## Proposed simulation boundary
@@ -37,7 +39,7 @@ Portion error is signed and affects actual grams; a single unsigned accuracy val
 ## Build sequence and gates
 
 1. **C01 — simulation spine:** queue, taking orders, concurrent dishes, station switching, four independent prep slots, seeded replay, pause/save/restore. Test a second customer arriving while prep continues offscreen.
-2. **C02 — Build station:** size choice, ingredient choice, timed meter with pointer and keyboard input, distinct under/overfill. Use the recovered scoring contract through a separately named Indian-food adapter. Do not add rice penalties to the original function.
+2. **C02 — Build station:** size choice, ingredient choice, timed meter with pointer and keyboard input, distinct under/overfill. (Superseded 12 November 2026: graded by NutriServe's own build-v5 rules.)
 3. **C03 — Prep station:** four slots, different targets, finish timing, held boost and overheat behavior. Time conversion/boost rules remain blocked on Q08 evidence; prototype parameters must be named/versioned and never presented as exact parity.
 4. **C04 — Finish station:** continuous held-pointer deposition, local coordinates, amount/distribution/spill accounting, discrete garnishes and order. Depends on Q09 topping trace and final vessel masks. Keyboard/touch input must drive the same simulation commands.
 5. **C05 — serve/day/progression:** associate any ready dish with any taken ticket, independently grade four stations, tips/ranks/customer stars, unlocks and upgrades. Trace original aggregation and waiting curves before claiming exactness. Never double-save rewards on exit/replay.

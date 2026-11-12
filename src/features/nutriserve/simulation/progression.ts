@@ -1,13 +1,15 @@
-// PROGRESSION_V1 (ADAPTATION): ranks from points, and upgrades bought with coins.
-// Upgrade effects either switch on the reference's "furniture" bonuses (which the recovered
-// Build/Mix functions already support) or adjust provisional rules, and say which.
+// PROGRESSION (ADAPTATION): ranks from points, and upgrades bought with coins. Each upgrade adjusts
+// one of NutriServe's own rules (./params.ts) and says how in its description.
 
 // v2: four upgrades at ranks 5-8 with effects a strong player still feels (in v1 everything was
 // bought by about day 6 and ranks 5-10 unlocked nothing).
 // v3: the rank 5-8 upgrades help where busy days actually cost points (waiting for food, and
 // cooking time). v2's serving trolley (coins, which pile up unused by then) and head chef's
 // whites (rank points, when ranks unlock nothing more) are retired, and the chai stall is cheaper.
-export const PROGRESSION_VERSION = 'progression-v3';
+// v4: the serving tools widen the exact band of build-v5 instead of adding a point, copper handis
+// widen prep-v3's perfect window instead of adding three, and pressure lids also let go of the boost
+// when a dish reaches its mark (in v3 a late release under lids overcooked more than without them).
+export const PROGRESSION_VERSION = 'progression-v4';
 
 /** Cumulative points needed for each rank (index 0 = rank 1). */
 export const RANK_THRESHOLDS = [0, 40, 100, 180, 280, 400, 550, 720, 920, 1150];
@@ -28,14 +30,14 @@ export interface UpgradeDef {
   cost: number;
   unlockRank: number;
   effect:
-    | { kind: 'buildFurniture'; categories: Array<'cup' | 'mixable' | 'syrup'> }
-    | { kind: 'prepFurniture' }
+    | { kind: 'portionBand'; components: Array<'base' | 'main' | 'side'> }
+    | { kind: 'prepBand' }
     | { kind: 'waitingGraceMs'; ms: number }
     | { kind: 'finishBonus'; points: number }
     | { kind: 'heatRisePerMs'; heat: number }
     | { kind: 'lobbyGraceMs'; ms: number }
     | { kind: 'ticketGraceMs'; ms: number }
-    | { kind: 'boostMultiplier'; times: number };
+    | { kind: 'boostMultiplier'; times: number; whistle: boolean };
 }
 
 /**
@@ -52,10 +54,10 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'rice_scoop',
     label: 'Brass rice scoop',
     hi: 'पीतल का चम्मच',
-    description: 'Build score +1 when both the vessel and the base food are right.',
+    description: 'Rice and roti count as exact within 20% of the line (10% without).',
     cost: 20,
     unlockRank: 1,
-    effect: { kind: 'buildFurniture', categories: ['cup'] },
+    effect: { kind: 'portionBand', components: ['base'] },
   },
   brass_bell: {
     id: 'brass_bell',
@@ -70,19 +72,19 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'steel_ladles',
     label: 'Steel ladle set',
     hi: 'करछी',
-    description: 'Build score +1 each for the right main and the right side.',
+    description: 'Mains and sides count as exact within 20% of the line (10% without).',
     cost: 40,
     unlockRank: 2,
-    effect: { kind: 'buildFurniture', categories: ['mixable', 'syrup'] },
+    effect: { kind: 'portionBand', components: ['main', 'side'] },
   },
   copper_handis: {
     id: 'copper_handis',
     label: 'Copper handi set',
     hi: 'तांबे की हांडी',
-    description: 'Prep score +3, capped at 100.',
+    description: 'A wider perfect window at each mark: 1.4 seconds on the flame either side instead of 0.8.',
     cost: 55,
     unlockRank: 3,
-    effect: { kind: 'prepFurniture' },
+    effect: { kind: 'prepBand' },
   },
   garnish_tray: {
     id: 'garnish_tray',
@@ -124,16 +126,18 @@ export const UPGRADES: Record<string, UpgradeDef> = {
     id: 'pressure_lid',
     label: 'Pressure lids',
     hi: 'प्रेशर ढक्कन',
-    description: 'Boost cooks three times as fast instead of two and a half.',
+    description: 'Boost cooks three times as fast instead of two and a half, and the whistle lets go of the boost when a dish reaches its mark.',
     cost: 120,
     unlockRank: 8,
-    effect: { kind: 'boostMultiplier', times: 3 },
+    effect: { kind: 'boostMultiplier', times: 3, whistle: true },
   },
 };
 
 export interface UpgradeEffects {
-  buildFurniture: { cup: boolean; mixable: boolean; syrup: boolean };
-  prepFurniture: boolean;
+  /** Components whose exact band is widened (BUILD_V1.toolExactBand). */
+  portionBand: { base: boolean; main: boolean; side: boolean };
+  /** Whether the prep perfect window is widened (PREP_V1.wideBandUnits). */
+  prepBand: boolean;
   waitingGraceMs: number;
   finishBonus: number;
   /** Heat added per boosting millisecond, if an upgrade lowers it (else PREP_V1.heatRisePerMs). */
@@ -142,28 +146,34 @@ export interface UpgradeEffects {
   ticketGraceMs: number;
   /** Boost speed, if an upgrade raises it (else PREP_V1.boostMultiplier). */
   boostMultiplier?: number;
+  /** A boost lets go by itself when its dish reaches the start of its perfect window. */
+  whistle: boolean;
 }
 
 export function upgradeEffects(owned: readonly string[]): UpgradeEffects {
   const effects: UpgradeEffects = {
-    buildFurniture: { cup: false, mixable: false, syrup: false },
-    prepFurniture: false,
+    portionBand: { base: false, main: false, side: false },
+    prepBand: false,
     waitingGraceMs: 0,
     finishBonus: 0,
     lobbyGraceMs: 0,
     ticketGraceMs: 0,
+    whistle: false,
   };
   for (const id of owned) {
     const effect = Object.hasOwn(UPGRADES, id) ? UPGRADES[id].effect : undefined;
     if (!effect) continue;
-    if (effect.kind === 'buildFurniture') effect.categories.forEach((c) => (effects.buildFurniture[c] = true));
-    else if (effect.kind === 'prepFurniture') effects.prepFurniture = true;
+    if (effect.kind === 'portionBand') effect.components.forEach((c) => (effects.portionBand[c] = true));
+    else if (effect.kind === 'prepBand') effects.prepBand = true;
     else if (effect.kind === 'waitingGraceMs') effects.waitingGraceMs += effect.ms;
     else if (effect.kind === 'finishBonus') effects.finishBonus += effect.points;
     else if (effect.kind === 'heatRisePerMs') effects.heatRisePerMs = Math.min(effects.heatRisePerMs ?? Infinity, effect.heat);
     else if (effect.kind === 'lobbyGraceMs') effects.lobbyGraceMs += effect.ms;
     else if (effect.kind === 'ticketGraceMs') effects.ticketGraceMs += effect.ms;
-    else if (effect.kind === 'boostMultiplier') effects.boostMultiplier = Math.max(effects.boostMultiplier ?? 0, effect.times);
+    else if (effect.kind === 'boostMultiplier') {
+      effects.boostMultiplier = Math.max(effects.boostMultiplier ?? 0, effect.times);
+      effects.whistle ||= effect.whistle;
+    }
   }
   return effects;
 }

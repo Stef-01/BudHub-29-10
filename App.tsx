@@ -62,7 +62,8 @@ const AppContent: React.FC = () => {
   // The remaster reports each finished day once (its save records which days were reported).
   const handleRemasterDay = useCallback(
     ({ averageScore, xpTier }: { day: number; averageScore: number; xpTier: 'Low' | 'Medium' | 'High' | null }) => {
-      scoresCtx.saveScore('nutriserve_remaster', averageScore);
+      // A failed score save (offline, storage full) must not become an unhandled rejection.
+      Promise.resolve(scoresCtx.saveScore('nutriserve_remaster', averageScore)).catch(() => {});
       // XP scales with how well the day went; a day of empty katoris earns none.
       if (xpTier) addXp(xpTier, 'add');
       trackGameComplete('nutriserve_remaster', averageScore, getUserId());

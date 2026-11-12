@@ -1,5 +1,7 @@
 # NutriServe reference investigation — 10 November 2026
 
+> **Historical record, not used by the game (12 November 2026).** The owner clarified the goal as a game inspired by the genre, not a recreation. The game's rules are NutriServe's own (`simulation/params.ts`), the transcribed contract described below was removed from the code, and new art must not use the screenshots listed here as references (see `ASSET_WORKFLOW.md`, Originality).
+
 This pass follows `reverse-engineer-anything` v49: identify the artifact, ask bounded questions, keep static interpretation separate from runtime observations, retain complete Evidence, and publish unresolved questions. It supersedes the earlier painterly character direction and the proposed three-slot prep layout.
 
 ## Artifact identity and tool boundary

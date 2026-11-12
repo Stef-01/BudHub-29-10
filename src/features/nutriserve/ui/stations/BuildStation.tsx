@@ -3,7 +3,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CATALOG_FOODS } from '../../data/catalog.generated.ts';
 import {
   BUILD_V1,
+  exactBand,
   meterFraction,
+  upgradeEffects,
   seedFrom,
   createRng,
   ticketForNewDish,
@@ -71,9 +73,10 @@ function dishRows(state: GameState, dish: GameState['dishes'][number], open: Tic
   return rows;
 }
 
-function Gauge({ label, actualG, idealG, kind }: { label: string; actualG: number; idealG?: number; kind: 'fill' | 'meter' }) {
-  // fill: ratio 0..2 with the ideal at the middle; meter: the reference meter fraction (ideal at 0.5).
-  const position = idealG ? (kind === 'fill' ? Math.min(2, actualG / idealG) / 2 : meterFraction(actualG, idealG)) : 0;
+function Gauge({ label, actualG, idealG, band }: { label: string; actualG: number; idealG?: number; band: number }) {
+  // The line sits at the middle; the shaded zone around it is the exact band (build-v5).
+  const position = idealG ? meterFraction(actualG, idealG) : 0;
+  const half = 1 / BUILD_V1.meterFullMultiple;
   const error = idealG ? actualG - idealG : undefined;
   return (
     <div className="ns-gauge">
@@ -97,6 +100,9 @@ function Gauge({ label, actualG, idealG, kind }: { label: string; actualG: numbe
         aria-valuenow={Math.round(position * 100)}
         aria-valuetext={idealG ? `${Math.round(actualG)} of ${idealG} grams` : `${Math.round(actualG)} grams`}
       >
+        {idealG !== undefined && (
+          <span className="ns-gauge-band" style={{ left: `${(1 - band) * half * 100}%`, width: `${2 * band * half * 100}%` }} />
+        )}
         <span className="ns-gauge-target" />
         <span className="ns-gauge-needle" style={{ left: `${position * 100}%` }} />
       </span>
@@ -171,6 +177,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
   /** A component holding no more than one minimum press can still be switched (build-v4). */
   const locked = (c: BuildComponent) => (dish.build[c]?.mg ?? 0) > BUILD_V1.pourRateMgPerMs[c] * BUILD_V1.minPressMs;
   const ideal = ticket?.order.size === dish.size ? ticket.order.idealG : undefined;
+  const effects = upgradeEffects(state.profile.upgrades);
   const capacity = ideal ? (ideal.base + ideal.main + ideal.side) * 1.5 : 600;
 
   return (
@@ -189,7 +196,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
         </p>
         {COMPONENTS.map((c) => (
           <React.Fragment key={c.id}>
-            <Gauge label={c.label} actualG={grams(c.id)} idealG={ideal?.[c.id]} kind={c.id === 'base' ? 'fill' : 'meter'} />
+            <Gauge label={c.label} actualG={grams(c.id)} idealG={ideal?.[c.id]} band={exactBand(c.id, effects)} />
           </React.Fragment>
         ))}
         {!ideal && ticket && <p className="ns-muted">Size differs from ticket #{ticket.number}</p>}
@@ -202,7 +209,7 @@ export function BuildStation({ state, dispatch }: { state: GameState; dispatch: 
           return (
             <fieldset key={c.id} className="ns-dispenser-row">
               {blocked?.component === c.id && (
-                <p className="ns-blocked-msg" role="alert">
+                <p className="ns-blocked-msg">
                   {blocked.text}
                 </p>
               )}

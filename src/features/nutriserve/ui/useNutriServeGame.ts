@@ -7,6 +7,11 @@
 // The simulation advances every animation frame, but React re-renders at most every RENDER_MS
 // (commands still render at once): the scene changes slowly and re-rendering the whole kitchen at
 // 60 Hz cost far more than the simulation itself.
+//
+// One writer per save: a kitchen claims the save when it opens (writerKey). A kitchen in another tab
+// that sees the claim (a storage event, or the claim found at its next autosave) stops saving,
+// pauses, and offers to continue from the latest save instead, so two tabs never overwrite each
+// other's progress.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   advanceGame,
@@ -26,6 +31,34 @@ export const RENDER_MS = 33;
 const AUTOSAVE_MS = 4_000;
 
 export const saveKey = (userId: string) => `nutriserve.remaster.save.v1:${userId}`;
+/** Which open kitchen (tab) may write the save: the one that opened most recently. */
+export const writerKey = (userId: string) => `nutriserve.remaster.writer.v1:${userId}`;
+
+function newTabId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+/** The tab id holding the save, or null when none is recorded (or storage is unavailable). */
+function readWriter(userId: string): string | null {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(writerKey(userId)) ?? 'null');
+    return typeof value?.tab === 'string' ? value.tab : null;
+  } catch {
+    return null;
+  }
+}
+
+function claimWriter(userId: string, tab: string): void {
+  try {
+    window.localStorage.setItem(writerKey(userId), JSON.stringify({ tab, at: Date.now() }));
+  } catch {
+    // Storage blocked: nothing is saved anyway.
+  }
+}
 
 export interface StoredGame {
   /** The restored game, when the save could be read. */
@@ -110,6 +143,12 @@ export interface NutriServeGame {
   lastError: { message: string; seq: number } | null;
   /** Set when the simulation threw: the clock has stopped and autosave is off. */
   fatal: string | null;
+  /** The save is now held by a kitchen in another tab: this one has stopped saving and paused. */
+  superseded: boolean;
+  /** Load the latest save and hold it from this tab again (false: it couldn't be read here). */
+  takeOver: () => boolean;
+  /** Save now, if this tab still holds the save (Save & exit). */
+  saveNow: () => void;
 }
 
 export function useNutriServeGame(initial: GameState, userId: string): NutriServeGame {
@@ -121,6 +160,10 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
   const fatalRef = useRef(false);
   const carry = useRef(0);
   const lastRender = useRef(0);
+  const tabId = useRef<string>('');
+  if (!tabId.current) tabId.current = newTabId();
+  const supersededRef = useRef(false);
+  const [superseded, setSuperseded] = useState(false);
 
   const fail = useCallback((error: unknown) => {
     fatalRef.current = true;
@@ -135,6 +178,7 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
   const dispatch = useCallback<Dispatch>(
     (command, options) => {
       if (fatalRef.current) return { ok: false, error: 'The kitchen has stopped' } as CommandResult;
+      if (supersededRef.current && command.type !== 'pause') return { ok: false, error: 'This kitchen is open in another tab' } as CommandResult;
       let outcome: ReturnType<typeof applyCommand>;
       try {
         outcome = applyCommand(ref.current, command);
@@ -179,28 +223,69 @@ export function useNutriServeGame(initial: GameState, userId: string): NutriServ
     return () => cancelAnimationFrame(frameId);
   }, [fail, render]);
 
-  // Pause when hidden
+  const supersede = useCallback(() => {
+    if (supersededRef.current) return;
+    if (!ref.current.paused && !ref.current.day.completed) dispatch({ type: 'pause' }, { silent: true });
+    supersededRef.current = true;
+    setSuperseded(true);
+  }, [dispatch]);
+
+  /** Does this tab hold the save? (No record, e.g. storage blocked, counts as yes.) */
+  const owns = useCallback(() => {
+    const writer = readWriter(userId);
+    return writer === null || writer === tabId.current;
+  }, [userId]);
+
+  // Autosave (off once the simulation has failed, so a bad state never replaces the last good save,
+  // and off once another tab holds the save, so this one never overwrites it).
+  const save = useCallback(() => {
+    if (fatalRef.current || supersededRef.current) return;
+    if (!owns()) {
+      supersede();
+      return;
+    }
+    writeSave(userId, ref.current);
+  }, [owns, supersede, userId]);
+
+  const takeOver = useCallback(() => {
+    const latest = readSavedGame(userId);
+    if (!latest.state) return false;
+    ref.current = latest.state;
+    claimWriter(userId, tabId.current);
+    supersededRef.current = false;
+    setSuperseded(false);
+    render(latest.state);
+    return true;
+  }, [render, userId]);
+
+  // Pause (and save) when hidden, so another tab opened meanwhile starts from the latest state.
   useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden && !ref.current.paused && !ref.current.day.completed) dispatch({ type: 'pause' });
+      if (!document.hidden) return;
+      if (!ref.current.paused && !ref.current.day.completed) dispatch({ type: 'pause' });
+      save();
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [dispatch]);
+  }, [dispatch, save]);
 
-  // Autosave (off once the simulation has failed, so a bad state never replaces the last good save)
   useEffect(() => {
-    const save = () => {
-      if (!fatalRef.current) writeSave(userId, ref.current);
+    // This kitchen holds the save from now on; another tab's kitchen stops writing when it sees this.
+    claimWriter(userId, tabId.current);
+    writeSave(userId, ref.current);
+    const onStorage = (e: StorageEvent) => {
+      if ((e.key === writerKey(userId) || e.key === saveKey(userId)) && !owns()) supersede();
     };
     const id = window.setInterval(save, AUTOSAVE_MS);
     window.addEventListener('pagehide', save);
+    window.addEventListener('storage', onStorage);
     return () => {
       window.clearInterval(id);
       window.removeEventListener('pagehide', save);
+      window.removeEventListener('storage', onStorage);
       save();
     };
-  }, [userId]);
+  }, [owns, save, supersede, userId]);
 
-  return { state, dispatch, lastError, fatal };
+  return { state, dispatch, lastError, fatal, superseded, takeOver, saveNow: save };
 }

@@ -1,9 +1,9 @@
-// NutriServe remaster simulation parameters.
+// NutriServe Kitchen simulation parameters.
 //
-// Every value here is either an ADAPTATION (a deliberate design decision for the Indian-food game)
-// or PROVISIONAL (a placeholder for behaviour whose reference evidence is still open, see
-// docs/nutriserve/REA_FINDINGS.md Q08/Q09). None of them is a claim of parity with the reference
-// game. The only recovered rules live, unchanged, in ../domain/referenceScoring.ts.
+// Every rule here is NutriServe's own design: an ADAPTATION (a deliberate choice for this game) or
+// PROVISIONAL (a placeholder still being tuned in play). The game takes its station structure from
+// the kitchen-serving genre, but none of its rules or numbers are copied from another game, and none
+// of them is a claim of matching one.
 //
 // Parameter sets are versioned. A saved game records the versions it was played with; changing a
 // value means bumping the version, never editing a shipped version in place.
@@ -19,19 +19,27 @@ export const BUILD_V1 = {
   // an assistive-tech activation) always adds a small fixed amount instead of nothing.
   // v4: a component holding no more than one minimum press of a food can still be switched to a
   // different food (the mis-tap is discarded), so a stray tap never forces trashing the dish.
-  // Hold rates are unchanged.
-  version: 'build-v4',
+  // v5: NutriServe's own portion grading (see gradeBuild): each food is worth a share of the score,
+  // a portion near its line counts as exact, short portions lose more than generous ones, and the
+  // wrong vessel costs a flat amount. Hold rates are unchanged.
+  version: 'build-v5',
   /** Pour rates while a dispenser is held, in milligrams per millisecond (= grams per second). */
   pourRateMgPerMs: { base: 80, main: 90, side: 50 },
   /** The least one press pours, in ms of pouring (100 ms = 8 g base, 9 g main, 5 g side). */
   minPressMs: 100,
-  /**
-   * ADAPTATION: the reference build has three categories (cup, mixable, syrup). Here they are
-   * vessel + base fill, main, and side. Choosing the wrong base food when the vessel size is right
-   * costs this many points on top of the unchanged reference score.
-   */
-  baseMismatchPenalty: 15,
-  /** A main or side poured past this multiple of its ideal portion overflows the meter. */
+  /** Points each food is worth when it is the right food at the right amount (sums to 100). */
+  share: { base: 40, main: 35, side: 25 },
+  /** A portion within this fraction of its line counts as exact. */
+  exactBand: 0.1,
+  /** The same band with the matching serving tool (rice scoop, ladle set). */
+  toolExactBand: 0.2,
+  /** Past the band, a generous portion loses this share of its credit per extra portion's worth. */
+  overSlope: 0.6,
+  /** A generous portion never drops below this share of its credit (the food is there). */
+  overFloor: 0.2,
+  /** Points off for serving in a different vessel size than the ticket asked for. */
+  wrongVesselPenalty: 20,
+  /** Meters show a main or side up to this multiple of its line (the line sits halfway). */
   meterFullMultiple: 2,
 } as const;
 
@@ -39,11 +47,11 @@ export const PREP_V1 = {
   // v2: overheating lets go of the boost and takes the handi off the flame (no cooking at all)
   // until it cools to heatUnlockLevel. In v1 overheating cost nothing: the lockout cycle gave the
   // same boost share as never overheating, and a latched boost cycled forever.
-  version: 'prep-v2-provisional',
-  /**
-   * PROVISIONAL (Q08 open): reference prep quantities are internal units whose time conversion is
-   * unresolved. This rate turns them into simulation time for play-testing only.
-   */
+  // v3: NutriServe's own doneness marks and grading (see gradePrep): each level has a mark, a
+  // window around it counts as perfect, an undercooked dish earns its share of the way there, and
+  // an overcooked one loses points for every second it stayed on.
+  version: 'prep-v3-provisional',
+  /** PROVISIONAL: doneness units gained per second on the flame (1 unit per ms = 1000 milli-units). */
   unitsPerSecond: 150,
   /** PROVISIONAL: units accrue this many times faster while boost is held. */
   boostMultiplier: 2.5,
@@ -53,10 +61,16 @@ export const PREP_V1 = {
   heatCoolPerMs: 2,
   /** After overheating, boost is locked and nothing cooks until heat falls back to this level. */
   heatUnlockLevel: 3_000,
-  /** PROVISIONAL cap: the reference's static initializer declares 3600; its role is unverified. */
-  maxUnits: 3_600,
-  /** ADAPTATION: Indian prep levels map onto the reference's three blend targets. */
-  referenceBlendFor: { quick: 'chunky', regular: 'regular', slow: 'smooth' },
+  /** A dish stops gaining doneness here (25 s on the flame). */
+  maxUnits: 3_750,
+  /** Doneness mark for each prep level: 7, 13 and 19 seconds on the flame. */
+  targetUnits: { quick: 1_050, regular: 1_950, slow: 2_850 },
+  /** Units either side of the mark that count as perfect (0.8 s on the flame). */
+  perfectBandUnits: 120,
+  /** The same window with copper handis (1.4 s on the flame). */
+  wideBandUnits: 210,
+  /** Past the window, points lost per second on the flame of overcooking. */
+  overPointsPerSecond: 12,
 } as const;
 
 export const FINISH_V1 = {
@@ -121,14 +135,14 @@ export const WAITING_V1 = {
   ticketPointsPerSecond: 0.6,
 } as const;
 
-/** PROVISIONAL (R02 open): how the four station scores combine. Equal weights. Superseded by V2. */
+/** PROVISIONAL: how the four station scores combine. Equal weights. Superseded by V2. */
 export const AGGREGATION_V1 = {
   version: 'aggregation-v1-provisional',
   weights: { waiting: 1, build: 1, prep: 1, finish: 1 },
 } as const;
 
 /**
- * PROVISIONAL (R02 open): equal weights, plus a content gate. Under V1 a straight-through empty
+ * PROVISIONAL: equal weights, plus a content gate. Under V1 a straight-through empty
  * katori averaged 44 (waiting 100, prep and finish partial credit). Now the waiting, prep and
  * finish scores count in full only when the katori holds at least fullCreditShare of the ordered
  * food (the right foods, up to the ordered grams), and proportionally less below that. The build
