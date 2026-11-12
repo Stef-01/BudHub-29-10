@@ -9,7 +9,7 @@ The owner's direction is a game **inspired by** the kitchen-serving genre, not a
 - Don't use another game's screenshots, sprites, UI or logos as image-generation inputs or style references, and don't trace, paint over or match them. References are NutriServe's own approved masters, real Indian food and kitchenware, and the written brief.
 - NutriServe's characters, faces, station screens, tabs, tickets and colours are its own. Genre conventions (taking orders at a counter, a ticket, several stations, a cartoon cast) are fine; another game's specific character design or screen layout is not.
 - The six accepted idle sprites were made under the earlier brief, which used another game's screenshots as a style reference. Whether to redraw or rework them is the art owner's decision; engineering hasn't changed them.
-- The earlier brief's character proportions (very large heads, narrow limbs, heavy dark contours, a head of about 36–40% of body height) came from prompts aimed at another game's style. They are recorded below as history, not as targets: the art owner sets NutriServe's own proportions and records them here.
+- The earlier brief's character proportions (very large heads, narrow limbs, heavy dark contours, a head of about 36–40% of body height) came from prompts aimed at another game's style. They are recorded here as history, not as targets: the art owner sets NutriServe's own proportions and records them here.
 
 ## The style contract
 
@@ -23,8 +23,8 @@ Reject realistic skin, photographic anatomy, painterly textures, detailed irises
 
 ## Repeatable production loop
 
-1. **Pin the brief.** Name the asset id and state, the approved NutriServe master it must match, and any real-world reference (a photo of the dish or vessel). Record the source of every input image; another game's imagery is never an input.
-2. **Choose one master.** Approve a representative character, vessel or machine at native display size before expanding a family. Arjun V3 is the current idle-character master. The rejected realistic V1 and long-body V2 remain local comparison evidence, outside the shipping registry.
+1. **Pin the brief.** Name the asset id and state, the NutriServe master the art owner has approved for it (step 2), and any real-world reference (a photo of the dish or vessel). Record the source of every input image; another game's imagery is never an input.
+2. **Choose one master.** The art owner approves a representative character, vessel or machine at native display size before a family is expanded. No idle-character master is approved for new work yet: Arjun V3 and the other pilot sprites were made under the earlier brief, whose prompts aimed at another game's proportions (see Originality), so they are not masters for new art unless the art owner reworks or replaces them. The rejected realistic V1 and long-body V2 remain local comparison evidence, outside the shipping registry.
 3. **Write a structured prompt.** Specify subject identity, required silhouette, palette, orientation, size/padding, transparent background, style reference roles and prohibited details. Keep approved parts fixed during edits. One generation call per asset/state; do not ask a sheet of unrelated sprites to serve as individual production files.
 4. **Generate with the built-in image tool.** Use the approved NutriServe master and real-world references only. Preserve the original output file. Copy accepted candidates into versioned repo filenames; never silently overwrite a reviewed revision.
 5. **Inspect the actual file.** Measure dimensions, alpha, opaque-like area, visible bounds and foot anchor. The tool's RGB preview can show a halo in pixels whose alpha is zero. Judge edges after compositing on cream, saturated green, dark and checkerboard backgrounds. Do not erase hidden RGB by hand unless a real render defect is established.

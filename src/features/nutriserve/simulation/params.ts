@@ -66,7 +66,10 @@ export const PREP_V1 = {
   // second either side (1.8 s with copper handis), overcooking costs 10 points a second, and a dish
   // stops cooking at 32 s, by when every dish has lost all its prep points (a forgotten dish reads
   // as burnt, not as 26 points kept).
-  version: 'prep-v5-provisional',
+  // v6: the regular mark sits halfway between the quick and slow ones (14 s), and the perfect window
+  // is 1.2 s either side (1.8 s with copper handis is unchanged), so a dish taken off a moment late
+  // on a busy screen still counts; overcooking and the 32 s cap are as in v5.
+  version: 'prep-v6-provisional',
   /** Doneness units gained per second on the flame: one unit is one millisecond at normal heat. */
   unitsPerSecond: 1000,
   /** PROVISIONAL: units accrue this many times faster while boost is held. */
@@ -79,10 +82,10 @@ export const PREP_V1 = {
   heatUnlockLevel: 3_000,
   /** A dish stops gaining doneness here (32 s on the flame): burnt. */
   maxUnits: 32_000,
-  /** PROVISIONAL: doneness mark for each prep level, in ms on the flame (8, 13 and 20 seconds). */
-  targetUnits: { quick: 8_000, regular: 13_000, slow: 20_000 },
-  /** Units either side of the mark that count as perfect (1 s on the flame). */
-  perfectBandUnits: 1_000,
+  /** PROVISIONAL: doneness mark for each prep level, in ms on the flame (8, 14 and 20 seconds). */
+  targetUnits: { quick: 8_000, regular: 14_000, slow: 20_000 },
+  /** Units either side of the mark that count as perfect (1.2 s on the flame). */
+  perfectBandUnits: 1_200,
   /** The same window with copper handis (1.8 s on the flame). */
   wideBandUnits: 1_800,
   /** Past the window, points lost per second on the flame of overcooking. */
@@ -232,13 +235,24 @@ export function arrivalGapRange(day: number): [number, number] {
 }
 
 /**
- * What the current rule versions changed, in the player's words. The start screen lists these when
- * a save from earlier rules is carried over to a new day, so an upgrade the player already owns
- * doesn't start working differently without notice.
+ * What changed in each rules version a save may come from, oldest first per family: a save made
+ * under older rules is told every change since (ruleChangesSince in game.ts). An entry's text says
+ * what holds now, so a later entry never contradicts an earlier one shown with it.
  */
-export const RULE_CHANGES: readonly string[] = [
-  'Prep marks are now 8, 13 and 20 seconds on the flame, with a perfect window of 1 second either side (1.8 seconds with copper handis).',
-  'A dish left on the flame stops cooking at 32 seconds and is burnt: it scores 0 for prep.',
-  'A generous portion costs fewer points than before, and every exact band is at least as wide as one tap of its dispenser.',
-  'The garnish tray also halves what an off-centre garnish costs, and now costs 30 coins.',
+export const RULE_HISTORY: ReadonlyArray<{ family: string; version: number; text: string }> = [
+  { family: 'build', version: 5, text: 'Portions are graded by how close each food is to its line: a portion near the line counts as exact, a short one loses more than a generous one, and the wrong vessel costs 20 points.' },
+  { family: 'build', version: 6, text: 'The exact band around each line is narrower, and a portion further off costs more.' },
+  { family: 'build', version: 7, text: 'A generous portion costs fewer points than before, and every exact band is at least as wide as one tap of its dispenser.' },
+  { family: 'prep', version: 4, text: 'Prep is timed in seconds on the flame.' },
+  { family: 'prep', version: 5, text: 'Overcooking costs 10 points a second, and a dish left on the flame stops cooking at 32 seconds: it is burnt and scores 0 for prep.' },
+  { family: 'prep', version: 6, text: 'Prep marks are now 8, 14 and 20 seconds on the flame, with a perfect window of 1.2 seconds either side (1.8 seconds with copper handis).' },
+  { family: 'finish', version: 4, text: 'A drizzle within 12% of its target amount costs nothing; further off, it costs up to 24 points.' },
+  { family: 'progression', version: 5, text: 'The garnish tray catches pieces that fall outside the katori, instead of adding points to the finish score.' },
+  { family: 'progression', version: 6, text: 'The garnish tray also halves what an off-centre garnish costs, and now costs 30 coins.' },
 ];
+
+/** The version number in a version name ("prep-v6-provisional" is 6; NaN when there is none). */
+export function versionNumber(name: unknown): number {
+  const m = typeof name === 'string' ? /-v(\d+)/.exec(name) : null;
+  return m ? Number(m[1]) : NaN;
+}

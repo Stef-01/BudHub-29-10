@@ -2,11 +2,11 @@
 
 Start from current `main`, on a dedicated `claude/nutriserve-mechanics` branch. This is a ready-to-execute handoff, **not a claim that a Claude process has been dispatched**. No Claude executable/service was available in this Codex session.
 
-> **Update, 12 November 2026.** The owner clarified the goal as a game *inspired by* Freezeria-style kitchen-serving games, not a recreation of one. The engineering track therefore uses NutriServe's own rules (now build-v7, prep-v5, finish-v4 and the provisional waiting rules; `simulation/params.ts`) instead of the transcribed reference contract, which was removed with its tests, and the station UI uses its own colours. Every task aimed at parity with the other game is retired: the Q08/Q09 traces, R01 and R02, and the "original" comparisons in A04, A05 and C08 (see `build-track.csv`). The steps below keep their original wording where it is still true and say where it was superseded. See `CLAUDE_STATUS.md` (audits 11 to 13) and the Originality section of `ASSET_WORKFLOW.md`.
+> **Update, 12 November 2026.** The owner clarified the goal as a game *inspired by* Freezeria-style kitchen-serving games, not a recreation of one. The engineering track therefore uses NutriServe's own rules (now build-v7, prep-v6, finish-v4 and the provisional waiting rules; `simulation/params.ts`) instead of the transcribed reference contract, which was removed with its tests, and the station UI uses its own colours. Every task aimed at parity with the other game is retired: the Q08/Q09 traces, R01 and R02, and the "original" comparisons in A04, A05 and C08 (see `build-track.csv`). The steps below keep their original wording where it is still true and say where it was superseded. See `CLAUDE_STATUS.md` (audits 11 to 13) and the Originality section of `ASSET_WORKFLOW.md`.
 >
 > The gameplay track has since been implemented on `claude/continue-building-j1mrs7` and ported to `main`; `CLAUDE_STATUS.md` is its current status.
 
-User objective: a nutrition serving game inspired by the genre's four-station structure (order, build, cook, finish), adapted to Indian food. Read `REA_FINDINGS.md`, `ASSET_WORKFLOW.md`, `evidence-index.json`, `asset-roadmap.json`, and `build-track.csv` first. Current-main catalogs contain 49 foods and 33 customers; six idle sprites are accepted. The accidental Word document is irrelevant. The repository default branch was `old`; this work is based on `main`. Do not merge unrelated `old` history.
+User objective: a nutrition serving game inspired by the genre's four-station structure (order, build, cook, finish), adapted to Indian food. Read `CLAUDE_STATUS.md`, `ASSET_WORKFLOW.md`, `asset-roadmap.json` and `build-track.csv` first (`REA_FINDINGS.md` and `evidence-index.json` are a historical record of an earlier reference investigation; the game doesn't use them). Current-main catalogs contain 49 foods and 33 customers; six idle sprites are accepted. The accidental Word document is irrelevant. The repository default branch was `old`; this work is based on `main`. Do not merge unrelated `old` history.
 
 ## Ownership
 
@@ -24,7 +24,7 @@ Claude must not mark unavailable assets complete, generate fake image filenames,
 - `src/features/nutriserve/assets/characters.ts` / `CustomerSprite.tsx`: six original pilot idle sprites, shared component, deterministic identity lookup.
 - `public/assets/nutriserve/manifest.json`: source hashes, sizes, alpha measurements, visible bounds, foot anchors, review status, missing pose states.
 - ~~`src/features/nutriserve/domain/referenceScoring.ts`~~: removed 12 November 2026; the game's rules live in `simulation/params.ts` and `simulation/scoring.ts`.
-- `nutriserve-art-lab.html`: responsive scene/cast/alpha review and interactive arithmetic probes. This is a review bench, not a playable remaster.
+- `nutriserve-art-lab.html`: responsive scene, cast and alpha review. This is a review bench, not the game.
 - ~~`tests/nutriserve-reference.test.mjs`~~: removed with it.
 - `scripts/check-nutriserve-assets.mjs`: hash, PNG decoding, alpha, identity and review-gate validation.
 
@@ -41,8 +41,8 @@ Portion error is signed and affects actual grams; a single unsigned accuracy val
 ## Build sequence and gates
 
 1. **C01 — simulation spine:** queue, taking orders, concurrent dishes, station switching, four independent prep slots, seeded replay, pause/save/restore. Test a second customer arriving while prep continues offscreen.
-2. **C02 — Build station:** size choice, ingredient choice, timed meter with pointer and keyboard input, distinct under/overfill. (Superseded 12 November 2026: graded by NutriServe's own build-v5 rules.)
-3. **C03 — Prep station:** four slots, different targets, finish timing, held boost and overheat behavior. Parameters are named and versioned (now NutriServe's own `prep-v5`, provisional); the Q08 trace this step once waited on is retired, and nothing is presented as parity.
+2. **C02 — Build station:** size choice, ingredient choice, timed meter with pointer and keyboard input, distinct under/overfill. (Superseded 12 November 2026: graded by NutriServe's own build rules, now build-v7; see `CLAUDE_STATUS.md`.)
+3. **C03 — Prep station:** four slots, different targets, finish timing, held boost and overheat behavior. Parameters are named and versioned (now NutriServe's own `prep-v6`, provisional); the Q08 trace this step once waited on is retired, and nothing is presented as parity.
 4. **C04 — Finish station:** continuous held-pointer deposition, local coordinates, amount/distribution/spill accounting, discrete garnishes and order. Depends on final vessel masks (A03); the Q09 topping trace is retired. Keyboard/touch input must drive the same simulation commands.
 5. **C05 — serve/day/progression:** associate any ready dish with any taken ticket, independently grade four stations, tips/ranks/customer stars, unlocks and upgrades. Aggregation and waiting curves are NutriServe's own, provisional, and never claimed as exact (the aggregation trace is retired). Never double-save rewards on exit/replay.
 6. **C06 — nutrition integration:** canonical IDs, actual grams, required dish validation, clear educational feedback. Keep service mastery separate from nutrition targets. Character conditions must not dictate visual stereotypes.
@@ -67,4 +67,4 @@ Open `/nutriserve-art-lab.html` for art reviews. Use REA declared scenarios for 
 
 ## Status reporting
 
-Report each task as queued/in progress/blocked on named evidence or asset/reviewed. Include exact commit, changed ownership area, test outcomes, screenshot/Evidence IDs and unresolved fidelity gaps. Codex handles assets and visual review; Claude handles gameplay code. A passing production build is not a whole-game visual or mechanics sign-off.
+Report each task as queued/in progress/blocked on named evidence or asset/reviewed. Include exact commit, changed ownership area, test outcomes, screenshot/Evidence IDs and open questions. Codex handles assets and visual review; Claude handles gameplay code. A passing production build is not a whole-game visual or mechanics sign-off.

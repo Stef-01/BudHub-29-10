@@ -178,7 +178,7 @@ async function runDevice(browser, name, contextOptions, { touch = false } = {}) 
     return page.locator('.ns-lastserve').first().innerText();
   }
 
-  const targetFor = (prep) => (/QUICK/.test(prep) ? 8000 : /SLOW/.test(prep) ? 20000 : 13000); // prep-v5 marks (ms on the flame)
+  const targetFor = (prep) => (/QUICK/.test(prep) ? 8000 : /SLOW/.test(prep) ? 20000 : 14000); // prep-v6 marks (ms on the flame)
 
   // 1. Two concurrent orders cooking in two slots.
   await takeOrder();
@@ -968,8 +968,8 @@ async function runAudit12(browser) {
 }
 
 // --- Thirteenth audit ----------------------------------------------------------------------------
-async function runAudit13(browser) {
-  const tag = Date.now();
+/** Helpers for the scenarios with several tabs (audits 13 and 14). */
+function tabKit() {
   const saveKeyOf = (pg) => pg.evaluate(() => Object.keys(localStorage).find((k) => k.startsWith('nutriserve.remaster.save.v1:')));
   const toStart = async (pg) => {
     const play = pg.getByRole('button', { name: 'Play NutriServe Kitchen (preview)' });
@@ -1055,7 +1055,8 @@ async function runAudit13(browser) {
     return s;`;
   /** B resumes, the day ends, B buys the rice scoop and leaves with Save & exit. */
   const finishBuyLeave = async (B) => {
-    await B.getByRole('button', { name: 'Resume' }).click().catch(() => {});
+    // The Pause dialog's button (the HUD's is inert behind it, but this Playwright still finds it by role).
+    await B.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click({ timeout: 2000 }).catch(() => {});
     await B.waitForSelector('.ns-summary', { timeout: 20000 });
     await B.locator('.ns-upgrades li', { hasText: 'Brass rice scoop' }).getByRole('button').click();
     await B.waitForTimeout(300);
@@ -1063,6 +1064,12 @@ async function runAudit13(browser) {
     await B.waitForTimeout(400);
   };
   const told = async (pg) => /Open in another tab/.test((await pg.locator('.ns-overlay h2').allInnerTexts().catch(() => [])).join('|'));
+  return { saveKeyOf, toStart, open, cont, stored, seed, NEAR_END, MID_DAY, finishBuyLeave, told };
+}
+
+async function runAudit13(browser) {
+  const tag = Date.now();
+  const { saveKeyOf, toStart, open, cont, stored, seed, NEAR_END, MID_DAY, finishBuyLeave, told } = tabKit();
 
   // H1: a tab restored from the back/forward cache never overwrites newer progress (Playwright turns
   // the cache off, so this browser keeps it on).
@@ -1348,16 +1355,138 @@ async function runAudit13(browser) {
   }
 }
 
+async function runAudit14(browser) {
+  const tag = Date.now();
+  const { open, cont, stored, seed, NEAR_END, MID_DAY, finishBuyLeave, told } = tabKit();
+  /** The kitchen's game in a page (tickets and clock), or null. */
+  const gameOf = (pg) =>
+    pg.evaluate(() => {
+      const el = document.querySelector('.ns-root');
+      if (!el) return null;
+      let f = el[Object.keys(el).find((k) => k.startsWith('__reactFiber$'))];
+      while (f && !(f.type && f.type.name === 'Kitchen')) f = f.return;
+      const s = f?.memoizedState.memoizedState.current;
+      return s ? { tickets: s.tickets.length, now: s.nowMs, coins: s.profile.coins, ups: s.profile.upgrades.join('+') || '-' } : null;
+    });
+  const fill = (pg) =>
+    pg.evaluate(() => {
+      const big = 'x'.repeat(512 * 1024);
+      try { for (let n = 0; n < 40; n++) localStorage.setItem('gateFillA' + n, big); } catch {}
+      let size = 256 * 1024;
+      for (let k = 0; size >= 1024; ) { try { localStorage.setItem('gateFillB' + k++, 'x'.repeat(size)); } catch { size /= 2; } }
+    });
+  // The holder handles the ask `window.__delayAsk` ms late while it keeps running (a slow phone or a
+  // throttled tab; a busy loop would stall the asking tab's timer too, in this browser).
+  const DELAY_ASK = `(() => {
+    const d = Object.getOwnPropertyDescriptor(BroadcastChannel.prototype, 'onmessage');
+    Object.defineProperty(BroadcastChannel.prototype, 'onmessage', { configurable: true, get() { return d.get.call(this); }, set(fn) { d.set.call(this, fn && ((e) => { if (window.__delayAsk && e.data && e.data.kind === 'ask') setTimeout(() => fn.call(this, e), window.__delayAsk); else fn.call(this, e); })); } });
+    const add = EventTarget.prototype.addEventListener;
+    EventTarget.prototype.addEventListener = function (type, fn, o) { if (this === window && type === 'storage' && typeof fn === 'function') { const w = (e) => { if (window.__delayAsk && String(e.key).startsWith('nutriserve.remaster.handoff')) setTimeout(() => fn(e), window.__delayAsk); else fn(e); }; return add.call(this, type, w, o); } return add.call(this, type, fn, o); };
+  })()`;
+  /** A holder (in its own context) with a second ticket taken after its last autosave; storage full when `full`. */
+  const delayedHolder = async (user, full) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await seed(context, user, MID_DAY);
+    await context.addInitScript(DELAY_ASK);
+    const A = await open(context, user);
+    await cont(A);
+    await A.getByRole('button', { name: 'Resume' }).click().catch(() => {});
+    if (full) await fill(A);
+    await A.getByRole('button', { name: /^Take .* order$/ }).click().catch(() => {});
+    await A.waitForTimeout(4300); // just past an autosave
+    await A.getByRole('button', { name: /^Order station/ }).click();
+    await A.getByRole('button', { name: /^Take .* order$/ }).click().catch(() => {});
+    await A.waitForTimeout(200);
+    return { context, A };
+  };
+
+  // M1: a holder that answers after the asking tab stopped waiting (and while its kitchen opens, or
+  // after) still gets its newest state to it, with storage working or full.
+  for (const [delay, full] of [[900, false], [1000, true], [1500, false], [1500, true]]) {
+    const user = `gate14late${delay}${full ? 'f' : ''}${tag}`;
+    const { context, A } = await delayedHolder(user, full);
+    const B = await open(context, user);
+    await A.evaluate((d) => (window.__delayAsk = d), delay);
+    await cont(B);
+    await B.waitForTimeout(delay + 1200);
+    const a = await gameOf(A), b = await gameOf(B), st = await stored(B);
+    const ok = a && b && b.now === a.now && b.tickets === a.tickets && (full || st?.tickets === a.tickets) && (await told(A));
+    check(ok, `regressions: a holder answering ${delay} ms late${full ? ' with storage full' : ''} still hands over its newest state (A ${JSON.stringify(a)}, B ${JSON.stringify(b)}, stored ${st?.tickets} tickets)`);
+    await context.close();
+  }
+
+  // M2: storage full, the asking tab leaves before the (late) handover arrives: Continue here in the
+  // holder brings back its own newest state, which only it had.
+  {
+    const user = `gate14exit${tag}`;
+    const { context, A } = await delayedHolder(user, true);
+    const before = await gameOf(A);
+    const B = await open(context, user);
+    await A.evaluate(() => (window.__delayAsk = 400));
+    await B.getByRole('button', { name: /^Continue day/ }).click();
+    await B.getByRole('button', { name: 'Back to games' }).click();
+    await A.waitForTimeout(1500);
+    const aTold = await told(A);
+    await A.evaluate(() => (window.__delayAsk = 0));
+    await A.getByRole('button', { name: 'Continue here' }).click();
+    await A.waitForTimeout(1500);
+    const after = await gameOf(A);
+    check(aTold && before && after && after.tickets === before.tickets && after.now >= before.now,
+      `regressions: with storage full, a handover the asking tab never opened comes back on Continue here (before ${JSON.stringify(before)}, after ${JSON.stringify(after)})`);
+    await context.close();
+  }
+
+  // M3: after a kitchen stops (an error), another tab takes the save and plays on; "Start a new day
+  // with your progress" in the stopped tab shows the save as it now is instead of overwriting it.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate14fatal${tag}`;
+    await seed(context, user, NEAR_END);
+    const A = await open(context, user);
+    await cont(A);
+    await A.evaluate(() => {
+      const el = document.querySelector('.ns-root');
+      let f = el[Object.keys(el).find((k) => k.startsWith('__reactFiber$'))];
+      while (f && !(f.type && f.type.name === 'Kitchen')) f = f.return;
+      const ref = f.memoizedState.memoizedState;
+      ref.current = { ...ref.current, prepSlots: null, paused: false };
+    });
+    await A.getByRole('heading', { name: 'The kitchen stopped' }).waitFor({ timeout: 5000 });
+    const B = await open(context, user);
+    await cont(B);
+    await finishBuyLeave(B);
+    const afterB = await stored(A);
+    await A.getByRole('button', { name: 'Start a new day with your progress' }).click();
+    await A.waitForSelector('.ns-start');
+    await A.waitForTimeout(300);
+    const notice = await A.locator('.ns-save-notice').innerText().catch(() => '');
+    const offers = await A.getByRole('button', { name: /^Continue day/ }).count();
+    const later = await stored(A);
+    check(afterB?.ups === 'rice_scoop' && later?.ups === afterB.ups && later.coins === afterB.coins && later.done === afterB.done && /newer progress/.test(notice) && offers === 1,
+      `regressions: a stopped kitchen's "Start a new day" doesn't overwrite another tab's newer progress (${JSON.stringify(afterB)} -> ${JSON.stringify(later)}; notice "${notice.slice(0, 60)}")`);
+    await context.close();
+  }
+
+  // L: the port's union edit reads code (comments, strings, trailing pipes, generics, CRLF). The port
+  // script is branch tooling and isn't carried to main, so main's gate has no such check.
+  const portScript = path.join(__dirname, '..', 'nutriserve-port-to-main.py');
+  if (fs.existsSync(portScript)) {
+    const r = require('node:child_process').spawnSync('python3', [portScript, '--self-test'], { encoding: 'utf8' });
+    check(r.status === 0, `regressions: the port's union self-test passes (${(r.stdout || r.stderr || '').trim().split('\n').pop()})`);
+  }
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
-  // GATE_ONLY=regressions|audit11|audit12|audit13|devices runs one part (for working on it); the gate is all of them.
+  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|devices runs one part (for working on it); the gate is all of them.
   const only = process.env.GATE_ONLY;
   const part = (name) => !only || only === name;
   if (part('regressions')) await runRegressions(browser);
   if (part('audit11')) await runAudit11(browser);
   if (part('audit12')) await runAudit12(browser);
   if (part('audit13')) await runAudit13(browser);
+  if (part('audit14')) await runAudit14(browser);
   if (part('devices')) {
     results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
     results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });

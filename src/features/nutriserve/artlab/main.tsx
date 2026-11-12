@@ -59,7 +59,7 @@ function ArtLab() {
   const [backdrop, setBackdrop] = useState('cream');
   const [size, setSize] = useState(180);
   return <main className="art-lab">
-    <header className="lab-header"><div><p className="eyebrow">BUDHUB / NUTRISERVE</p><h1>Character & station review</h1><p>Six original idle sprites. Review the cast and station layout before completing the gameplay remaster.</p></div><a href="/">Back to BudHub</a></header>
+    <header className="lab-header"><div><p className="eyebrow">BUDHUB / NUTRISERVE</p><h1>Character & station review</h1><p>The six pilot idle sprites and the station layout studies, for art review. The game itself is under Games → NutriServe Kitchen (preview).</p></div><a href="/">Back to BudHub</a></header>
     <section className="review-layout" aria-label="Station integration review">
       <div className="stage-wrap"><div className={`game-stage station-${station}`}>
         <Backdrop station={station} />

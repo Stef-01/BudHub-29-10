@@ -8,7 +8,7 @@ import {
   createGame,
   getCatalogCustomer,
   RANK_THRESHOLDS,
-  RULE_CHANGES,
+  ruleChangesSince,
   seedFrom,
   UPGRADES,
   type GameState,
@@ -24,6 +24,7 @@ import { OrderStation } from './stations/OrderStation.tsx';
 import { PrepStation } from './stations/PrepStation.tsx';
 import {
   clearSave,
+  readRaw,
   readSavedGame,
   recordDayReported,
   requestHandoff,
@@ -116,16 +117,20 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
   // then acts on the save as it is AFTER the handover (`latest`), never on what this screen showed
   // before it: the other tab may have played on, bought something or finished the day meanwhile.
   const [handing, setHanding] = useState(false);
-  const afterHandoff = (then: (latest: ReturnType<typeof readSavedGame>, unanswered: boolean) => void) => {
+  const afterHandoff = (then: (latest: ReturnType<typeof readSavedGame>, unanswered: boolean, stored: string | null | undefined) => void) => {
     if (handing) return;
     setHanding(true);
     requestHandoff(props.userId).then((handed) => {
       setHanding(false);
-      then(readSavedGame(props.userId, handed.raw), handed.unanswered);
+      then(readSavedGame(props.userId, handed.raw), handed.unanswered, readRaw(props.userId));
     });
   };
+  // For a kitchen opened from the save: the save as stored then (see useNutriServeGame's openedFrom).
+  const [openedFrom, setOpenedFrom] = useState<{ stored: string | null | undefined } | undefined>(undefined);
   /** Show the start screen again for the save as it now is (it changed during the handover). */
   const refresh = () => setStorageSeq((n) => n + 1);
+  // Why the kitchen came back to this screen (e.g. another tab took over after it stopped).
+  const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => {
     if (game) return;
     const onStorage = (e: StorageEvent) => {
@@ -138,16 +143,24 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
   const begin = useCallback(
     (profile?: Profile, runId?: string) => {
       const now = Date.now();
+      setNotice(null);
+      setOpenedFrom(undefined);
       setGame(createGame({ seed: seedFrom(`${props.userId}:${now}`), profile, runId: runId ?? newRunId() }));
       setSession((n) => n + 1);
     },
     [props.userId],
   );
+  /** Back to this screen, reading the save as it now is. */
+  const startScreen = useCallback((why: string) => {
+    setNotice(why);
+    setGame(null);
+    setSession((n) => n + 1);
+  }, []);
 
   if (game) {
     return (
       <React.Fragment key={session}>
-        <Kitchen {...props} initial={game} onRestart={(profile, runId) => begin(profile, runId)} />
+        <Kitchen {...props} initial={game} openedFrom={openedFrom} onRestart={(profile, runId) => begin(profile, runId)} onStartScreen={startScreen} />
       </React.Fragment>
     );
   }
@@ -164,6 +177,11 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
           <li>Six-customer pilot cast. Food, stations and reactions use plain layout studies until final art arrives.</li>
           <li>Waiting, prep timing, finish grading and how the four scores add up are provisional house rules and may change.</li>
         </ul>
+        {notice && (
+          <p className="ns-save-notice" role="status">
+            {notice}
+          </p>
+        )}
         {!canSave && (
           <p className="ns-save-problem" role="alert">
             <b>This browser isn't letting the game save</b> (site storage is blocked or full). You can still play, but nothing is kept once you leave.
@@ -184,7 +202,7 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
               <>
                 <p>What changed:</p>
                 <ul className="ns-rule-changes">
-                  {RULE_CHANGES.map((line) => (
+                  {ruleChangesSince(problem.savedVersions).map((line) => (
                     <li key={line}>{line}</li>
                   ))}
                 </ul>
@@ -222,12 +240,14 @@ export default function NutriServeRemaster(props: NutriServeRemasterProps) {
               className="ns-btn ns-btn-primary"
               disabled={handing}
               onClick={() =>
-                afterHandoff((latest, unanswered) => {
+                afterHandoff((latest, unanswered, stored) => {
                   // A tab that held the save and didn't answer may still hand over its newer state
                   // in a moment: open paused, so this one can take it (see adoptLate in the hook).
                   const s = latest.state;
-                  if (s) setGame(unanswered && !s.paused && !s.day.completed ? applyCommand(s, { type: 'pause' }).state : s);
-                  else refresh();
+                  if (!s) return refresh();
+                  setNotice(null);
+                  setOpenedFrom({ stored });
+                  setGame(unanswered && !s.paused && !s.day.completed ? applyCommand(s, { type: 'pause' }).state : s);
                 })
               }
             >
@@ -278,8 +298,16 @@ function Kitchen({
   onExit,
   onDayComplete,
   onRestart,
-}: NutriServeRemasterProps & { initial: GameState; onRestart: (profile: Profile, runId: string) => void }) {
-  const { state, dispatch, lastError, fatal, superseded, takeOver, saveNow, saveFailed } = useNutriServeGame(initial, userId);
+  onStartScreen,
+  openedFrom,
+}: NutriServeRemasterProps & {
+  initial: GameState;
+  openedFrom?: { stored: string | null | undefined };
+  onRestart: (profile: Profile, runId: string) => void;
+  /** Leave the kitchen for the start screen, which reads the save as it now is, saying why. */
+  onStartScreen: (why: string) => void;
+}) {
+  const { state, dispatch, lastError, fatal, superseded, takeOver, saveNow, saveFailed, heldElsewhere } = useNutriServeGame(initial, userId, openedFrom);
   // One live status line showing the latest announcement or rejected command, cleared STATUS_MS
   // after the last one. Each message is its own node and the last few stay (visually hidden), so a
   // screen reader reads every message once even when the next arrives before it has finished, and
@@ -553,9 +581,26 @@ function Kitchen({
     onExit();
   };
 
+  const side = compact && sideDock;
+  // The status line (keyed: held sideways it moves to the front, see below, without being remade).
+  const statusLine = (
+    <p key="status" className="ns-status" role="status" aria-live="polite">
+      {/* Older messages stay in the region (so one already being read isn't cut off) but are
+          hidden from browse mode, which reads only the latest. */}
+      {status.messages.map((m, i) =>
+        i === status.messages.length - 1 ? (
+          <span key={m.id}>{m.text} </span>
+        ) : (
+          <span key={m.id} className="sr-only" aria-hidden="true">
+            {m.text}{' '}
+          </span>
+        )
+      )}
+    </p>
+  );
   return (
     <LayoutContext.Provider value={layout}>
-      <div className={`ns-root${compact ? ' ns-compact' : ''}${compact && sideDock ? ' ns-side-dock' : ''}`} ref={rootRef}>
+      <div className={`ns-root${compact ? ' ns-compact' : ''}${side ? ' ns-side-dock' : ''}`} ref={rootRef}>
         <header className="ns-hud" inert={modalOpen}>
           <span>
             <b>Day {state.day.number}</b> · {Math.floor(state.nowMs / 60_000)}:{String(Math.floor((state.nowMs % 60_000) / 1000)).padStart(2, '0')}
@@ -594,6 +639,8 @@ function Kitchen({
           )}
         </header>
 
+        {/* Held sideways the status line leads the left column, so it comes first there. */}
+        {side && statusLine}
         {/* The wrapper is the size container the stage's cqw text is measured against (an element
             can't be measured against itself; cqw would fall back to the window). */}
         <div className="ns-stage-wrap">
@@ -615,7 +662,17 @@ function Kitchen({
               <StationTabs state={state} dispatch={dispatch} />
             </div>
             {fatal ? (
-              <FatalOverlay message={fatal} onExit={onExit} onRestart={() => onRestart(state.profile, state.runId)} />
+              <FatalOverlay
+                message={fatal}
+                onExit={onExit}
+                // Another tab may have taken the save after this kitchen stopped, and played on: a new
+                // day from this tab's (older) progress would overwrite that, so show the save as it is.
+                onRestart={() =>
+                  heldElsewhere()
+                    ? onStartScreen('Another tab took over this kitchen after it stopped and has newer progress. Here is the save as it is now.')
+                    : onRestart(state.profile, state.runId)
+                }
+              />
             ) : superseded ? (
               <OtherTabOverlay
                 onContinue={() =>
@@ -636,32 +693,27 @@ function Kitchen({
 
         {compact && (
           // The station's controls come straight after the tabs and tickets; the last result follows
-          // them (it is also announced, and summed up in the status line).
+          // them (it is also announced, and summed up in the status line). Held sideways the slots
+          // are in the left column's order (gauges or dish list, tabs, tickets, last result) and then
+          // the controls column, so reading and Tab order follow what is on screen. Keyed, so a
+          // layout change moves the slots (and what is docked in them) instead of remaking them.
           <div className="ns-dock" inert={modalOpen}>
-            <div ref={slotRefs.tabs} className="ns-dock-tabs" />
-            <div ref={slotRefs.top} className="ns-dock-top" />
-            <div ref={slotRefs.aside} className="ns-dock-aside" />
-            <div ref={slotRefs.main} className="ns-dock-main" />
-            <LastServe result={latest} modal={modalOpen} />
+            {(side ? (['aside', 'tabs', 'top', 'last', 'main'] as const) : (['tabs', 'top', 'aside', 'main', 'last'] as const)).map((k) =>
+              k === 'last' ? (
+                <React.Fragment key="last">
+                  <LastServe result={latest} modal={modalOpen} />
+                </React.Fragment>
+              ) : (
+                <div key={k} ref={slotRefs[k]} className={`ns-dock-${k}`} />
+              )
+            )}
           </div>
         )}
 
         <p className="sr-only" aria-live="polite" data-ns-cue>
           {cueReady && cue.text && <span key={cue.id}>{cue.text}</span>}
         </p>
-        <p className="ns-status" role="status" aria-live="polite">
-          {/* Older messages stay in the region (so one already being read isn't cut off) but are
-              hidden from browse mode, which reads only the latest. */}
-          {status.messages.map((m, i) =>
-            i === status.messages.length - 1 ? (
-              <span key={m.id}>{m.text} </span>
-            ) : (
-              <span key={m.id} className="sr-only" aria-hidden="true">
-                {m.text}{' '}
-              </span>
-            )
-          )}
-        </p>
+        {!side && statusLine}
         <details className="ns-help" inert={modalOpen}>
           <summary>Controls</summary>
           <p>

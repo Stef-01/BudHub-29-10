@@ -215,6 +215,8 @@ export interface SaveSalvage {
   droppedUpgrades?: string[];
   /** Coins given back for retired upgrades (already included in `profile.coins`). */
   refundedCoins?: number;
+  /** The rule versions the save was made with (its paramVersions), when readable. */
+  savedVersions?: Record<string, string>;
 }
 
 /** Names for upgrade ids this version doesn't sell, and the coins owed back for the retired ones. */
@@ -238,7 +240,9 @@ export function salvageSave(text: string, reason: string): SaveSalvage {
   try {
     const file = JSON.parse(text);
     const state = isObj(file) ? file.state : undefined;
-    if (!isObj(state) || !profileCoreOk(state.profile)) return { reason };
+    const versions = isObj(state) && isObj(state.paramVersions) ? (Object.fromEntries(Object.entries(state.paramVersions).filter(([, v]) => isStr(v))) as Record<string, string>) : undefined;
+    const savedVersions = versions ? { savedVersions: versions } : {};
+    if (!isObj(state) || !profileCoreOk(state.profile)) return { reason, ...savedVersions };
     const p = state.profile;
     // Keep what is still meaningful: known upgrades (once each); rank recomputed from points.
     const upgrades = [...new Set<string>(p.upgrades)].filter((u) => !!lookup(UPGRADES, u));
@@ -258,6 +262,7 @@ export function salvageSave(text: string, reason: string): SaveSalvage {
       runId: isStr(state.runId) ? state.runId : undefined,
       ...(dropped.names.length ? { droppedUpgrades: dropped.names } : {}),
       ...(dropped.refund ? { refundedCoins: dropped.refund } : {}),
+      ...savedVersions,
     };
   } catch {
     return { reason };
