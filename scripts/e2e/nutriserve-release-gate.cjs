@@ -1932,10 +1932,116 @@ async function runAudit17(browser) {
   }
 }
 
+async function runAudit18(browser) {
+  const tag = Date.now();
+  const { open, toStart, cont, seed, MID_DAY, told } = tabKit();
+  const TWO_WAITING = MID_DAY.replace("run-gate-a13-mid", "run-gate-a18-two").replace(
+    "while (!s.day.customers.some((c) => c.phase === 'at_counter'))",
+    "while (s.day.customers.filter((c) => c.phase === 'at_counter').length < 2)"
+  );
+  const gameOf = (pg) =>
+    pg.evaluate(() => {
+      const el = document.querySelector('.ns-root');
+      if (!el) return null;
+      let f = el[Object.keys(el).find((k) => k.startsWith('__reactFiber$'))];
+      while (f && !(f.type && f.type.name === 'Kitchen')) f = f.return;
+      const s = f?.memoizedState.memoizedState.current;
+      return s ? { run: s.runId, tickets: s.tickets.length, now: s.nowMs, rev: s.rev ?? 0 } : null;
+    });
+  const block = (pg, ms) => pg.evaluate((ms) => new Promise((r) => setTimeout(() => { const t = performance.now(); while (performance.now() - t < ms); r(); }, 0)), ms);
+  const resume = (pg) => pg.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click({ timeout: 2000 }).catch(() => {});
+  const takeOrder = (pg) => pg.getByRole('button', { name: /^Take .* order$/ }).first().click({ timeout: 3000 }).catch(() => {});
+  const fill = (pg) =>
+    pg.evaluate(() => {
+      const big = 'x'.repeat(512 * 1024);
+      try { for (let n = 0; n < 40; n++) localStorage.setItem('gateFillA' + n, big); } catch {}
+      let size = 256 * 1024;
+      for (let k = 0; size >= 1; ) { try { localStorage.setItem('gateFillB' + k++, 'x'.repeat(size)); } catch { size = Math.floor(size / 2); } }
+    });
+  const live = async (pg) => (await pg.locator('.ns-hud').count()) > 0 && !(await told(pg));
+  /** Storage full from the start; A holds and takes an order (the caller then makes A's page busy). */
+  const busyHolder = async (context, user) => {
+    await seed(context, user, TWO_WAITING);
+    const A = await open(context, user);
+    await fill(A);
+    await cont(A);
+    await resume(A);
+    await A.waitForTimeout(500);
+    await takeOrder(A);
+    await A.waitForTimeout(800);
+    return { A, before: await gameOf(A) };
+  };
+
+  // L1: while A is busy for 3 s, B continues (unanswered: it opens the stored copy and says it took
+  // the save) and then C continues, which B hands the save to. A sends its newer play to C, the
+  // kitchen that took the save last, and C plays with A's order.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate18three${tag}`;
+    const { A, before } = await busyHolder(context, user);
+    const B = await open(context, user);
+    const C = await open(context, user);
+    const busy = block(A, 3000);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await B.waitForTimeout(200);
+    await cont(C);
+    await busy;
+    await C.waitForTimeout(3000);
+    const c = await gameOf(C), lives = [await live(A), await live(B), await live(C)];
+    check(before && before.tickets === 1 && lives.join() === 'false,false,true' && c && c.tickets === 1,
+      `regressions: with storage full, a busy holder sends its play to the kitchen that took the save last (a third tab), not to the one that handed it on (live ${lives}, C ${JSON.stringify(c)})`);
+    await context.close();
+  }
+
+  // L1: B continues during A's 3 s task and leaves again at once (Save & exit): when A wakes, no
+  // kitchen holds the save anywhere, so A goes on playing, and B's next Continue gets A's order.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate18left${tag}`;
+    const { A, before } = await busyHolder(context, user);
+    const B = await open(context, user);
+    const busy = block(A, 3000);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await B.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Save & exit' }).click({ timeout: 5000 });
+    await toStart(B);
+    await busy;
+    await A.waitForTimeout(1500);
+    const aLive = await live(A);
+    await cont(B);
+    await B.waitForTimeout(2500);
+    const b = await gameOf(B);
+    check(before && before.tickets === 1 && aLive && b && b.tickets === 1 && (await live(B)) && !(await live(A)),
+      `regressions: with storage full, a busy holder doesn't stop for a kitchen that closed again meanwhile, and hands over on the next Continue (A live after waking ${aLive}, then B ${JSON.stringify(b)})`);
+    await context.close();
+  }
+
+  // L1: B continues during A's 5 s task, is reloaded (a new tab id) and continues again: B gets A's order.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate18reload${tag}`;
+    const { A, before } = await busyHolder(context, user);
+    const B = await open(context, user);
+    const busy = block(A, 5000);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await B.reload({ waitUntil: 'networkidle' });
+    await toStart(B);
+    await cont(B);
+    await busy;
+    await B.waitForTimeout(3000);
+    const b = await gameOf(B);
+    check(before && before.tickets === 1 && b && b.tickets === 1 && (await live(B)) && !(await live(A)),
+      `regressions: with storage full, a tab reloaded while the holder was busy gets the holder's play (B ${JSON.stringify(b)})`);
+    await context.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
-  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|audit16|audit17|devices runs one part (for working on it); the gate is all of them.
+  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|audit16|audit17|audit18|devices runs one part (for working on it); the gate is all of them.
   const only = process.env.GATE_ONLY;
   const part = (name) => !only || only === name;
   if (part('regressions')) await runRegressions(browser);
@@ -1946,6 +2052,7 @@ async function runAudit17(browser) {
   if (part('audit15')) await runAudit15(browser);
   if (part('audit16')) await runAudit16(browser);
   if (part('audit17')) await runAudit17(browser);
+  if (part('audit18')) await runAudit18(browser);
   if (part('devices')) {
     results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
     results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });

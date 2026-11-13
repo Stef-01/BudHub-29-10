@@ -287,11 +287,11 @@ export function rewardsV2(total: number, size: DishSize, complete: boolean): { t
  * The finish notes: the penalties whose own loss shows in the finish score (it would read higher
  * without that one), largest first, the top three; when only their sum shows, the largest alone.
  * Each says its share of the points the score lost: the lost points split in proportion to the
- * penalties and rounded so the shares add up to them, the points left by rounding down going first
- * to penalties whose loss shows (then by largest remainder). So the notes never add up to more than
- * the score lost, a lone penalty reads exactly that (7.5 points read −7 beside a finish of 93, as
- * the score rounds 92.5 up), and none reads more than its share rounded up. The largest alone, when
- * every penalty is under a point, reads "under a point".
+ * penalties and rounded so the shares add up to them (the points left by rounding down go to shares
+ * that were rounded down, those of penalties whose loss shows first, then by largest remainder). So
+ * the notes never add up to more than the score lost, a lone penalty reads exactly that (7.5 points
+ * read −7 beside a finish of 93, as the score rounds 92.5 up), and none reads more than its share
+ * rounded up. The largest alone, when every penalty is under a point, reads "under a point".
  */
 export function finishNotes(penalties: FinishGrade['penalties']): string[] {
   const sorted = penalties.filter((p) => p.points > 0).sort((a, b) => b.points - a.points);
@@ -304,7 +304,9 @@ export function finishNotes(penalties: FinishGrade['penalties']): string[] {
   const exact = sorted.map((p) => (p.points * lost) / total);
   const share = exact.map((x) => Math.floor(x + 1e-9));
   let left = lost - share.reduce((sum, n) => sum + n, 0);
-  const order = [...index].sort((i, j) => Number(shows[j]) - Number(shows[i]) || exact[j] - share[j] - (exact[i] - share[i]) || i - j);
+  // Only shares rounded down get a point (there are always enough), those whose loss shows first.
+  const rest = (i: number) => exact[i] - share[i] > 1e-9;
+  const order = index.filter(rest).sort((i, j) => Number(shows[j]) - Number(shows[i]) || exact[j] - share[j] - (exact[i] - share[i]) || i - j);
   for (const i of order) {
     if (left <= 0) break;
     share[i] += 1;
