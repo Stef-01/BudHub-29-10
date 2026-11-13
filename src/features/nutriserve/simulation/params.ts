@@ -80,7 +80,15 @@ export const PREP_V1 = {
   // are now 8.5, 12.5 and 21 s (steps of 4 and 8.5 s: a regular dish is a little quicker than on
   // prep-v6, a slow one a little slower), with v7's window, and a dish burns at 33 s, by when every
   // dish has lost all its prep points. Checked against the same derived values: none matches.
-  version: 'prep-v8-provisional',
+  // v9: v8's quick-to-regular step (4 s) was the other game's first target less twice its tolerance
+  // at 150 units a second, and its slow mark and burn time were whole seconds, which at that rate
+  // every value built from the other game's numbers is (they are all multiples of 150 units). The
+  // marks are now 8.5, 12.6 and 21.2 s (steps of 4.1 and 8.6 s) with v8's window, and a dish burns at
+  // 33.5 s: at 150 units a second no prep number (mark, step, window edge or width, burn time) is a
+  // whole number of seconds, and at 1 unit a millisecond none is one of the values derived from the
+  // other game's (its targets, their tolerance either side once and twice, half targets, widths,
+  // clamp and bound).
+  version: 'prep-v9-provisional',
   /** Doneness units gained per second on the flame: one unit is one millisecond at normal heat. */
   unitsPerSecond: 1000,
   /** PROVISIONAL: units accrue this many times faster while boost is held. */
@@ -91,10 +99,10 @@ export const PREP_V1 = {
   heatCoolPerMs: 2,
   /** After overheating, boost is locked and nothing cooks until heat falls back to this level. */
   heatUnlockLevel: 3_000,
-  /** A dish stops gaining doneness here (33 s on the flame): burnt. */
-  maxUnits: 33_000,
-  /** PROVISIONAL: doneness mark for each prep level, in ms on the flame (8.5, 12.5 and 21 seconds). */
-  targetUnits: { quick: 8_500, regular: 12_500, slow: 21_000 },
+  /** A dish stops gaining doneness here (33.5 s on the flame): burnt. */
+  maxUnits: 33_500,
+  /** PROVISIONAL: doneness mark for each prep level, in ms on the flame (8.5, 12.6 and 21.2 seconds). */
+  targetUnits: { quick: 8_500, regular: 12_600, slow: 21_200 },
   /** Units either side of the mark that count as perfect (1.3 s on the flame). */
   perfectBandUnits: 1_300,
   /** The same window with copper handis (1.9 s on the flame). */
@@ -258,7 +266,8 @@ export const RULE_HISTORY: ReadonlyArray<{ family: string; version: number; text
   { family: 'prep', version: 5, text: 'Overcooking costs 10 points a second, and a dish left on the flame long enough burns: it stops cooking and scores 0 for prep.' },
   { family: 'prep', version: 6, text: 'The perfect window at each prep mark is wider.' },
   { family: 'prep', version: 7, text: 'The perfect window at each prep mark is a little wider again, with copper handis too.' },
-  { family: 'prep', version: 8, text: 'Prep marks are now 8.5, 12.5 and 21 seconds on the flame, with a perfect window of 1.3 seconds either side (1.9 seconds with copper handis); a dish left on the flame burns at 33 seconds.' },
+  { family: 'prep', version: 8, text: 'The prep marks moved.' },
+  { family: 'prep', version: 9, text: 'Prep marks are now 8.5, 12.6 and 21.2 seconds on the flame, with a perfect window of 1.3 seconds either side (1.9 seconds with copper handis); a dish left on the flame burns at 33.5 seconds.' },
   { family: 'finish', version: 4, text: 'A drizzle within 12% of its target amount costs nothing; further off, it costs up to 24 points.' },
   { family: 'progression', version: 5, text: 'The garnish tray catches pieces that fall outside the katori, instead of adding points to the finish score.' },
   { family: 'progression', version: 6, text: 'The garnish tray also halves what an off-centre garnish costs, and now costs 30 coins.' },

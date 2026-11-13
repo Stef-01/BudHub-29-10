@@ -196,8 +196,8 @@ export interface GameState {
   rngState: number;
   nowMs: number;
   /**
-   * How many commands that play the game (anything but selecting, pausing and letting go of held
-   * controls) have been applied; absent until the first. With nowMs it orders two copies of one
+   * How many commands that play the game (anything but selecting, pausing, letting go of held
+   * controls and recording a report; see countsAsPlay) have been applied; absent until the first. With nowMs it orders two copies of one
    * day: at the same game time (paused, or on the day summary) the copy with the higher rev has
    * more done, e.g. a purchase.
    */

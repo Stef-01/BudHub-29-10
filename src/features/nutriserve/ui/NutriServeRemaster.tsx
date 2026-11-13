@@ -307,7 +307,7 @@ function Kitchen({
   /** Leave the kitchen for the start screen, which reads the save as it now is, saying why. */
   onStartScreen: (why: string) => void;
 }) {
-  const { state, dispatch, lastError, fatal, superseded, takeOver, saveNow, saveFailed, heldElsewhere } = useNutriServeGame(initial, userId, openedFrom);
+  const { state, dispatch, lastError, fatal, superseded, takeOver, saveSettled, saveFailed, heldElsewhere } = useNutriServeGame(initial, userId, openedFrom);
   // One live status line showing the latest announcement or rejected command, cleared STATUS_MS
   // after the last one. Each message is its own node and the last few stay (visually hidden), so a
   // screen reader reads every message once even when the next arrives before it has finished, and
@@ -572,13 +572,22 @@ function Kitchen({
   const latest = state.day.results[state.day.results.length - 1];
   const nextRank = RANK_THRESHOLDS[state.profile.rank];
 
+  // Save & exit. Right after a long task the save waits a moment for other tabs' changes to reach
+  // this page (useNutriServeGame's settled), so a second click meanwhile does nothing.
+  const leaving = useRef(false);
   const exit = () => {
-    if (
-      !saveNow() &&
-      !window.confirm("This browser isn't letting the game save (site storage is blocked or full), so this day won't be here when you come back. Leave anyway?")
-    )
-      return;
-    onExit();
+    if (leaving.current) return;
+    leaving.current = true;
+    saveSettled((saved) => {
+      if (
+        !saved &&
+        !window.confirm("This browser isn't letting the game save (site storage is blocked or full), so this day won't be here when you come back. Leave anyway?")
+      ) {
+        leaving.current = false;
+        return;
+      }
+      onExit();
+    });
   };
 
   const side = compact && sideDock;

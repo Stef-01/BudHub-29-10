@@ -110,7 +110,7 @@ export function prepBandUnits(effects?: UpgradeEffects): number {
 }
 
 /**
- * ADAPTATION gradePrep (prep-v3 rules, prep-v8 numbers). Within the perfect window around the level's mark: 100. Short of
+ * ADAPTATION gradePrep (prep-v3 rules, prep-v9 numbers). Within the perfect window around the level's mark: 100. Short of
  * the window, the dish earns its share of the way there (a dish taken out half way scores 50, a raw
  * one 0). Past the window it loses overPointsPerSecond for every second on the flame it stayed on.
  * A dish that never went into a handi scores 0.
@@ -301,10 +301,10 @@ export function serveNotes(
   // Where the vessel note goes (most important first), once it is known to show (below).
   const vesselAt = notes.length;
   // A note says what cost points, and only for a loss the shown score shows: the vessel note and
-  // portion notes appear only when the build score would read higher without that loss (a wrong
+  // each portion note appear only when the build score would read higher without that loss (a wrong
   // vessel beside three missing or wrong foods, or a portion a hair outside its band beside a wrong
-  // vessel or a missing food, gets none). Portions costing under half a point are listed only when
-  // nothing larger is.
+  // vessel or a missing food, gets none). When no single portion's loss shows but together they do,
+  // the largest is named.
   const portionNotes: Array<{ text: string; points: number }> = [];
   let earned = 0;
   for (const c of ['base', 'main', 'side'] as const) {
@@ -329,7 +329,7 @@ export function serveNotes(
   }
   const portionLosses = portionNotes.reduce((sum, n) => sum + n.points, 0);
   if (scores.build < 100 && portionNotes.length && clampScore(buildRaw + portionLosses) !== clampScore(buildRaw)) {
-    const shown = portionNotes.filter((n) => n.points >= 0.5);
+    const shown = portionNotes.filter((n) => clampScore(buildRaw + n.points) !== clampScore(buildRaw));
     for (const n of shown.length ? shown : [[...portionNotes].sort((a, b) => b.points - a.points)[0]]) notes.push(n.text);
   }
   // Every station score below 100 gets at least one note, so "No points lost" is never shown when
