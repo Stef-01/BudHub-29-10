@@ -430,7 +430,8 @@ export function applyCommand(state: GameState, command: Command): { state: GameS
   const s = structuredClone(state);
   const error = run(s, command);
   if (error) return fail(state, error);
-  if (countsAsPlay(command)) s.rev = (state.rev ?? 0) + 1;
+  // Held at the largest safe integer, so a save that reached it still loads (see save.ts).
+  if (countsAsPlay(command)) s.rev = Math.min(Number.MAX_SAFE_INTEGER, (state.rev ?? 0) + 1);
   return { state: s, result: { ok: true } };
 }
 

@@ -199,7 +199,7 @@ export interface GameState {
    * How many commands that play the game (anything but selecting, pausing, letting go of held
    * controls and recording a report; see countsAsPlay) have been applied; absent until the first. With nowMs it orders two copies of one
    * day: at the same game time (paused, or on the day summary) the copy with the higher rev has
-   * more done, e.g. a purchase.
+   * more done, e.g. a purchase. A safe integer, held at Number.MAX_SAFE_INTEGER once it gets there.
    */
   rev?: number;
   paused: boolean;
