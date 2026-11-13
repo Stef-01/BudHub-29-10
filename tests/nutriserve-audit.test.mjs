@@ -1162,12 +1162,19 @@ test('finish notes say no more than the finish score lost, and name only losses 
   }
   // 25.83 + 0.67: the finish reads 74 with or without the smaller one, so it isn't named.
   assert.deepEqual(read([{ reason: 'Big', points: 25.83 }, { reason: 'Small', points: 0.67 }]), [['Big', 26]]);
+  // Audit 18: a share that is already whole gets no point from rounding. 12 + 4 × 0.25 reads 12
+  // beside 87 (the point the small ones lost together stays theirs), and at a finish of 0 each
+  // whole-point penalty reads its share exactly.
+  const quarter = (i) => ({ reason: `Small ${i}`, points: 0.25 });
+  assert.deepEqual(read([{ reason: 'Missing 2 Onion', points: 12 }, ...[1, 2, 3, 4].map(quarter)]), [['Missing 2 Onion', 12]]);
+  const zero = [['Order', 8], ['Fell', 3], ['Missing', 24], ['Extra', 60], ['Mint', 30]].map(([reason, points]) => ({ reason, points }));
+  for (const [name, n] of read(zero)) assert.ok(n <= Math.ceil((zero.find((p) => p.reason === name).points * 100) / 125 - 1e-9), `${name} −${n}`);
   // Random penalties (whole, half, small and large): the numbers never add up to more than the
   // score lost; a lone penalty reads all of it; each named penalty's own loss shows, except the
   // largest alone when only their sum does; at most three.
   let seed = 17;
   const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
-  const pick = () => { const r = rnd(); return r < 0.25 ? Math.round(rnd() * 40) / 2 : r < 0.5 ? rnd() * 0.9 : rnd() * 30; };
+  const pick = () => { const r = rnd(); return r < 0.2 ? Math.round(rnd() * 40) / 2 : r < 0.4 ? Math.round(rnd() * 60) : r < 0.6 ? rnd() * 0.9 : rnd() * 30; };
   for (let k = 0; k < 20_000; k++) {
     const pens = Array.from({ length: 1 + Math.floor(rnd() * 6) }, (_, i) => ({ reason: `P${i}`, points: pick() })).filter((p) => p.points > 0);
     const total = pens.reduce((sum, p) => sum + p.points, 0);

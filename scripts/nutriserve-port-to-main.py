@@ -201,7 +201,8 @@ def union_with(text, type_name, value, members_only=False):
     def skip_string(i):
         q, j = text[i], i + 1
         while j < n and text[j] != q and text[j] not in '\n\r':
-            j += 2 if text[j] == '\\' else 1
+            # A backslash escapes the next character, or continues the string past a CRLF.
+            j += (3 if text.startswith('\r\n', j + 1) else 2) if text[j] == '\\' else 1
         return min(j + 1, n)
 
     def skip_code_until_brace(i):
@@ -244,8 +245,9 @@ def union_with(text, type_name, value, members_only=False):
     def tokens(i, prev=None):
         """(kind, start, end) from i: kinds ws, nl (a line break, or a comment holding one),
         comment, str, tpl, regex, word, punct. `prev` is the last significant token's text."""
-        # For each open '(': does it follow the statement if/while/for/with (not a method of that
-        # name, `obj.if(..)`)? Then a '/' after its ')' is a regex. `before` is the token before prev.
+        # For each open '(': does it follow the statement if/while/for/with or `for await` (not a
+        # method of that name, `obj.if(..)` or `this.#if(..)`)? Then a '/' after its ')' is a regex.
+        # `before` is the token before prev.
         parens, before = [], None
         while i < n:
             c = text[i]
@@ -295,7 +297,7 @@ def union_with(text, type_name, value, members_only=False):
                     yield 'punct', i, j
                     t = text[i:j]
                     if t == '(':
-                        parens.append(prev in ('if', 'while', 'for', 'with') and before != '.')
+                        parens.append((prev in ('if', 'while', 'for', 'with') and before not in ('.', '#')) or (prev == 'await' and before == 'for'))
                     elif t == ')' and parens and parens.pop():
                         t = ';'  # a statement follows the condition
                     before, prev, i = prev, t, j
@@ -709,6 +711,14 @@ if SELF_TEST:
         ("export type M = 'a' | readonly string[];\n", "export type M = 'a' | readonly string[] | 'x';\n"),
         ("export type M = 'a' | keyof ('x' | 'y');\n", "export type M = 'a' | keyof ('x' | 'y') | 'x';\n"),
         ("export type M = 'a' | 'x'[];\n", "export type M = 'a' | 'x'[] | 'x';\n"),
+        # Audit 18: `this.#if(..)` is a call; `for await (..)` is a statement; a backslash before a
+        # CRLF continues a string.
+        ("class K { #if(n: number) { return n; } q = this.#if(1) / 2; s = \"/ export type M = 'z';\"; }\nexport type M = 'a';\n",
+         "class K { #if(n: number) { return n; } q = this.#if(1) / 2; s = \"/ export type M = 'z';\"; }\nexport type M = 'a' | 'x';\n"),
+        ("async function f(xs: AsyncIterable<string>, y: string) { for await (const v of xs) /'/.test(y); }\nexport type M = 'a';\n",
+         "async function f(xs: AsyncIterable<string>, y: string) { for await (const v of xs) /'/.test(y); }\nexport type M = 'a' | 'x';\n"),
+        ("const L = 'line\\\r\nexport type M = 1';\r\nexport type M = 'a';\r\n", "const L = 'line\\\r\nexport type M = 1';\r\nexport type M = 'a' | 'x';\r\n"),
+        ("export type M = 'a' | '\\\r\nx';\r\n", None),
     ]
     bad = 0
     for text, want in cases:
