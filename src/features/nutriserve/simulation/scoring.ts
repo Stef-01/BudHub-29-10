@@ -283,6 +283,39 @@ export function rewardsV2(total: number, size: DishSize, complete: boolean): { t
   return { tip, points: Math.round(total / ECONOMY_V1.pointsDivisor), stars };
 }
 
+/**
+ * The finish notes: the penalties whose own loss shows in the finish score (it would read higher
+ * without that one), largest first, the top three; when only their sum shows, the largest alone.
+ * Each says its share of the points the score lost: the lost points split in proportion to the
+ * penalties and rounded so the shares add up to them, the points left by rounding down going first
+ * to penalties whose loss shows (then by largest remainder). So the notes never add up to more than
+ * the score lost, a lone penalty reads exactly that (7.5 points read −7 beside a finish of 93, as
+ * the score rounds 92.5 up), and none reads more than its share rounded up. The largest alone, when
+ * every penalty is under a point, reads "under a point".
+ */
+export function finishNotes(penalties: FinishGrade['penalties']): string[] {
+  const sorted = penalties.filter((p) => p.points > 0).sort((a, b) => b.points - a.points);
+  const total = sorted.reduce((sum, p) => sum + p.points, 0);
+  const score = clampScore(100 - total);
+  const lost = 100 - score;
+  if (lost <= 0) return [];
+  const index = sorted.map((_, i) => i);
+  const shows = index.map((i) => clampScore(100 - total + sorted[i].points) !== score);
+  const exact = sorted.map((p) => (p.points * lost) / total);
+  const share = exact.map((x) => Math.floor(x + 1e-9));
+  let left = lost - share.reduce((sum, n) => sum + n, 0);
+  const order = [...index].sort((i, j) => Number(shows[j]) - Number(shows[i]) || exact[j] - share[j] - (exact[i] - share[i]) || i - j);
+  for (const i of order) {
+    if (left <= 0) break;
+    share[i] += 1;
+    left -= 1;
+  }
+  const named = index.filter((i) => shows[i] && share[i] >= 1).sort((i, j) => share[j] - share[i] || i - j);
+  if (named.length) return named.slice(0, 3).map((i) => `${sorted[i].reason} (−${share[i]})`);
+  const top = sorted[0];
+  return [`${top.reason} (−${top.points < 1 ? '<1' : share[0]})`];
+}
+
 /** Short plain-language reasons for a serve's scores, most important first (shown to the player). */
 export function serveNotes(
   dish: Dish,
@@ -345,13 +378,7 @@ export function serveNotes(
       notes.push(`Undercooked: ${tenths(prepSecondsDown(units))} s on the flame; perfect from ${tenths(prepSeconds(target - band))} s (mark ${mark} s)`);
     else notes.push(`Overcooked: ${tenths(prepSecondsUp(units))} s on the flame; perfect up to ${tenths(prepSeconds(target + band))} s (mark ${mark} s)`);
   }
-  // Finish penalties largest first, the top three. Ones under half a point are listed only when
-  // nothing larger explains a lost point.
-  if (scores.finish < 100) {
-    const sorted = [...finishPenalties].sort((a, b) => b.points - a.points);
-    const shown = sorted.filter((p) => p.points >= 0.5).slice(0, 3);
-    for (const p of shown.length ? shown : sorted.slice(0, 1)) notes.push(`${p.reason} (−${p.points >= 0.5 ? Math.round(p.points) : '<1'})`);
-  }
+  if (scores.finish < 100) notes.push(...finishNotes(finishPenalties));
   if (scores.waiting < 100) notes.push(`Waited ${Math.round(waitedMs / 1000)} s`);
   return notes;
 }

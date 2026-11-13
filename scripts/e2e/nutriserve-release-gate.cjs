@@ -1798,10 +1798,144 @@ async function runAudit16(browser) {
   }
 }
 
+async function runAudit17(browser) {
+  const tag = Date.now();
+  const { open, toStart, cont, seed, MID_DAY, told } = tabKit();
+  const TWO_WAITING = MID_DAY.replace("run-gate-a13-mid", "run-gate-a17-two").replace(
+    "while (!s.day.customers.some((c) => c.phase === 'at_counter'))",
+    "while (s.day.customers.filter((c) => c.phase === 'at_counter').length < 2)"
+  );
+  const gameOf = (pg) =>
+    pg.evaluate(() => {
+      const el = document.querySelector('.ns-root');
+      if (!el) return null;
+      let f = el[Object.keys(el).find((k) => k.startsWith('__reactFiber$'))];
+      while (f && !(f.type && f.type.name === 'Kitchen')) f = f.return;
+      const s = f?.memoizedState.memoizedState.current;
+      return s ? { run: s.runId, tickets: s.tickets.length, now: s.nowMs, rev: s.rev ?? 0 } : null;
+    });
+  const storedGame = (pg) =>
+    pg.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.startsWith('nutriserve.remaster.save.v1:'));
+      const raw = k && localStorage.getItem(k);
+      if (!raw) return null;
+      const s = JSON.parse(raw).state;
+      return { run: s.runId, tickets: s.tickets.length, now: s.nowMs, rev: s.rev ?? 0 };
+    });
+  const block = (pg, ms) => pg.evaluate((ms) => new Promise((r) => setTimeout(() => { const t = performance.now(); while (performance.now() - t < ms); r(); }, 0)), ms);
+  const resume = (pg) => pg.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click({ timeout: 2000 }).catch(() => {});
+  const takeOrder = (pg) => pg.getByRole('button', { name: /^Take .* order$/ }).first().click({ timeout: 3000 }).catch(() => {});
+  const fill = (pg) =>
+    pg.evaluate(() => {
+      const big = 'x'.repeat(512 * 1024);
+      try { for (let n = 0; n < 40; n++) localStorage.setItem('gateFillA' + n, big); } catch {}
+      let size = 256 * 1024;
+      for (let k = 0; size >= 1; ) { try { localStorage.setItem('gateFillB' + k++, 'x'.repeat(size)); } catch { size = Math.floor(size / 2); } }
+    });
+
+  // L1: storage full from the start (no writer record, and the request goes only over the channel).
+  // The holder takes an order, then its page is busy for 3 s while another tab continues: that tab
+  // says over the channel that it took the save, so the holder stops when its task ends and sends
+  // its newer copy; only one tab plays, with the order.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate17full${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    await fill(A);
+    await cont(A);
+    await resume(A);
+    await A.waitForTimeout(500);
+    await takeOrder(A);
+    await A.waitForTimeout(800);
+    const before = await gameOf(A);
+    const B = await open(context, user);
+    const busy = block(A, 3000);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await busy;
+    await B.waitForTimeout(2500);
+    const b = await gameOf(B), aTold = await told(A), bTold = await told(B);
+    check(before && before.tickets === 1 && aTold && !bTold && b && b.tickets === before.tickets,
+      `regressions: with storage full, a holder busy for 3 s stops when another tab took the save meanwhile, and that tab gets its order (A stopped ${aTold}, B stopped ${bTold}, B ${JSON.stringify(b)}, A had ${JSON.stringify(before)})`);
+    await context.close();
+  }
+
+  // L2: a tab takes an order and leaves (Save & exit); storage fills up; another tab continues that
+  // copy and takes a second order (it can't save it), then is busy for 1.5 s while the first tab
+  // continues: the first tab takes the second tab's later copy, which follows from the one it saved.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate17played${tag}`;
+    await seed(context, user, TWO_WAITING);
+    const A = await open(context, user);
+    await cont(A);
+    await resume(A);
+    await A.waitForTimeout(300);
+    await takeOrder(A);
+    await A.waitForTimeout(300);
+    await A.getByRole('button', { name: 'Save & exit' }).first().click();
+    await toStart(A);
+    const saved = await storedGame(A);
+    await fill(A);
+    const C = await open(context, user);
+    await cont(C);
+    await resume(C);
+    await takeOrder(C);
+    await C.waitForTimeout(200);
+    const c = await gameOf(C);
+    const busy = block(C, 1500);
+    await A.waitForTimeout(100);
+    await cont(A);
+    await busy;
+    await A.waitForTimeout(2500);
+    const a = await gameOf(A), aTold = await told(A), cTold = await told(C);
+    check(saved && saved.tickets === 1 && c && c.tickets === 2 && a && a.tickets === 2 && !aTold && cTold,
+      `regressions: with storage full, a reopened kitchen takes another tab's later play on the copy it saved (A ${JSON.stringify(a)}, C had ${JSON.stringify(c)}, A stopped ${aTold}, C stopped ${cTold})`);
+    await context.close();
+  }
+
+  // And a fork is still refused with storage full: as audit 16's L1, but storage fills up after the
+  // tab that played leaves, so it can't tell from a writer record that the busy tab held the save.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate17fork${tag}`;
+    await seed(context, user, MID_DAY);
+    const A = await open(context, user);
+    const B = await open(context, user);
+    await cont(A);
+    await resume(A);
+    for (let i = 0; i < 120; i++) {
+      const a = await gameOf(A), st = await storedGame(A);
+      if (a && st && a.now - st.now >= 2500) break;
+      await A.waitForTimeout(50);
+    }
+    const busy = block(A, 9000);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await resume(B);
+    await B.waitForTimeout(300);
+    await takeOrder(B);
+    await B.waitForTimeout(300);
+    await B.getByRole('button', { name: /^Pause/ }).first().click();
+    await B.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Save & exit' }).click();
+    await toStart(B);
+    await fill(B);
+    await cont(B);
+    const reopened = await gameOf(B);
+    await busy;
+    await B.waitForTimeout(3000);
+    const b = await gameOf(B);
+    check(reopened && reopened.tickets >= 1 && b && b.tickets === reopened.tickets && !(await told(B)) && (await told(A)),
+      `regressions: with storage full too, a kitchen reopened in the tab that played keeps that play over a busy tab's late fork (reopened ${JSON.stringify(reopened)}, then ${JSON.stringify(b)})`);
+    await context.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
-  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|audit16|devices runs one part (for working on it); the gate is all of them.
+  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|audit16|audit17|devices runs one part (for working on it); the gate is all of them.
   const only = process.env.GATE_ONLY;
   const part = (name) => !only || only === name;
   if (part('regressions')) await runRegressions(browser);
@@ -1811,6 +1945,7 @@ async function runAudit16(browser) {
   if (part('audit14')) await runAudit14(browser);
   if (part('audit15')) await runAudit15(browser);
   if (part('audit16')) await runAudit16(browser);
+  if (part('audit17')) await runAudit17(browser);
   if (part('devices')) {
     results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
     results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });

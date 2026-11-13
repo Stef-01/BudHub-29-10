@@ -481,7 +481,7 @@ test('the nutrition report never blames the player for a perfectly served order'
 });
 
 // --- Fourth audit, 2026-11-11 ------------------------------------------------------------------
-import { rewardsV2, orderComplete, ticketForNewDish, serveNotes } from '../src/features/nutriserve/simulation/index.ts';
+import { rewardsV2, orderComplete, ticketForNewDish, serveNotes, finishNotes } from '../src/features/nutriserve/simulation/index.ts';
 
 test('five stars and the great bonus need a complete order (economy-v2)', () => {
   assert.deepEqual(rewardsV2(92, 'large', true), { tip: 10, points: 9, stars: 5 });
@@ -917,9 +917,13 @@ test('every station score under 100 has a note, so "No points lost" never hides 
       if (build < 100) assert.ok(credit < 1);
     }
   }
-  // Finish: penalties that are each under half a point but cost a point together are still named.
+  // Finish: penalties that are each under half a point but cost a point together are still named
+  // (without the larger one the finish would read 100).
   const small = [{ reason: 'Garnish balance', points: 0.4 }, { reason: 'Steps out of order', points: 0.3 }];
-  assert.ok(all({ finish: 99 }, dish, small).includes('Garnish balance (−<1)'));
+  assert.deepEqual(all({ finish: 99 }, dish, small).filter((n) => /\(−/.test(n)), ['Garnish balance (−1)']);
+  // Three under half a point: none alone moves the score, so the largest is named, as under a point.
+  const tiny = [{ reason: 'Garnish balance', points: 0.45 }, { reason: 'Steps out of order', points: 0.4 }, { reason: 'Garnish fell off', points: 0.4 }];
+  assert.deepEqual(all({ finish: 99 }, dish, tiny).filter((n) => /\(−/.test(n)), ['Garnish balance (−<1)']);
   assert.deepEqual(all({ finish: 100 }, dish, small).filter((n) => /\(−/.test(n)), []);
 });
 
@@ -1146,6 +1150,56 @@ test('recording a report is not playing: it leaves rev alone', () => {
   assert.equal(marked.rev, before);
 });
 
+test('finish notes say no more than the finish score lost, and name only losses it shows (audit 17)', () => {
+  const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
+  // [name, points the note says] ('<1' reads as 0).
+  const read = (pens) => finishNotes(pens).map((t) => [t.replace(/ \(−(\d+|<1)\)$/, ''), /\(−<1\)$/.test(t) ? 0 : Number(/\(−(\d+)\)$/.exec(t)?.[1])]);
+  // A lone 7.5-point penalty: the finish reads 93 (92.5 rounds up), so the note says 7, not 8.
+  for (const [points, lost] of [[7.5, 7], [2.5, 2], [12.5, 12], [0.6, 1], [0.4, 0], [130, 100]]) {
+    const notes = read([{ reason: 'Curd swirl not spread evenly', points }]);
+    assert.deepEqual(notes, lost ? [['Curd swirl not spread evenly', lost]] : [], `${points}`);
+    assert.equal(100 - clamp(100 - points), lost);
+  }
+  // 25.83 + 0.67: the finish reads 74 with or without the smaller one, so it isn't named.
+  assert.deepEqual(read([{ reason: 'Big', points: 25.83 }, { reason: 'Small', points: 0.67 }]), [['Big', 26]]);
+  // Random penalties (whole, half, small and large): the numbers never add up to more than the
+  // score lost; a lone penalty reads all of it; each named penalty's own loss shows, except the
+  // largest alone when only their sum does; at most three.
+  let seed = 17;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const pick = () => { const r = rnd(); return r < 0.25 ? Math.round(rnd() * 40) / 2 : r < 0.5 ? rnd() * 0.9 : rnd() * 30; };
+  for (let k = 0; k < 20_000; k++) {
+    const pens = Array.from({ length: 1 + Math.floor(rnd() * 6) }, (_, i) => ({ reason: `P${i}`, points: pick() })).filter((p) => p.points > 0);
+    const total = pens.reduce((sum, p) => sum + p.points, 0);
+    const score = clamp(100 - total), lost = 100 - score;
+    const notes = read(pens);
+    const why = `${JSON.stringify(pens)} -> ${score}: ${JSON.stringify(notes)}`;
+    if (lost === 0) { assert.deepEqual(notes, [], why); continue; }
+    assert.ok(notes.length >= 1 && notes.length <= 3, why);
+    // A number of at least 1, or "under a point" for a penalty that is.
+    assert.ok(notes.every(([name, n]) => n >= 1 || pens.find((p) => p.reason === name).points < 1), why);
+    assert.ok(notes.reduce((sum, [, n]) => sum + n, 0) <= lost, why);
+    // None says more than its proportional share of the lost points, rounded up.
+    for (const [name, n] of notes) assert.ok(n <= Math.ceil((pens.find((p) => p.reason === name).points * lost) / total - 1e-9), why);
+    if (pens.length === 1) assert.equal(notes[0][1], lost, why);
+    const shows = (p) => clamp(100 - total + p.points) !== score;
+    const named = notes.map(([name]) => pens.find((p) => p.reason === name));
+    if (named.some((p) => !shows(p))) {
+      assert.equal(notes.length, 1, why);
+      assert.ok(!pens.some(shows) && named[0].points === Math.max(...pens.map((p) => p.points)), why);
+    }
+  }
+});
+
+test('a save whose rev reached the largest safe integer stays loadable after more play (audit 17)', () => {
+  let s = advanceUntil(game(42), atCounter);
+  s = { ...s, rev: Number.MAX_SAFE_INTEGER };
+  assert.equal(deserializeGame(serializeGame(s)).rev, Number.MAX_SAFE_INTEGER);
+  s = cmd(s, { type: 'takeOrder' });
+  assert.equal(s.rev, Number.MAX_SAFE_INTEGER);
+  assert.equal(deserializeGame(serializeGame(s)).rev, Number.MAX_SAFE_INTEGER);
+});
+
 test('a version renamed without a new number still says what its rules are', () => {
   const lines = ruleChangesSince({ ...PARAM_VERSIONS, prep: PARAM_VERSIONS.prep.replace('-provisional', '') });
   assert.equal(lines.length, 1);
@@ -1197,4 +1251,13 @@ test("prep-v9's numbers don't land on values derived from the other game's", () 
     assert.ok(new Set(shifts.map((x) => x.toFixed(3))).size === 3, `marks are the targets shifted evenly at ${rate}/s`);
   }
   assert.notEqual(marks[1] - marks[0], marks[2] - marks[1], 'the marks are not evenly spaced');
+  // Scope: these are the prep numbers themselves. Differences between them (the gap between two
+  // windows, copper's widening of 0.6 s) are not checked, and some do land on listed values. At 1
+  // unit a millisecond the counterpart of the whole-seconds rule would be "no multiple of 0.15 s",
+  // which numbers in tenths of a second can't meet: of a mark, its half-window and its two window
+  // edges, one is always a multiple of 0.3 s. So at that rate the check is the list above.
+  for (const m of marks) for (const b of [p, c]) {
+    const tenths = [m, b, m - b, m + b].map((v) => Math.round(v * 10));
+    assert.ok(tenths.some((t) => t % 3 === 0), 'the 0.15 s grid is unavoidable in tenths');
+  }
 });

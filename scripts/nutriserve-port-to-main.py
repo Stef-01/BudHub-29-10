@@ -29,6 +29,7 @@ Usage: scripts/nutriserve-port-to-main.py <source repo> <main worktree> [--assum
   (a main worktree: git worktree add <dir> origin/main, with node_modules linked in)
   --assume-source: the commit main was last ported from, for a main that has no PORT_SOURCE yet.
 """
+import bisect
 import json
 import os
 import re
@@ -36,6 +37,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 
 SOURCE_REF = 'claude/continue-building-j1mrs7'
 PORT_SOURCE = 'docs/nutriserve/PORT_SOURCE'
@@ -95,7 +97,47 @@ class NotAUnion(Exception):
 
 
 # Tokens that make a type something other than a plain union at their own level.
-NOT_UNION = {'=>', '?', ':', '&', 'extends', 'keyof', 'typeof', 'infer', 'unique', 'readonly', 'is', 'asserts', 'new', 'abstract'}
+NOT_UNION = {'=>', '?', ':', '&', 'extends', 'infer', 'is', 'asserts', 'new', 'abstract'}
+# Type operators that bind tighter than '|' (`keyof T`, `typeof x`, `readonly T[]`, `unique symbol`):
+# one member of a union, but not a union on their own; a group they apply to holds no members.
+UNARY = {'keyof', 'typeof', 'readonly', 'unique'}
+
+
+def js_unescape(body):
+    """The value of a string literal's body: its escapes decoded (one that isn't valid is kept as written)."""
+    simple = {'n': '\n', 't': '\t', 'r': '\r', 'b': '\b', 'f': '\f', 'v': '\v'}
+    out, i = [], 0
+    while i < len(body):
+        c = body[i]
+        if c != '\\' or i + 1 >= len(body):
+            out.append(c)
+            i += 1
+            continue
+        d = body[i + 1]
+        hex4 = re.fullmatch(r'[0-9a-fA-F]{4}', body[i + 2:i + 6])
+        braced = re.match(r'\{([0-9a-fA-F]{1,6})\}', body[i + 2:]) if d == 'u' else None
+        if d in simple:
+            out.append(simple[d])
+            i += 2
+        elif d == '0' and not body[i + 2:i + 3].isdigit():
+            out.append('\0')
+            i += 2
+        elif d == 'x' and re.fullmatch(r'[0-9a-fA-F]{2}', body[i + 2:i + 4]):
+            out.append(chr(int(body[i + 2:i + 4], 16)))
+            i += 4
+        elif d == 'u' and braced and int(braced.group(1), 16) <= 0x10FFFF:
+            out.append(chr(int(braced.group(1), 16)))
+            i += 2 + braced.end()
+        elif d == 'u' and hex4:
+            out.append(chr(int(hex4.group(), 16)))
+            i += 6
+        elif d in '\r\n\u2028\u2029':
+            i += 3 if body[i + 1:i + 3] == '\r\n' else 2  # a line continuation adds nothing
+        else:
+            out.append(d)
+            i += 2
+    # \uD83D\uDE00 is one character, as in JavaScript.
+    return ''.join(out).encode('utf-16', 'surrogatepass').decode('utf-16', 'replace')
 
 
 def union_with(text, type_name, value, members_only=False):
@@ -106,10 +148,12 @@ def union_with(text, type_name, value, members_only=False):
     end without a ';'; a ';' or line break inside brackets (an object type, a generic spread over
     lines) doesn't end it; only the union's own members count (a literal inside `Exclude<..>` or
     `{ kind: .. }` is not one, nor one inside parentheses that hold a function, conditional,
-    intersection or operator type or are followed by `[`; one inside parentheses around a union is).
-    A '/' after the ')' of `if (..)`, `while (..)`, `for (..)` or `with (..)` starts a regex. Raises
-    NotAUnion when the alias is something else at its own level (a function or conditional type,
-    say). The new member uses the union's
+    intersection or operator type or are followed by `[`, nor one a type operator applies to, nor a
+    literal followed by `[`; one inside parentheses around a union is). Members are compared by
+    value (`'a\\x62'` is `'ab'`). A '/' after the ')' of `if (..)`, `while (..)`, `for (..)` or
+    `with (..)` (the statements, not a method of that name) starts a regex. Raises NotAUnion when
+    the alias is something else at its own level (a function, conditional or `keyof` type, say).
+    The new member uses the union's
     own quotes, layout and line endings. Only a declaration at the file's top level counts (not
     one inside a namespace or other block). `members_only`: the union's members instead (a list)."""
     n = len(text)
@@ -120,10 +164,39 @@ def union_with(text, type_name, value, members_only=False):
     # Line terminators: LF, CR, and U+2028/U+2029 (which a string may contain, but which end a
     # line comment or a regex, and a statement without ';').
     LT = '\n\r\u2028\u2029'
+    breaks = [j for j, ch in enumerate(text) if ch in LT]
 
     def line_end(i):
         """Index of the first line terminator at or after i (n when none)."""
-        return next((j for j in range(i, n) if text[j] in LT), n)
+        k = bisect.bisect_left(breaks, i)
+        return breaks[k] if k < len(breaks) else n
+
+    # Where a regex whose body starts at j ends (its closing '/'), for every j on a line at once:
+    # scanning each candidate '/' to the line's end took time quadratic in the line's length.
+    closing = {}
+
+    def regex_close(j):
+        """Index of the '/' that closes a regex body starting at j, or None (none on this line)."""
+        end = line_end(j)
+        memo = closing.get(end)
+        if memo is None or memo[0] > j:
+            # outside[k] / in_class[k]: the closing '/' when the scan reaches k outside / inside a
+            # character class; a '\\' skips the next character (never a line terminator).
+            outside, in_class = [None] * (end - j + 2), [None] * (end - j + 2)
+            for k in range(end - 1, j - 1, -1):
+                c, x = text[k], k - j
+                if c == '\\':
+                    outside[x], in_class[x] = (outside[x + 2], in_class[x + 2]) if k + 1 < end else (None, None)
+                elif c == '[':
+                    outside[x], in_class[x] = in_class[x + 1], in_class[x + 1]
+                elif c == ']':
+                    outside[x], in_class[x] = outside[x + 1], outside[x + 1]
+                elif c == '/':
+                    outside[x], in_class[x] = k, in_class[x + 1]
+                else:
+                    outside[x], in_class[x] = outside[x + 1], in_class[x + 1]
+            memo = closing[end] = (j, outside)
+        return memo[1][j - memo[0]]
 
     def skip_string(i):
         q, j = text[i], i + 1
@@ -171,8 +244,9 @@ def union_with(text, type_name, value, members_only=False):
     def tokens(i, prev=None):
         """(kind, start, end) from i: kinds ws, nl (a line break, or a comment holding one),
         comment, str, tpl, regex, word, punct. `prev` is the last significant token's text."""
-        # For each open '(': does it follow if/while/for/with? Then a '/' after its ')' is a regex.
-        parens = []
+        # For each open '(': does it follow the statement if/while/for/with (not a method of that
+        # name, `obj.if(..)`)? Then a '/' after its ')' is a regex. `before` is the token before prev.
+        parens, before = [], None
         while i < n:
             c = text[i]
             if c in LT:
@@ -194,48 +268,37 @@ def union_with(text, type_name, value, members_only=False):
             elif c in '\'"':
                 j = skip_string(i)
                 yield 'str', i, j
-                prev, i = 'str', j
+                before, prev, i = prev, 'str', j
             elif c == '`':
                 j = skip_template(i)
                 yield 'tpl', i, j
-                prev, i = 'tpl', j
+                before, prev, i = prev, 'tpl', j
             elif c == '/' and (prev is None or prev in REGEX_AFTER or prev in REGEX_WORDS):
-                j, in_class = i + 1, False
-                while j < n and text[j] not in LT:
-                    if text[j] == '\\':
-                        j += 2
-                        continue
-                    if text[j] == '[':
-                        in_class = True
-                    elif text[j] == ']':
-                        in_class = False
-                    elif text[j] == '/' and not in_class:
-                        break
-                    j += 1
-                if j < n and text[j] == '/':
-                    j += 1
+                close = regex_close(i + 1)
+                if close is not None:
+                    j = close + 1
                     while j < n and (text[j].isalnum() or text[j] == '_'):
                         j += 1
                     yield 'regex', i, j
-                    prev, i = 'regex', j
+                    before, prev, i = prev, 'regex', j
                 else:
                     yield 'punct', i, i + 1
-                    prev, i = '/', i + 1
+                    before, prev, i = prev, '/', i + 1
             else:
                 m = WORD.match(text, i)
                 if m:
                     yield 'word', i, m.end()
-                    prev, i = m.group(), m.end()
+                    before, prev, i = prev, m.group(), m.end()
                 else:
                     # `++` and `--` are one token: a '/' after `i++` divides, it doesn't start a regex.
                     j = i + 2 if text.startswith(('=>', '++', '--'), i) else i + 1
                     yield 'punct', i, j
                     t = text[i:j]
                     if t == '(':
-                        parens.append(prev in ('if', 'while', 'for', 'with'))
+                        parens.append(prev in ('if', 'while', 'for', 'with') and before != '.')
                     elif t == ')' and parens and parens.pop():
                         t = ';'  # a statement follows the condition
-                    prev, i = t, j
+                    before, prev, i = prev, t, j
 
     # The declaration: `export type <name> =` in code, at the top level (outside every brace).
     code = [t for t in tokens(0) if t[0] not in ('ws', 'nl', 'comment')]
@@ -288,11 +351,15 @@ def union_with(text, type_name, value, members_only=False):
         if close == len(expr) - 1 and close > 1:
             level, inner = 1, expr[1:-1]
 
-    # Each token's open '(' groups (indices into expr), and the groups that aren't a union.
+    # Each token's open '(' groups (indices into expr), and the groups that aren't a union. A type
+    # operator (`keyof T`) is one member of a union, so the alias must have a '|' of its own then.
+    own_pipe = any(tok[0] == 'punct' and tok[3] == '|' and len(tok[4]) == level for tok in expr)
     opens, inside, impure, closes = [], [], set(), {}
     for k, tok in enumerate(expr):
         inside.append(tuple(o for o in opens if expr[o][3] == '('))
         if tok[0] == 'punct' and tok[3] in '([{<':
+            if tok[3] == '(' and k and expr[k - 1][0] == 'word' and expr[k - 1][3] in UNARY:
+                impure.add(k)  # `keyof ('a' | 'b')`: its literals aren't members
             opens.append(k)
         elif tok[0] == 'punct' and tok[3] in ')]}>' and opens:
             o = opens.pop()
@@ -302,6 +369,8 @@ def union_with(text, type_name, value, members_only=False):
             impure.add(opens[-1])
         elif not opens and tok[3] in NOT_UNION:
             raise NotAUnion(f'{tok[3]!r} at its own level')
+        elif tok[0] == 'word' and tok[3] in UNARY and len(opens) == level and not own_pipe:
+            raise NotAUnion(f'a {tok[3]!r} type, not a union')
     for o, c in closes.items():
         if c + 1 < len(expr) and expr[c + 1][3] == '[':
             impure.add(o)  # an array or indexed access type, not the union inside
@@ -313,10 +382,13 @@ def union_with(text, type_name, value, members_only=False):
         kind, s, e, t, around = tok
         if any(b != '(' for b in around[level:]):
             return None  # inside a generic, object or tuple: not a member of this union
-        if any(o in impure for o in inside[position[id(tok)]]):
+        k = position[id(tok)]
+        if any(o in impure for o in inside[k]):
             return None  # inside a function, conditional or other type in parentheses
+        if k + 1 < len(expr) and expr[k + 1][3] == '[':
+            return None  # `'a'[]`: an array of it, not it
         if kind == 'str' or (kind == 'tpl' and '${' not in t):
-            return t[1:-1]
+            return js_unescape(t[1:-1])
         return None
 
     members = [v for v in map(literal, inner) if v is not None]
@@ -625,6 +697,18 @@ if SELF_TEST:
          "declare const flag: boolean, s: string;\nif (flag) /'/.test(s);\nexport type M = 'a' | 'x';\n"),
         ("declare let k: number;\nwhile (k) /'/g.exec('');\nexport type M = 'a' | 'b';\n",
          "declare let k: number;\nwhile (k) /'/g.exec('');\nexport type M = 'a' | 'b' | 'x';\n"),
+        # Audit 17: a method named `if` is a call (the '/' after it divides); a member spelt with
+        # escapes is the same member; `typeof`, `keyof` and `readonly` members are union members;
+        # neither a literal inside `keyof (..)` nor a literal array is one.
+        ("declare const obj: any;\nconst q = obj.if(1) / 2, s = \"/ export type M = 'z';\";\nexport type M = 'a';\n",
+         "declare const obj: any;\nconst q = obj.if(1) / 2, s = \"/ export type M = 'z';\";\nexport type M = 'a' | 'x';\n"),
+        ("export type M = 'a' | '\\x78';\n", None),
+        ("export type M = 'a' | '\\u{78}';\n", None),
+        ("declare const y: 'q';\nexport type M = 'a' | typeof y;\n", "declare const y: 'q';\nexport type M = 'a' | typeof y | 'x';\n"),
+        ("type Modes = { m: 1 };\nexport type M = keyof Modes | 'a';\n", "type Modes = { m: 1 };\nexport type M = keyof Modes | 'a' | 'x';\n"),
+        ("export type M = 'a' | readonly string[];\n", "export type M = 'a' | readonly string[] | 'x';\n"),
+        ("export type M = 'a' | keyof ('x' | 'y');\n", "export type M = 'a' | keyof ('x' | 'y') | 'x';\n"),
+        ("export type M = 'a' | 'x'[];\n", "export type M = 'a' | 'x'[] | 'x';\n"),
     ]
     bad = 0
     for text, want in cases:
@@ -649,7 +733,8 @@ if SELF_TEST:
             bad += 1
             print(f'FAIL: TypeScript should not find x in {text!r}')
     # Not a union at its own level: stops the port.
-    for text in ["export type M = () => 'x' | 'a';\n", "export type M = (() => 'a');\n", "export type M = keyof typeof modes;\n"]:
+    for text in ["export type M = () => 'x' | 'a';\n", "export type M = (() => 'a');\n", "export type M = keyof typeof modes;\n",
+                 "export type M = typeof modes[number];\n", "export type M = (keyof Modes);\n"]:
         extra += 1
         try:
             union_with(text, 'M', 'x')
@@ -669,6 +754,13 @@ if SELF_TEST:
         if union_with(text, 'M', 'x') is not None:
             bad += 1
             print(f'FAIL: a missing type should give None: {text!r}')
+    # A long line of '(/[' (each '/' a possible regex that never closes) reads in linear time.
+    started = time.monotonic()
+    union_with('(/[' * 16_000 + "\nexport type M = 'a';\n", 'M', 'x')
+    extra += 1
+    if time.monotonic() - started > 5:
+        bad += 1
+        print(f'FAIL: a 48 KB line took {time.monotonic() - started:.1f} s')
     total = len(cases) + len(missing) + 1 + extra
     print(f'union self-test: {total - bad}/{total} pass')
     sys.exit(1 if bad else 0)
