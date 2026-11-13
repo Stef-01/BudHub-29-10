@@ -487,6 +487,8 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
   const untouched = useRef(true);
   const heldAtMs = useRef<number | null>(null);
   const heldSince = useRef(0);
+  // This page let go of the save (leaving, or into the back/forward cache) and hasn't taken it back.
+  const released = useRef(false);
   // The late handover last adopted (the same one can arrive by more than one route).
   const adopted = useRef<string | null>(null);
   // When the last frame ran (see STALL_MS), and the state this kitchen last wrote.
@@ -616,6 +618,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
     untouched.current = !playedHere(userId, ref.current);
     heldAtMs.current = ref.current.nowMs;
     heldSince.current = Date.now();
+    released.current = false;
     write();
   }, [userId, write]);
 
@@ -691,13 +694,15 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
    * (it was busy and saw the record as it was before this tab took the save), so this tab records
    * itself again, putting its game back if that tab wrote too. Unless another tab has asked for
    * the save since this one took it: that tab is taking it over and couldn't record itself
-   * (storage full), so this one stops as before.
+   * (storage full), so this one stops as before. Nor when this page let go of the save itself (a
+   * page going into the back/forward cache is frozen after that): it takes the save back only when
+   * shown again (onReturn).
    */
   const stillHolds = useCallback((): boolean => {
     if (fatalRef.current || supersededRef.current) return false;
     const writer = readWriter(userId);
     const changed = changedElsewhere();
-    const lost = writer === null && !askedSince(userId, tabId.current, heldSince.current);
+    const lost = writer === null && !released.current && !askedSince(userId, tabId.current, heldSince.current);
     if (writer === tabId.current || lost) {
       const now = readRaw(userId);
       if (!changed || typeof now === 'string') {
@@ -802,6 +807,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
     const onReturn = () =>
       settled(() => {
         if (!stillHolds()) return;
+        released.current = false;
         if (readWriter(userId) === null) claimWriter(userId, tabId.current);
       });
     const onVisibility = () => {
@@ -874,6 +880,7 @@ export function useNutriServeGame(initial: GameState, userId: string, openedFrom
     adoptLate(takeLateHandover(userId));
     /** Leaving the page or the kitchen lets go of the save, so a tab that asks next doesn't wait for an answer that will never come. */
     const letGo = () => {
+      released.current = true;
       if (readWriter(userId) !== tabId.current) return;
       try {
         window.localStorage.removeItem(writerKey(userId));
