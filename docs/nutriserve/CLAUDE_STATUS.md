@@ -95,7 +95,7 @@ Each run also checks that stage text is 1.9% of the stage width. The regressions
 - with storage full, a holder busy for 3 s stops when another tab took the save meanwhile, and that tab gets its order;
 - with storage full, a reopened kitchen takes another tab's later play on the copy it saved, and still keeps its own play over a busy tab's late fork.
 
-94/94 checks passed on the branch (`main`, which doesn't carry the port script, runs the other 93; `GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|audit16|audit17|devices` runs one part while working on it). The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
+97/97 checks passed on the branch (`main`, which doesn't carry the port script, runs the other 96; `GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|audit16|audit17|devices` runs one part while working on it). The auditor's save/restore fuzzer (24,000 round trips) and 40-day bot (605 mid-hold restores) also pass under the stricter save validation: no throws, no false rejections, and coins exactly equal tips minus spending.
 
 Independent audits (findings and fixes are below).
 
