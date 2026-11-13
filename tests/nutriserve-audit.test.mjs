@@ -1035,7 +1035,7 @@ test('a portion note appears only when the build score shows its loss (not besid
   const wrongSide = structuredClone(generous);
   wrongSide.build.side.foodId = 'not_the_ordered_side';
   assert.deepEqual(graded(wrongSide), { build: 75, portion: [] });
-  // Two small losses beside a wrong vessel that together cost a shown point: the larger is named.
+  // Two small losses beside a wrong vessel, each of which alone costs the shown point: both are named.
   const grams = (c, lo, hi) => {
     for (let g = order.idealG[c]; g < order.idealG[c] * 2; g += 0.05) {
       const lost = BUILD_V1.share[c] * (1 - portionCredit(g, order.idealG[c], exactBand(c, undefined, order.idealG[c])));
@@ -1049,7 +1049,14 @@ test('a portion note appears only when the build score shows its loss (not besid
   two.build.main.mg = Math.round(grams('main', 0.26, 0.34) * 1000);
   const r = graded(two);
   assert.equal(r.build, 79);
-  assert.equal(r.portion.length, 1);
+  assert.equal(r.portion.length, 2);
+  // Three that cost the shown point only together (each between a quarter and 0.3 of a point): the
+  // largest is named.
+  const three = structuredClone(two);
+  for (const c of ['base', 'main', 'side']) three.build[c].mg = Math.round(grams(c, 0.26, 0.3) * 1000);
+  const r3 = graded(three);
+  assert.equal(r3.build, 79);
+  assert.equal(r3.portion.length, 1);
 });
 
 test('prep-v9: marks at 8.5, 12.6 and 21.2 s, a perfect window of 1.3 s either side (1.9 s with copper), notes in tenths', () => {
