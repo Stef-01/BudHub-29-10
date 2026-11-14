@@ -1268,3 +1268,30 @@ test("prep-v9's numbers don't land on values derived from the other game's", () 
     assert.ok(tenths.some((t) => t % 3 === 0), 'the 0.15 s grid is unavoidable in tenths');
   }
 });
+
+test('a copy of the game has one fingerprint however it was opened (audit 19: tabs compare lines of copies)', async () => {
+  const { copyKey, textKey } = await import('../src/features/nutriserve/ui/useNutriServeGame.ts');
+  const { applyCommand } = await import('../src/features/nutriserve/simulation/index.ts');
+  let s = game(19);
+  const keys = new Set();
+  let copies = 0;
+  for (let i = 0; i < 300; i++) {
+    s = advanceGame(s, 173);
+    if (i % 9 === 0 && atCounter(s)) s = applyCommand(s, { type: 'takeOrder' }).state;
+    const key = copyKey(s);
+    assert.ok(key, 'a fingerprint');
+    // Written as it is (playing) and opened elsewhere (paused on opening); paused first and sent
+    // (a handover's text); opened again from either: the same copy, the same fingerprint.
+    const written = serializeGame(s);
+    const opened = deserializeGame(written);
+    const paused = s.paused ? s : applyCommand(s, { type: 'pause' }).state;
+    assert.equal(copyKey(opened), key);
+    assert.equal(copyKey(paused), key);
+    assert.equal(textKey(serializeGame(paused)), key);
+    assert.equal(copyKey(deserializeGame(serializeGame(paused))), key);
+    keys.add(key);
+    copies++;
+  }
+  // Different copies (later game time, another order) never share one.
+  assert.equal(keys.size, copies);
+});
