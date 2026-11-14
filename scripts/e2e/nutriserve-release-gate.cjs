@@ -1602,15 +1602,25 @@ async function runAudit15(browser) {
     const B = await open(context, user);
     await cont(B);
     const userId = key.slice('nutriserve.remaster.save.v1:'.length);
-    const post = (raw) => A.evaluate(({ id, raw }) => { const ch = new BroadcastChannel(`nutriserve.remaster.tabs.v1:${id}`); ch.postMessage({ kind: 'ceded', from: 'gate', to: 'gate', raw, anyHolder: true }); ch.close(); }, { id: userId, raw });
+    // Sent as the tab that opened `before` and played on would send it: its line holds that copy
+    // (audit 19: a copy whose line doesn't hold the copy B opened is a fork, and is refused).
+    const line = await A.evaluate(async (raw) => {
+      const { copyKey } = await import('/src/features/nutriserve/ui/useNutriServeGame.ts');
+      const { deserializeGame } = await import('/src/features/nutriserve/simulation/index.ts');
+      return [copyKey(deserializeGame(raw))];
+    }, before);
+    const post = (raw, from = line) => A.evaluate(({ id, raw, from }) => { const ch = new BroadcastChannel(`nutriserve.remaster.tabs.v1:${id}`); ch.postMessage({ kind: 'ceded', from: 'gate', to: 'gate', raw, anyHolder: true, line: from }); ch.close(); }, { id: userId, raw, from });
+    await post(bought, ['not-this-copy']);
+    await B.waitForTimeout(600);
+    const fork = await gameOf(B);
     await post(bought);
     await B.waitForTimeout(600);
     const took = await gameOf(B);
     await post(before);
     await B.waitForTimeout(600);
     const kept = await gameOf(B), st = await storedGame(B);
-    check(took?.ups === 'rice_scoop' && kept?.ups === 'rice_scoop' && kept.coins === took.coins && st?.ups === 'rice_scoop',
-      `regressions: on the day summary a late copy with a purchase is taken and an older one is not (took ${JSON.stringify(took)}, then ${JSON.stringify(kept)}, stored ${JSON.stringify(st)})`);
+    check(fork && fork.ups === '-' && took?.ups === 'rice_scoop' && kept?.ups === 'rice_scoop' && kept.coins === took.coins && st?.ups === 'rice_scoop',
+      `regressions: on the day summary a late copy with a purchase is taken (not when it came from another copy) and an older one is not (from another copy ${JSON.stringify(fork)}, took ${JSON.stringify(took)}, then ${JSON.stringify(kept)}, stored ${JSON.stringify(st)})`);
     await context.close();
   }
 
@@ -2038,10 +2048,175 @@ async function runAudit18(browser) {
   }
 }
 
+async function runAudit19(browser) {
+  const tag = Date.now();
+  const { open, toStart, cont, seed, MID_DAY, told } = tabKit();
+  const TWO_WAITING = MID_DAY.replace("run-gate-a13-mid", "run-gate-a19-two").replace(
+    "while (!s.day.customers.some((c) => c.phase === 'at_counter'))",
+    "while (s.day.customers.filter((c) => c.phase === 'at_counter').length < 3)"
+  );
+  const gameOf = (pg) =>
+    pg.evaluate(() => {
+      const el = document.querySelector('.ns-root');
+      if (!el) return null;
+      let f = el[Object.keys(el).find((k) => k.startsWith('__reactFiber$'))];
+      while (f && !(f.type && f.type.name === 'Kitchen')) f = f.return;
+      const s = f?.memoizedState.memoizedState.current;
+      return s ? { run: s.runId, tickets: s.tickets.length, now: s.nowMs, rev: s.rev ?? 0 } : null;
+    }).catch(() => null);
+  const block = (pg, ms) => pg.evaluate((ms) => new Promise((r) => setTimeout(() => { const t = performance.now(); while (performance.now() - t < ms); r(); }, 0)), ms);
+  const resume = (pg) => pg.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Resume' }).click({ timeout: 2000 }).catch(() => {});
+  const takeOrder = (pg) => pg.getByRole('button', { name: /^Take .* order$/ }).first().click({ timeout: 3000 }).catch(() => {});
+  /** Save & exit from the pause dialog; resolves once the kitchen has closed (then toStart). */
+  const pausedExit = async (pg) => {
+    await pg.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Save & exit' }).click({ timeout: 5000 });
+    await pg.waitForSelector('.ns-hud', { state: 'detached' });
+  };
+  const fill = (pg) =>
+    pg.evaluate(() => {
+      const big = 'x'.repeat(512 * 1024);
+      try { for (let n = 0; n < 40; n++) localStorage.setItem('gateFillA' + n, big); } catch {}
+      let size = 256 * 1024;
+      for (let k = 0; size >= 1; ) { try { localStorage.setItem('gateFillB' + k++, 'x'.repeat(size)); } catch { size = Math.floor(size / 2); } }
+    });
+  const live = async (pg) => (await pg.locator('.ns-hud').count().catch(() => 0)) > 0 && !(await told(pg).catch(() => true));
+  /** A holds (storage full unless `full` is false) and takes an order (the caller then makes A's page busy). */
+  const busyHolder = async (context, user, full = true) => {
+    await seed(context, user, TWO_WAITING);
+    const A = await open(context, user);
+    if (full) await fill(A);
+    await cont(A);
+    await resume(A);
+    await A.waitForTimeout(500);
+    await takeOrder(A);
+    await A.waitForTimeout(800);
+    return { A, before: await gameOf(A) };
+  };
+
+  // L1: storage full; B continues during A's 1.9 s task (unanswered) and leaves again before A
+  // wakes. A holder answering late used to stop at once, though no kitchen held the save any more:
+  // now it decides once the queued messages have arrived, goes on playing, and hands over (with
+  // its order) on B's next Continue.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate19exit${tag}`;
+    const { A, before } = await busyHolder(context, user);
+    const B = await open(context, user);
+    const t0 = Date.now();
+    const busy = block(A, 1900).then(() => Date.now() - t0);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await pausedExit(B);
+    const tLeft = Date.now() - t0;
+    const tWake = await busy;
+    await toStart(B);
+    await A.waitForTimeout(1500);
+    const aLive = await live(A);
+    await cont(B);
+    await B.waitForTimeout(2000);
+    const b = await gameOf(B);
+    check(before && before.tickets === 1 && tLeft < tWake && aLive && b && b.tickets === 1 && (await live(B)) && !(await live(A)),
+      `regressions: with storage full, a holder busy for 1.9 s goes on playing when the tab that continued meanwhile has left, and hands its order over on the next Continue (B left at ${tLeft} ms, A woke at ${tWake} ms, A live ${aLive}, then B ${JSON.stringify(b)})`);
+    await context.close();
+  }
+
+  // L1: storage full; during A's 3 s task B continues, C continues (B hands the save to C) and C
+  // leaves. B's 'took' no longer counts once it handed the save on: A goes on playing and C's next
+  // Continue gets its order.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate19handed${tag}`;
+    const { A, before } = await busyHolder(context, user);
+    const B = await open(context, user);
+    const C = await open(context, user);
+    const t0 = Date.now();
+    const busy = block(A, 3000).then(() => Date.now() - t0);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await B.waitForTimeout(100);
+    await cont(C);
+    await pausedExit(C);
+    const tLeft = Date.now() - t0;
+    const tWake = await busy;
+    await toStart(C);
+    await A.waitForTimeout(1500);
+    const aLive = await live(A);
+    await cont(C);
+    await C.waitForTimeout(2000);
+    const c = await gameOf(C);
+    const lives = [await live(A), await live(B), await live(C)];
+    check(before && before.tickets === 1 && tLeft < tWake && aLive && c && c.tickets === 1 && lives.join() === 'false,false,true',
+      `regressions: with storage full, a busy holder doesn't stop for a kitchen that handed the save on to one that has left (C left at ${tLeft} ms, A woke at ${tWake} ms, A live ${aLive}, live then ${lives}, C ${JSON.stringify(c)})`);
+    await context.close();
+  }
+
+  // L1: storage full, back/forward cache on; B continues during A's 3 s task and its tab goes to
+  // another page. A page going into the cache says it left, so A goes on playing; B, back (restored
+  // or reloaded), continues with A's order.
+  {
+    // The full Chromium build (the headless shell has no back/forward cache).
+    const bf = await chromium.launch({ channel: 'chromium', ignoreDefaultArgs: ['--disable-back-forward-cache'] });
+    const context = await bf.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate19bfcache${tag}`;
+    const { A, before } = await busyHolder(context, user);
+    const B = await open(context, user);
+    const busy = block(A, 3000);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await B.evaluate(() => { window.__gateKept = true; });
+    await B.goto(`${BASE}/nutriserve-art-lab.html`, { waitUntil: 'load' });
+    await busy;
+    await A.waitForTimeout(1500);
+    const aLive = await live(A);
+    await B.goBack({ waitUntil: 'load' });
+    await B.waitForTimeout(2000);
+    // Restored from the cache, or evicted (a message reached it there) and loaded again.
+    const restored = (await B.evaluate(() => window.__gateKept === true).catch(() => false)) ? 'restored' : 'reloaded';
+    if (!(await live(B))) {
+      if (!(await B.locator('.ns-hud').count())) await toStart(B).catch(() => {});
+      if (await B.getByRole('button', { name: /^Continue day/ }).count()) await cont(B);
+      else await B.getByRole('button', { name: 'Continue here' }).click().catch(() => {});
+      await B.waitForTimeout(2000);
+    }
+    const b = await gameOf(B);
+    check(before && before.tickets === 1 && aLive && b && b.tickets === 1 && (await live(B)) && !(await live(A)),
+      `regressions: with storage full, a holder busy while the tab that took the save went into the back/forward cache goes on playing, and that tab gets its order when it comes back (A live ${aLive}, B ${restored}, then B ${JSON.stringify(b)})`);
+    await context.close();
+    await bf.close();
+  }
+
+  // L2: during A's 5 s task B continues the stored copy, plays on (two orders) and hands the save
+  // to C. A's copy is a fork of what C opened (not in its line): C keeps B's play, A stops.
+  for (const full of [false, true]) {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const user = `gate19fork${full ? 'full' : ''}${tag}`;
+    const { A, before } = await busyHolder(context, user, full);
+    const B = await open(context, user);
+    const C = await open(context, user);
+    const busy = block(A, 5000);
+    await B.waitForTimeout(100);
+    await cont(B);
+    await resume(B);
+    await B.waitForTimeout(300);
+    await takeOrder(B);
+    await takeOrder(B);
+    await B.waitForTimeout(200);
+    const played = await gameOf(B);
+    await cont(C);
+    await busy;
+    await C.waitForTimeout(2500);
+    const c = await gameOf(C);
+    const lives = [await live(A), await live(B), await live(C)];
+    check(before && before.tickets === 1 && played && played.tickets >= 2 && c && c.tickets === played.tickets && lives.join() === 'false,false,true',
+      `regressions: ${full ? 'with storage full, ' : ''}a third tab that took a copy another tab played on keeps it over a busy holder's late fork (B played ${JSON.stringify(played)}, C ${JSON.stringify(c)}, live ${lives})`);
+    await context.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch();
   const results = {};
-  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|audit16|audit17|audit18|devices runs one part (for working on it); the gate is all of them.
+  // GATE_ONLY=regressions|audit11|audit12|audit13|audit14|audit15|audit16|audit17|audit18|audit19|devices runs one part (for working on it); the gate is all of them.
   const only = process.env.GATE_ONLY;
   const part = (name) => !only || only === name;
   if (part('regressions')) await runRegressions(browser);
@@ -2053,6 +2228,7 @@ async function runAudit18(browser) {
   if (part('audit16')) await runAudit16(browser);
   if (part('audit17')) await runAudit17(browser);
   if (part('audit18')) await runAudit18(browser);
+  if (part('audit19')) await runAudit19(browser);
   if (part('devices')) {
     results.desktop = await runDevice(browser, 'desktop', { viewport: { width: 1280, height: 1000 } });
     results.wide = await runDevice(browser, 'wide', { viewport: { width: 1920, height: 1080 } });

@@ -158,8 +158,11 @@ def union_with(text, type_name, value, members_only=False):
     one inside a namespace or other block). `members_only`: the union's members instead (a list)."""
     n = len(text)
     WORD = re.compile(r'[A-Za-z_$\d][\w$]*')
-    REGEX_AFTER = set('(,=:[!&|?{};+-*%<>~^') | {'=>'}
-    REGEX_WORDS = {'return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'new', 'delete', 'void', 'throw', 'yield', 'await', 'instanceof'}
+    REGEX_AFTER = set('(,=:[!&|?{};+-*%<>~^') | {'=>', '...'}
+    # After one of these keywords a '/' starts a regex, unless the word is a property (`a.of / 2`).
+    REGEX_WORDS = {'return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'new', 'delete', 'void', 'throw', 'yield', 'await', 'instanceof', 'default'}
+    # A '!' after one of these is TypeScript's non-null assertion (`a! / 2` divides), not a 'not'.
+    VALUE_END = {')', ']', 'str', 'tpl', 'regex', '!.'}
 
     # Line terminators: LF, CR, and U+2028/U+2029 (which a string may contain, but which end a
     # line comment or a regex, and a statement without ';').
@@ -206,29 +209,16 @@ def union_with(text, type_name, value, members_only=False):
         return min(j + 1, n)
 
     def skip_code_until_brace(i):
-        """Index just past the '}' that closes a template's `${`, starting inside it."""
+        """Index just past the '}' that closes a template's `${`, starting inside it (read as code:
+        strings, templates, comments and regexes, which may hold a quote, backtick or brace)."""
         depth = 0
-        while i < n:
-            c = text[i]
-            if text.startswith('//', i):
-                i = line_end(i)
-            elif text.startswith('/*', i):
-                j = text.find('*/', i + 2)
-                i = n if j < 0 else j + 2
-            elif c in '\'"':
-                i = skip_string(i)
-            elif c == '`':
-                i = skip_template(i)
-            elif c == '{':
+        for kind, s, e in tokens(i):
+            if kind == 'punct' and text[s:e] == '{':
                 depth += 1
-                i += 1
-            elif c == '}':
+            elif kind == 'punct' and text[s:e] == '}':
                 if depth == 0:
-                    return i + 1
+                    return e
                 depth -= 1
-                i += 1
-            else:
-                i += 1
         return n
 
     def skip_template(i):
@@ -275,7 +265,7 @@ def union_with(text, type_name, value, members_only=False):
                 j = skip_template(i)
                 yield 'tpl', i, j
                 before, prev, i = prev, 'tpl', j
-            elif c == '/' and (prev is None or prev in REGEX_AFTER or prev in REGEX_WORDS):
+            elif c == '/' and (prev is None or prev in REGEX_AFTER or (prev in REGEX_WORDS and before not in ('.', '#'))):
                 close = regex_close(i + 1)
                 if close is not None:
                     j = close + 1
@@ -293,10 +283,12 @@ def union_with(text, type_name, value, members_only=False):
                     before, prev, i = prev, m.group(), m.end()
                 else:
                     # `++` and `--` are one token: a '/' after `i++` divides, it doesn't start a regex.
-                    j = i + 2 if text.startswith(('=>', '++', '--'), i) else i + 1
+                    j = i + 3 if text.startswith('...', i) else i + 2 if text.startswith(('=>', '++', '--'), i) else i + 1
                     yield 'punct', i, j
                     t = text[i:j]
-                    if t == '(':
+                    if t == '!' and (prev in VALUE_END or (prev is not None and WORD.fullmatch(prev) and (prev not in REGEX_WORDS or before in ('.', '#')))):
+                        t = '!.'  # a non-null assertion: what follows it is an operator
+                    elif t == '(':
                         parens.append((prev in ('if', 'while', 'for', 'with') and before not in ('.', '#')) or (prev == 'await' and before == 'for'))
                     elif t == ')' and parens and parens.pop():
                         t = ';'  # a statement follows the condition
@@ -719,6 +711,23 @@ if SELF_TEST:
          "async function f(xs: AsyncIterable<string>, y: string) { for await (const v of xs) /'/.test(y); }\nexport type M = 'a' | 'x';\n"),
         ("const L = 'line\\\r\nexport type M = 1';\r\nexport type M = 'a';\r\n", "const L = 'line\\\r\nexport type M = 1';\r\nexport type M = 'a' | 'x';\r\n"),
         ("export type M = 'a' | '\\\r\nx';\r\n", None),
+        # Audit 19: a keyword used as a property name is no keyword (`a.of / 2` divides), nor is the
+        # '!' of a non-null assertion a 'not'; `default` and a spread `...` come before a regex; a
+        # regex inside a template's `${..}` may hold a quote or a backtick.
+        ("declare const a: any;\nconst q = a.of / 2 + \"/ export type M = 'z';\";\nexport type M = 'a';\n",
+         "declare const a: any;\nconst q = a.of / 2 + \"/ export type M = 'z';\";\nexport type M = 'a' | 'x';\n"),
+        ("declare const a: any;\nconst q = a?.return / 2 + \"/ export type M = 'z';\";\nexport type M = 'a';\n",
+         "declare const a: any;\nconst q = a?.return / 2 + \"/ export type M = 'z';\";\nexport type M = 'a' | 'x';\n"),
+        ("declare const a: { b?: number };\nconst q = a.b! / 2 + \"/ export type M = 'z';\";\nexport type M = 'a';\n",
+         "declare const a: { b?: number };\nconst q = a.b! / 2 + \"/ export type M = 'z';\";\nexport type M = 'a' | 'x';\n"),
+        ("declare const s: string;\nconst q = !/'/.test(s);\nexport type M = 'a';\n", "declare const s: string;\nconst q = !/'/.test(s);\nexport type M = 'a' | 'x';\n"),
+        ("export default /\"/; const s = \"; export type M = 'z'; //\";\nexport type M = 'a';\n",
+         "export default /\"/; const s = \"; export type M = 'z'; //\";\nexport type M = 'a' | 'x';\n"),
+        ("const xs = [.../\"/.source, \"; export type M = 'z'; //\"];\nexport type M = 'a';\n",
+         "const xs = [.../\"/.source, \"; export type M = 'z'; //\"];\nexport type M = 'a' | 'x';\n"),
+        ("declare const s: string;\nconst t = `${/'/.test(s) ? 1 : 2}`;\nexport type M = 'a';\n", "declare const s: string;\nconst t = `${/'/.test(s) ? 1 : 2}`;\nexport type M = 'a' | 'x';\n"),
+        ("declare const s: string;\nconst t = `${/`/.test(s) ? 1 : 2}`;\nexport type M = 'a';\n", "declare const s: string;\nconst t = `${/`/.test(s) ? 1 : 2}`;\nexport type M = 'a' | 'x';\n"),
+        ("declare const n: number;\nconst t = `${n / 2}${'}'}`;\nexport type M = 'a';\n", "declare const n: number;\nconst t = `${n / 2}${'}'}`;\nexport type M = 'a' | 'x';\n"),
     ]
     bad = 0
     for text, want in cases:

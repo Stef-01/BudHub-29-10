@@ -895,8 +895,7 @@ function OtherTabOverlay({ onContinue, onExit }: { onContinue: () => void; onExi
     <Modal label="Open in another tab" alert>
       <h2>Open in another tab</h2>
       <p>
-        This kitchen was opened in another tab or window, which now holds your latest progress. This tab has stopped saving so the two never overwrite each
-        other.
+        This kitchen was opened in another tab or window, and play goes on from there. This tab has stopped saving so the two never overwrite each other.
       </p>
       <div className="ns-row">
         <button type="button" className="ns-btn ns-btn-primary" autoFocus onClick={onContinue}>
@@ -907,7 +906,7 @@ function OtherTabOverlay({ onContinue, onExit }: { onContinue: () => void; onExi
         </button>
       </div>
       <p className="ns-muted">
-        <small>Continue here picks up from the latest save, and the other tab stops instead.</small>
+        <small>Continue here picks up the latest progress (from the other tab while it is open, else from the save), and the other tab stops instead.</small>
       </p>
     </Modal>
   );
