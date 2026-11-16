@@ -1,4 +1,5 @@
-// Code-native LAYOUT STUDIES for scenery, vessels and garnish. They give the stations readable,
+// Code-native LAYOUT STUDIES for scenery and vessels. Garnishes use reviewed source art.
+// The layout studies give the stations readable,
 // interactive geometry until the asset track delivers final art (station art A04, vessel masks and
 // foods A03). They are deliberately plain: flat shapes, no attempt to stand in as finished art.
 // Every element carries data-layout-study so a visual review can find (and replace) them.
@@ -7,6 +8,8 @@ import { VESSEL_RIM_SHARE } from './stage.ts';
 import type { StationId } from '../simulation/index.ts';
 import { getFood } from '../simulation/index.ts';
 import { FINISH_V1 } from '../simulation/index.ts';
+import { GarnishSprite } from '../assets/GarnishSprite';
+import { GARNISH_SPRITES } from '../assets/garnishes';
 
 export const STATION_COLORS: Record<StationId, { wall: string; accent: string; label: string; hi: string }> = {
   // NutriServe's own station colours (peacock teal, turmeric, terracotta, rani pink).
@@ -106,6 +109,7 @@ export function VesselSide({
 }
 
 export function GarnishGlyph({ id, size = 10 }: { id: string; size?: number }) {
+  if (Object.hasOwn(GARNISH_SPRITES, id)) return <GarnishSprite id={id} size={size} />;
   const s = size;
   switch (id) {
     case 'coriander':

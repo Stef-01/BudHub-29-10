@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CustomerSprite } from '../assets/CustomerSprite';
 import { CUSTOMER_SPRITES, type SpriteCustomerId } from '../assets/characters';
+import { GARNISH_SPRITES } from '../assets/garnishes';
+import { GarnishSprite } from '../assets/GarnishSprite';
+import { VesselTop } from '../ui/LayoutStudy';
+import '../ui/remaster.css';
 import './review.css';
 
 const ids = Object.keys(CUSTOMER_SPRITES) as SpriteCustomerId[];
@@ -60,6 +64,7 @@ function ArtLab() {
   const [size, setSize] = useState(180);
   return <main className="art-lab">
     <header className="lab-header"><div><p className="eyebrow">BUDHUB / NUTRISERVE</p><h1>Character & station review</h1><p>The six pilot idle sprites and the station layout studies, for art review. The game itself is under Games → NutriServe Kitchen (preview).</p></div><a href="/">Back to BudHub</a></header>
+    <p><a href="#garnish-review">Review garnish art</a></p>
     <section className="review-layout" aria-label="Station integration review">
       <div className="stage-wrap"><div className={`game-stage station-${station}`}>
         <Backdrop station={station} />
@@ -71,6 +76,15 @@ function ArtLab() {
         <nav className="station-tabs" aria-label="Preview station">{stations.map(s => <button key={s} type="button" className={`tab-${s}`} aria-pressed={station === s} onClick={() => setStation(s)}>{stationNames[s].label} <span lang="hi">{stationNames[s].hi}</span></button>)}</nav>
       </div><p className="caption">640 × 480 stage coordinates. Four prep slots. Procedural room and bowl are layout studies; final food and equipment art remains a separate asset gate.</p></div>
       <aside className="review-controls"><h2>Cast</h2><div className="cast-picker">{ids.map(id => <button key={id} type="button" aria-pressed={id === selected} onClick={() => setSelected(id)}>{CUSTOMER_SPRITES[id].name}</button>)}</div><label>Display size <output>{size} px</output><input aria-label="Sprite display height" type="range" min="120" max="260" step="20" value={size} onChange={e => setSize(Number(e.target.value))} /></label><label>Alpha background<select value={backdrop} onChange={e => setBackdrop(e.target.value)}><option value="cream">Cream</option><option value="green">Green</option><option value="dark">Dark</option><option value="checker">Checkerboard</option></select></label><p>Review silhouettes, eye shape, outline weight, clipping, and transparent edges at actual display size. Idle art must not stand in for a missing reaction.</p></aside>
+    </section>
+    <section id="garnish-review" aria-labelledby="garnish-title">
+      <h2 id="garnish-title">Garnish art · native-size and alpha review</h2>
+      <p>Original overhead pieces at 24, 48 and 96 px. The bowl below uses the game's actual Finish renderer; vessel and food layers remain layout studies.</p>
+      {(['cream', 'dark', 'checker'] as const).map(bg => <div key={bg} className={`garnish-sheet bg-${bg}`}>{Object.keys(GARNISH_SPRITES).map(id => <figure key={id}>
+        <div className="garnish-sizes">{[24, 48, 96].map(px => <svg key={px} width={px} height={px} viewBox="-12 -12 24 24" role="img" aria-label={`${id.replaceAll('_', ' ')} at ${px} pixels`}><GarnishSprite id={id} size={12} /></svg>)}</div>
+        <figcaption>{id.replaceAll('_', ' ')}</figcaption>
+      </figure>)}</div>)}
+      <div className="garnish-vessel ns-vessel-top"><VesselTop label="Garnish integration review" baseColor="#f8e9c1" mainColor="#cf8a37" drizzles={[]} garnishes={Object.keys(GARNISH_SPRITES).map((id, i) => ({ id, x: Math.cos(i * Math.PI * 2 / 5) * .55, y: Math.sin(i * Math.PI * 2 / 5) * .55, fell: false }))} /></div>
     </section>
     <section aria-labelledby="cast-title"><h2 id="cast-title">Native-size cast check</h2><div className={`cast-sheet bg-${backdrop}`}>{ids.map(id => <figure key={id}><CustomerSprite customerId={id} style={{ height: size, width: size * 2 / 3 }} /><figcaption>{CUSTOMER_SPRITES[id].name}</figcaption></figure>)}</div></section>
   </main>;

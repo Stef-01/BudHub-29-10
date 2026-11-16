@@ -1,0 +1,196 @@
+{
+  "version": 1,
+  "generator": "OpenAI built-in image_gen",
+  "family": "original-garnish-2026-11-15",
+  "referenceUse": "Written Indian-food brief only; lemon v2 uses generated NutriServe coriander as its outline reference. No other game imagery.",
+  "assets": [
+    {
+      "id": "coriander",
+      "state": "top",
+      "revision": 1,
+      "path": "/assets/nutriserve/garnishes/coriander-top-v1.png",
+      "width": 1254,
+      "height": 1254,
+      "viewBox": "37.139999999999986 37.639999999999986 1178.72 1178.72",
+      "bytes": 788300,
+      "sha256": "982fb523577504833ad169a6038855ef197294cda9ebcdf7f43b2c37f958d73e",
+      "sourceFile": "exec-af2bb6ac-ef51-468c-9da9-f674be46afbf.png",
+      "prompt": "Create a single production game sprite for NutriServe, an original Indian-food serving game. Flat friendly hand-drawn cartoon, clean dark warm-brown outline, restrained bright flat colors, at most one hard-edged shade, no realism, no texture, no lettering or UI. Strict overhead view, centered, one object only filling 80% of a square canvas, transparent background with generous clear edge padding. Must be identifiable at 24 pixels, so use bold simple silhouette and very few internal marks. No references to other games. Subject: one small fresh coriander sprig, three broad scalloped leaves joined on a tiny central stem. Bright leaf green with darker single flat shade. Compact roundish silhouette, no fine veins.",
+      "inputImages": [],
+      "alpha": {
+        "transparentPixels": 937443,
+        "opaqueLikePixels": 613693
+      },
+      "visibleBounds": {
+        "left": 71,
+        "top": 102,
+        "right": 1182,
+        "bottom": 1152,
+        "threshold": 8
+      },
+      "pivot": [
+        626.5,
+        627
+      ],
+      "review": {
+        "status": "accepted-pilot-garnish",
+        "date": "2026-11-15",
+        "evidenceIds": [
+          "ev_cda67f8ca88a935e75a8fffc98bdf1ab063f6c04e36076e2fc2de00438da53fc",
+          "ev_ec77b7458b2d2796920cb273dcf1fcc99bbb45f863939b0efda41a22b4af223a"
+        ]
+      }
+    },
+    {
+      "id": "onion",
+      "state": "top",
+      "revision": 1,
+      "path": "/assets/nutriserve/garnishes/onion-top-v1.png",
+      "width": 1254,
+      "height": 1254,
+      "viewBox": "98.50999999999999 124.00999999999999 1041.98 1041.98",
+      "bytes": 618349,
+      "sha256": "def332788566f23be71eb2205481fe4045c59d61f9091e97b9a973a1bd9cfd41",
+      "sourceFile": "exec-a94ffa2b-8d6f-4c74-bb2f-219c4a857bac.png",
+      "prompt": "Create a single production game sprite for NutriServe, an original Indian-food serving game. Flat friendly hand-drawn cartoon, clean dark warm-brown outline, restrained bright flat colors, at most one hard-edged shade, no realism, no texture, no lettering or UI. Strict overhead view, centered, one object only filling 80% of a square canvas, transparent background with generous clear edge padding. Must be identifiable at 24 pixels, so use bold simple silhouette and very few internal marks. No references to other games. Subject: one thick red-onion ring, slightly irregular circle with a clearly TRANSPARENT large hole. Purple outer edge, pale lavender flesh, one inner purple ring, no separate fragments. Compact circular silhouette.",
+      "inputImages": [],
+      "alpha": {
+        "transparentPixels": 1105722,
+        "opaqueLikePixels": 451432
+      },
+      "visibleBounds": {
+        "left": 133,
+        "top": 154,
+        "right": 1106,
+        "bottom": 1136,
+        "threshold": 8
+      },
+      "pivot": [
+        619.5,
+        645
+      ],
+      "review": {
+        "status": "accepted-pilot-garnish",
+        "date": "2026-11-15",
+        "evidenceIds": [
+          "ev_cda67f8ca88a935e75a8fffc98bdf1ab063f6c04e36076e2fc2de00438da53fc",
+          "ev_ec77b7458b2d2796920cb273dcf1fcc99bbb45f863939b0efda41a22b4af223a"
+        ]
+      }
+    },
+    {
+      "id": "lemon",
+      "state": "top",
+      "revision": 2,
+      "path": "/assets/nutriserve/garnishes/lemon-top-v2.png",
+      "width": 1536,
+      "height": 1024,
+      "viewBox": "136.54999999999995 -93.45000000000005 1234.9 1234.9",
+      "bytes": 1029363,
+      "sha256": "b753ac5c5f0f528e01a9dd6b3098f4960b1e3d092a773241a0cedeffc53b834c",
+      "sourceFile": "exec-8808bb53-22bb-4f38-bcf3-542b34b3ee70.png",
+      "prompt": "Edit image 1 (lemon) only. Preserve its semicircle silhouette and three segments, but give it the same clear thick dark warm-brown OUTER outline as image 2 (coriander, style reference only). Remove all outer glow, shadow, gradient and soft highlights. Use flat yellow rind, cream pith, pale yellow segments and one solid warm yellow shade. Keep genuinely transparent background and surrounding padding. One overhead lemon half slice only, no leaves, no lettering. Designed to read at 24 pixels. Image 2 is an original NutriServe sprite, not to be copied into the output.",
+      "inputImages": [
+        "exec-15491d44-f71f-4c55-9a69-3232b6551b6d.png",
+        "exec-af2bb6ac-ef51-468c-9da9-f674be46afbf.png"
+      ],
+      "alpha": {
+        "transparentPixels": 937300,
+        "opaqueLikePixels": 626195
+      },
+      "visibleBounds": {
+        "left": 172,
+        "top": 182,
+        "right": 1336,
+        "bottom": 866,
+        "threshold": 8
+      },
+      "pivot": [
+        754,
+        524
+      ],
+      "review": {
+        "status": "accepted-pilot-garnish",
+        "date": "2026-11-15",
+        "evidenceIds": [
+          "ev_cda67f8ca88a935e75a8fffc98bdf1ab063f6c04e36076e2fc2de00438da53fc",
+          "ev_ec77b7458b2d2796920cb273dcf1fcc99bbb45f863939b0efda41a22b4af223a"
+        ]
+      }
+    },
+    {
+      "id": "green_chilli",
+      "state": "top",
+      "revision": 1,
+      "path": "/assets/nutriserve/garnishes/green_chilli-top-v1.png",
+      "width": 1254,
+      "height": 1254,
+      "viewBox": "114.42999999999995 128.42999999999995 1027.14 1027.14",
+      "bytes": 496264,
+      "sha256": "72f60a510237dc3b0bff38462c1ce801a8103212ec4cb1943ede476c57094c5a",
+      "sourceFile": "exec-0b9d40d7-6131-438d-a305-fec94c1fd9fd.png",
+      "prompt": "Create a single production game sprite for NutriServe, an original Indian-food serving game. Flat friendly hand-drawn cartoon, clean dark warm-brown outline, restrained bright flat colors, at most one hard-edged shade, no realism, no texture, no lettering or UI. Strict overhead view, centered, one object only filling 80% of a square canvas, transparent background with generous clear edge padding. Must be identifiable at 24 pixels, so use bold simple silhouette and very few internal marks. No references to other games. Subject: one short plump curved green chilli pepper with its tiny attached stem. Diagonal curved silhouette, medium green and one light green highlight shape, no extra peppers, no fine textures.",
+      "inputImages": [],
+      "alpha": {
+        "transparentPixels": 1211949,
+        "opaqueLikePixels": 351173
+      },
+      "visibleBounds": {
+        "left": 144,
+        "top": 172,
+        "right": 1112,
+        "bottom": 1112,
+        "threshold": 8
+      },
+      "pivot": [
+        628,
+        642
+      ],
+      "review": {
+        "status": "accepted-pilot-garnish",
+        "date": "2026-11-15",
+        "evidenceIds": [
+          "ev_cda67f8ca88a935e75a8fffc98bdf1ab063f6c04e36076e2fc2de00438da53fc",
+          "ev_ec77b7458b2d2796920cb273dcf1fcc99bbb45f863939b0efda41a22b4af223a"
+        ]
+      }
+    },
+    {
+      "id": "pomegranate",
+      "state": "top",
+      "revision": 1,
+      "path": "/assets/nutriserve/garnishes/pomegranate-top-v1.png",
+      "width": 1254,
+      "height": 1254,
+      "viewBox": "184.96999999999997 219.46999999999997 849.0600000000001 849.0600000000001",
+      "bytes": 483740,
+      "sha256": "17ddabc19265210195453669818fe1ac82978468760c71e18d76a890586f358b",
+      "sourceFile": "exec-594aa0e3-22d5-466f-bcbb-bcc97eb6ced2.png",
+      "prompt": "Create a single production game sprite for NutriServe, an original Indian-food serving game. Flat friendly hand-drawn cartoon, clean dark warm-brown outline, restrained bright flat colors, at most one hard-edged shade, no realism, no texture, no lettering or UI. Strict overhead view, centered, one object only filling 80% of a square canvas, transparent background with generous clear edge padding. Must be identifiable at 24 pixels, so use bold simple silhouette and very few internal marks. No references to other games. Subject: one plump pomegranate aril, rounded faceted ruby-red teardrop shape, deep red edge with one pale coral flat highlight, no cluster, no fruit shell. Compact small jewel-like seed.",
+      "inputImages": [],
+      "alpha": {
+        "transparentPixels": 1151268,
+        "opaqueLikePixels": 403957
+      },
+      "visibleBounds": {
+        "left": 252,
+        "top": 244,
+        "right": 967,
+        "bottom": 1044,
+        "threshold": 8
+      },
+      "pivot": [
+        609.5,
+        644
+      ],
+      "review": {
+        "status": "accepted-pilot-garnish",
+        "date": "2026-11-15",
+        "evidenceIds": [
+          "ev_cda67f8ca88a935e75a8fffc98bdf1ab063f6c04e36076e2fc2de00438da53fc",
+          "ev_ec77b7458b2d2796920cb273dcf1fcc99bbb45f863939b0efda41a22b4af223a"
+        ]
+      }
+    }
+  ]
+}

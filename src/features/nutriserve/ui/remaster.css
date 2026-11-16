@@ -110,7 +110,7 @@
 .ns-panel { background: var(--paper); border: 3px solid var(--line); border-radius: 0.6em; padding: 0.8em; display: flex; flex-direction: column; gap: 0.6em; }
 .ns-panel h2 { margin: 0; font-size: 1.3em; }
 .ns-size { font-size: 1.1em; padding: 0.6em 1em; }
-.ns-vessel-side svg, .ns-vessel-top svg { width: 100%; height: 100%; display: block; }
+.ns-vessel-side > svg, .ns-vessel-top > svg { width: 100%; height: 100%; display: block; }
 .ns-gauges { display: flex; flex-direction: column; gap: 0.3em; background: #fff9ecdd; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.35em 0.5em; }
 .ns-gauge-label { font-size: 0.8em; }
 .ns-gauge-label .ns-over { color: #8a2a00; font-weight: 700; }
@@ -167,7 +167,7 @@
 .ns-vessel-hint { position: absolute; left: 15%; right: 15%; top: 42%; text-align: center; font-weight: 800; font-size: 0.85em; background: #fff9ecee; border: 2px solid var(--line); border-radius: 0.5em; padding: 0.3em; pointer-events: none; }
 .ns-tools { display: flex; flex-wrap: wrap; gap: 0.3em; align-content: flex-start; }
 .ns-tool { font: inherit; font-size: 0.75em; font-weight: 700; border: 2px solid var(--line); background: #fff; border-radius: 0.45em; padding: 0.2em 0.45em; display: inline-flex; align-items: center; gap: 0.3em; cursor: pointer; }
-.ns-tool svg { width: 1.1em; height: 1.1em; }
+.ns-tool > svg { width: 1.1em; height: 1.1em; }
 .ns-tool[aria-pressed='true'] { background: #ffe08a; }
 
 /* Toast and overlays */
