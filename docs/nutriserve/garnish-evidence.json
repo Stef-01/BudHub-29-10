@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-15",
+  "base": "f6f05fa63d1d85c3774359be5b3e2a1b165c7eff",
+  "records": [
+    {
+      "mode": "desktop",
+      "evidenceId": "ev_cda67f8ca88a935e75a8fffc98bdf1ab063f6c04e36076e2fc2de00438da53fc",
+      "retainedFile": "NutriServe-garnish-desktop-Evidence.json",
+      "sha256": "616846db0ef0d82418390b294dbce4705f5355fd2752cf3fbe8efa3bb8a3c13b",
+      "completeness": {
+        "status": "complete",
+        "equality_eligible": true,
+        "missing_sections": [],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "mode": "mobile",
+      "evidenceId": "ev_ec77b7458b2d2796920cb273dcf1fcc99bbb45f863939b0efda41a22b4af223a",
+      "retainedFile": "NutriServe-garnish-mobile-Evidence.json",
+      "sha256": "c1171069f13b1bfba5fea5dfb22b3a636a486d0cd56f160b93d960b082133ca9",
+      "completeness": {
+        "status": "complete",
+        "equality_eligible": true,
+        "missing_sections": [],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    }
+  ]
+}
