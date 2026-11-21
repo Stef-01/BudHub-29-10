@@ -1,0 +1,387 @@
+{
+  "version": 1,
+  "recipe": "Pillow 11.3.0; premultiplied RGBA Lanczos resize; lossless WebP exact=True method=6; no crop or anchor changes",
+  "assets": [
+    {
+      "id": "arjun_fit",
+      "family": "characters",
+      "source": "/assets/nutriserve/characters/arjun_fit-idle-v3.png",
+      "sourceSha256": "dc0203ae256e97736565e5aec1c280a5e868324a6cdc95da3c04eb269c5497f7",
+      "sourceBytes": 1161220,
+      "sourceWidth": 1024,
+      "sourceHeight": 1536,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/arjun_fit-idle-v3-96.webp",
+          "width": 64,
+          "height": 96,
+          "bytes": 6262,
+          "sha256": "47d583d33842ddea1c6688554ea028ca64dd0e611b3464b517e1740b50e4d5fb",
+          "rgbaSha256": "30098f6211d579fb98aaf293c73bbee0f78a6129c38bcedc5f12003aa14dafa0"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/arjun_fit-idle-v3-360.webp",
+          "width": 240,
+          "height": 360,
+          "bytes": 38770,
+          "sha256": "d5e754881fa7560ed5a40b258748bdb47132e3a65a394effb776ae6cfe39b358",
+          "rgbaSha256": "ac0a3df3c3f8a92d834f1604de3ca16b9f174d8f29e67bae22542df746a1cd07"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/arjun_fit-idle-v3-720.webp",
+          "width": 480,
+          "height": 720,
+          "bytes": 116838,
+          "sha256": "df6cd4ebb879ca012fc01f385ed75276d524df865592e745e3d79eb96ce7ffa1",
+          "rgbaSha256": "145d35808be21cfab3e13fc524af0e6faef469aa358f751ee8970ead53aeb3d6"
+        }
+      ]
+    },
+    {
+      "id": "priya_balanced",
+      "family": "characters",
+      "source": "/assets/nutriserve/characters/priya_balanced-idle-v2.png",
+      "sourceSha256": "c5ea92f47942aacabd7f53543871fe12dab4477be39e84a1d6d800d2e4ed60b0",
+      "sourceBytes": 1157318,
+      "sourceWidth": 1024,
+      "sourceHeight": 1536,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/priya_balanced-idle-v2-96.webp",
+          "width": 64,
+          "height": 96,
+          "bytes": 6036,
+          "sha256": "5f455930a8952dbcefdaa8f7def4772bd605442c95f9f8b0945cf4e75e375a7c",
+          "rgbaSha256": "ca5b2845a4373b479e5dd178f62c50b0f03849194f42406a784bbb3d492fa264"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/priya_balanced-idle-v2-360.webp",
+          "width": 240,
+          "height": 360,
+          "bytes": 38072,
+          "sha256": "69e4c486070116d6d72c77ba693d8e62a257f4dfd1a5ee1b75a9eac7bdf1f10f",
+          "rgbaSha256": "c65ab401b548f1f0a0df853fa48bfde7e9a5f01b0caee4a93fee5fdca3fbfa5a"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/priya_balanced-idle-v2-720.webp",
+          "width": 480,
+          "height": 720,
+          "bytes": 114160,
+          "sha256": "deae0b4e97ee299d19877a6d1353107e6fdf73e9356720dc7315a0319df088f6",
+          "rgbaSha256": "5f50b4460d9fdafd84da4a3e4633dcc8ea20b3a5dda9c93e894f9103b2e839b0"
+        }
+      ]
+    },
+    {
+      "id": "rohan_light",
+      "family": "characters",
+      "source": "/assets/nutriserve/characters/rohan_light-idle-v2.png",
+      "sourceSha256": "f727295c31813e6104daf6ac49e518f755846086e9a3da83bf0fe327af510581",
+      "sourceBytes": 1228818,
+      "sourceWidth": 1024,
+      "sourceHeight": 1536,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/rohan_light-idle-v2-96.webp",
+          "width": 64,
+          "height": 96,
+          "bytes": 6698,
+          "sha256": "d8333d57cb1a9c0bf55c6f71c3041ef4eff21edcdeeecc0d0bac0698210f0a45",
+          "rgbaSha256": "58bae92b8144dbc719b0bb0e21005245cef01b62d1d3ef637d90e2bfd95d2261"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/rohan_light-idle-v2-360.webp",
+          "width": 240,
+          "height": 360,
+          "bytes": 43106,
+          "sha256": "76ed3f2e77a973b220cdf54a79fbb31ba6fc3f29c28d4a54f5b0c538f3ae3caa",
+          "rgbaSha256": "7e6ac35bfc3ce3ff19412bd84feb40b01770c70e35f74e86920a08cfe8f09f1c"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/rohan_light-idle-v2-720.webp",
+          "width": 480,
+          "height": 720,
+          "bytes": 129886,
+          "sha256": "bb81297722cfee351cf3f25df5763fd78eb4d367368e9277a937a1df8bb16baa",
+          "rgbaSha256": "4614db006bc3bd2658cdac12151d675e3efdbc1fed5c1e3b3169fc7520f01418"
+        }
+      ]
+    },
+    {
+      "id": "maya_protein",
+      "family": "characters",
+      "source": "/assets/nutriserve/characters/maya_protein-idle-v2.png",
+      "sourceSha256": "30600b791119325e002d2a72fdb76450695f1be52ac62cbd48142e819c8bd0c4",
+      "sourceBytes": 1215274,
+      "sourceWidth": 1024,
+      "sourceHeight": 1536,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/maya_protein-idle-v2-96.webp",
+          "width": 64,
+          "height": 96,
+          "bytes": 6878,
+          "sha256": "3327bfec73fc92ff2d0186266911b4e48b14fa84bc7df87dd8f91c060d01ce42",
+          "rgbaSha256": "b5c15ffa4ccef938fe43b7e8c92eb0c4ca39ab60faaa331685327a729a80bfee"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/maya_protein-idle-v2-360.webp",
+          "width": 240,
+          "height": 360,
+          "bytes": 42984,
+          "sha256": "f2df4e84d90459141ffbb30d25ef29fdd733b275d873f893dbccf179582fc1e9",
+          "rgbaSha256": "7c3eb29b1b54ba033f04451d81c42164a55457276836ede56dbae6161d00099f"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/maya_protein-idle-v2-720.webp",
+          "width": 480,
+          "height": 720,
+          "bytes": 128978,
+          "sha256": "f80aedec4c2afcc824a508cbc218d67272a171d0660ccdd22d70af16ba1235eb",
+          "rgbaSha256": "d190494f0c357f02c609402984de026004ea66977aab618921eb354bb2f141f8"
+        }
+      ]
+    },
+    {
+      "id": "vikram_lowsodium",
+      "family": "characters",
+      "source": "/assets/nutriserve/characters/vikram_lowsodium-idle-v2.png",
+      "sourceSha256": "8619fced8a6ee12f0038de5bd698080224cea301274e3f6cf00666680df5a9f0",
+      "sourceBytes": 1227530,
+      "sourceWidth": 1024,
+      "sourceHeight": 1536,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/vikram_lowsodium-idle-v2-96.webp",
+          "width": 64,
+          "height": 96,
+          "bytes": 6444,
+          "sha256": "320a7b1d488e12e80801b15e71238f18b2cf748b4e576562b38621781faf03c9",
+          "rgbaSha256": "28cea79581dedb1503d4cb71976edee4a0c09de7646b82e4d424be33da2a237e"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/vikram_lowsodium-idle-v2-360.webp",
+          "width": 240,
+          "height": 360,
+          "bytes": 39742,
+          "sha256": "7dd758ca62d341d266bd93118283dafcc4d257dcc77575a302df195648259f82",
+          "rgbaSha256": "054bf3d365216fef8a09f4c8f3988806072f73d5bea8c40c811476ee62da5848"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/vikram_lowsodium-idle-v2-720.webp",
+          "width": 480,
+          "height": 720,
+          "bytes": 120134,
+          "sha256": "2a54bd4c8c268bfc67d1e3a9a41809cbf62e9b1a04d187ef8f1b56822857753b",
+          "rgbaSha256": "6e0eef85a244410b753b614a8f0ebbdd46c72d285fe1028941e2f7d629604430"
+        }
+      ]
+    },
+    {
+      "id": "ananya_breakfast",
+      "family": "characters",
+      "source": "/assets/nutriserve/characters/ananya_breakfast-idle-v2.png",
+      "sourceSha256": "f35e86684d2ce6d16cbd09f27c351ef227fdb16278e19770622048bd222c7dbd",
+      "sourceBytes": 1132963,
+      "sourceWidth": 1024,
+      "sourceHeight": 1536,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/ananya_breakfast-idle-v2-96.webp",
+          "width": 64,
+          "height": 96,
+          "bytes": 6068,
+          "sha256": "0fd9d66e6fe1d9cf8091e617ea18a24767a30ef29f36c9b48f3288dd48857000",
+          "rgbaSha256": "dfe6f5d175f3f86b00dbd82f3ce1c172f8264e8b6a21b91afb8d14ccfb9a53b4"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/ananya_breakfast-idle-v2-360.webp",
+          "width": 240,
+          "height": 360,
+          "bytes": 38264,
+          "sha256": "7b9c2a2723085bba0196f32b511f653b30d2acee067ae9c85a2c231029b55384",
+          "rgbaSha256": "208f11ea731c01cedfab21f9d70a37f117fff14afeaeff32dfd98e51cadbc306"
+        },
+        {
+          "path": "/assets/nutriserve/runtime/ananya_breakfast-idle-v2-720.webp",
+          "width": 480,
+          "height": 720,
+          "bytes": 115616,
+          "sha256": "9ff2b02f61ee0391abc02c39b2bcf26c8727d21668c13dca32496ded358b8d80",
+          "rgbaSha256": "13dd602148c6be4f9ce2b5a2beff01e23506186a895e1c62100b50c37a2aa94c"
+        }
+      ]
+    },
+    {
+      "id": "coriander",
+      "family": "garnishes",
+      "source": "/assets/nutriserve/garnishes/coriander-top-v1.png",
+      "sourceSha256": "982fb523577504833ad169a6038855ef197294cda9ebcdf7f43b2c37f958d73e",
+      "sourceBytes": 788300,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/coriander-top-v1-192.webp",
+          "width": 192,
+          "height": 192,
+          "bytes": 20774,
+          "sha256": "cb122649c08f612886feecd3254a0c04759e02dbc08109c4a467263549bb81f0",
+          "rgbaSha256": "ea6aae1950841154c3c04b955ce915ca621f5e9404b63ede2deb4878d3eef42d"
+        }
+      ]
+    },
+    {
+      "id": "onion",
+      "family": "garnishes",
+      "source": "/assets/nutriserve/garnishes/onion-top-v1.png",
+      "sourceSha256": "def332788566f23be71eb2205481fe4045c59d61f9091e97b9a973a1bd9cfd41",
+      "sourceBytes": 618349,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/onion-top-v1-192.webp",
+          "width": 192,
+          "height": 192,
+          "bytes": 19308,
+          "sha256": "7e0db365d68f07e78e567b0986112b0fd702c2c68a1845e9fc6caf18405291e7",
+          "rgbaSha256": "e34f452e55ba67e168b8c8463f7e3d6705d024f51dffd2cf5f30cd1277de9339"
+        }
+      ]
+    },
+    {
+      "id": "lemon",
+      "family": "garnishes",
+      "source": "/assets/nutriserve/garnishes/lemon-top-v2.png",
+      "sourceSha256": "b753ac5c5f0f528e01a9dd6b3098f4960b1e3d092a773241a0cedeffc53b834c",
+      "sourceBytes": 1029363,
+      "sourceWidth": 1536,
+      "sourceHeight": 1024,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/lemon-top-v2-192.webp",
+          "width": 192,
+          "height": 128,
+          "bytes": 11844,
+          "sha256": "0865d5a81d9b9e2910e18d489dff38870d41615429c01644d71a397d6f9d6f72",
+          "rgbaSha256": "a06d4fdde8b5d823208cc2b7ba33c4006393d594bf971fdd77d2c936c65915a0"
+        }
+      ]
+    },
+    {
+      "id": "green_chilli",
+      "family": "garnishes",
+      "source": "/assets/nutriserve/garnishes/green_chilli-top-v1.png",
+      "sourceSha256": "72f60a510237dc3b0bff38462c1ce801a8103212ec4cb1943ede476c57094c5a",
+      "sourceBytes": 496264,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/green_chilli-top-v1-192.webp",
+          "width": 192,
+          "height": 192,
+          "bytes": 13152,
+          "sha256": "b1f2d86d15a781b27f4319beef2d7db2d4a51ffe85abc38885a839408334fc2b",
+          "rgbaSha256": "238372c2ff5b0db1af507124e18e4db3011f60e160c7846ddf84c1e56ee473c4"
+        }
+      ]
+    },
+    {
+      "id": "pomegranate",
+      "family": "garnishes",
+      "source": "/assets/nutriserve/garnishes/pomegranate-top-v1.png",
+      "sourceSha256": "17ddabc19265210195453669818fe1ac82978468760c71e18d76a890586f358b",
+      "sourceBytes": 483740,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/pomegranate-top-v1-192.webp",
+          "width": 192,
+          "height": 192,
+          "bytes": 11520,
+          "sha256": "5e222b3df71c63a4b1b904f782611ac7c459f08d57bb76489417d6cc2fdbeff4",
+          "rgbaSha256": "58ea21fd00f358bd6e5ced7a6fc614e84279541afa315d0495ef2a3c0432275c"
+        }
+      ]
+    },
+    {
+      "id": "katori",
+      "family": "food",
+      "source": "/assets/nutriserve/food/katori-top-v1.png",
+      "sourceSha256": "0bbfe4b7a19936378933ab0ff220cea48db5e323ce233896331766029c127a2e",
+      "sourceBytes": 1399602,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/katori-top-v1-512.webp",
+          "width": 512,
+          "height": 512,
+          "bytes": 159594,
+          "sha256": "7baabff451da33b3b92732832231a7584c398ce4846445c06c28ac43dff643c4",
+          "rgbaSha256": "c711d80b90197137c2762127f5ce0d147afeeb58f214602fe21f7686946b4520"
+        }
+      ]
+    },
+    {
+      "id": "rice_white",
+      "family": "food",
+      "source": "/assets/nutriserve/food/rice_white-top-v2.png",
+      "sourceSha256": "970509cd674038e07473b879a841efd836571c5365a4e6d9b938c5ee20d66413",
+      "sourceBytes": 1431676,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/rice_white-top-v2-512.webp",
+          "width": 512,
+          "height": 512,
+          "bytes": 192242,
+          "sha256": "e6e9eaa0cfee693a4eb94fb675cb95b46aa5a3c9b40da0139dd58f675c87712c",
+          "rgbaSha256": "bcf0a6aeef9258541a1e65bd48bb88309272b29192a1400419a22fc47ad21a51"
+        }
+      ]
+    },
+    {
+      "id": "chana_masala",
+      "family": "food",
+      "source": "/assets/nutriserve/food/chana_masala-top-v1.png",
+      "sourceSha256": "6760eef64154bd201e65701f75b102524d7a3d36b3d052f23d92efc9347a34fe",
+      "sourceBytes": 1353103,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/chana_masala-top-v1-512.webp",
+          "width": 512,
+          "height": 512,
+          "bytes": 177258,
+          "sha256": "0a2fc6d18e3fc01ec4991ef7f9706e051fa56706395f7a64603eb83739a76984",
+          "rgbaSha256": "38436e8942c367c3053127f961ef3f60d26314ed7c9a3869cc31176f3cc5e9af"
+        }
+      ]
+    },
+    {
+      "id": "palak_dal",
+      "family": "food",
+      "source": "/assets/nutriserve/food/palak_dal-top-v1.png",
+      "sourceSha256": "8aaf85286197cda34e28d9217d8c7c1d591e454674e9a91ee39f9b6e286e48f7",
+      "sourceBytes": 1200355,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "variants": [
+        {
+          "path": "/assets/nutriserve/runtime/palak_dal-top-v1-512.webp",
+          "width": 512,
+          "height": 512,
+          "bytes": 163066,
+          "sha256": "052cd7d9a2d38fcb248b4176cc6336eaa393a02427fe20948e0344f4e5d29c11",
+          "rgbaSha256": "817c8a519f52680f364322dd3b964f0ce3ac30e48299c6cda7c209e4e3683af9"
+        }
+      ]
+    }
+  ]
+}

@@ -13,7 +13,9 @@
     "catalog:nutriserve-sim": "node scripts/generate-nutriserve-catalog.mjs",
     "typecheck:nutriserve-sim": "tsc -p tsconfig.nutriserve-sim.json --noEmit",
     "e2e:nutriserve": "node scripts/e2e/nutriserve-release-gate.cjs",
-    "check:nutriserve-garnishes": "node scripts/check-nutriserve-garnishes.mjs"
+    "check:nutriserve-garnishes": "node scripts/check-nutriserve-garnishes.mjs",
+    "check:nutriserve-food-art": "node scripts/check-nutriserve-food-art.mjs",
+    "check:nutriserve-runtime": "node scripts/check-nutriserve-runtime.mjs"
   },
   "dependencies": {
     "@google/genai": "1.28.0",

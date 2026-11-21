@@ -29,4 +29,4 @@ for (const asset of manifest.assets) {
   totalBytes += bytes.length; decodedBytes += width * height * 4;
   console.log(`PASS ${asset.id}: source hash, dimensions, alpha, registry and review`);
 }
-console.log(`Five garnish masters: ${totalBytes} source bytes; ${decodedBytes} decoded RGBA bytes. Scaled derivatives remain A05 work.`);
+console.log(`Five garnish masters: ${totalBytes} source bytes; ${decodedBytes} decoded RGBA bytes. Runtime copies are checked separately.`);

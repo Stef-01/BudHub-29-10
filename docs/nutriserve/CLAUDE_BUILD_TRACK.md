@@ -68,3 +68,9 @@ Open `/nutriserve-art-lab.html` for art reviews. Use REA declared scenarios for 
 ## Status reporting
 
 Report each task as queued/in progress/blocked on named evidence or asset/reviewed. Include exact commit, changed ownership area, test outcomes, screenshot/Evidence IDs and open questions. Codex handles assets and visual review; Claude handles gameplay code. A passing production build is not a whole-game visual or mechanics sign-off.
+
+## Asset integration handoff — 20 November 2026
+
+See FOOD_ASSETS.md and food-runtime-evidence.json. Codex delivered top katori, white rice, chana masala, palak dal, and 27 optimized runtime variants across all 15 current masters. FinishStation supplies the actual base/main IDs; missing IDs keep color fallbacks. FoodSurface and GarnishSprite preserve master-space pivots and the existing unit-circle input/scoring geometry. CustomerSprite uses responsive copies, including small waiting-list/summary thumbnails.
+
+Claude can prepare side-view layer slots, exercise mixed produced/unproduced foods and measure cold-cache image delivery. Codex owns missing source art and native-size visual acceptance. Keep CLAUDE_STATUS.md as engineering authority. Scene-layer/input changes require the complete browser release gate; this pass ran rendering captures and the focused tests, not a new full-day browser playthrough.
