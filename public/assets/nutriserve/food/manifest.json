@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "generator": "OpenAI built-in image_gen",
+  "family": "original-food-top-2026-11-16",
+  "referenceUse": "Written Indian-food and kitchenware brief only. No reference images supplied to generation. Official Freezeria screenshots used separately for quality review.",
+  "geometry": {
+    "viewBox": [
+      0,
+      0,
+      240,
+      240
+    ],
+    "center": [
+      120,
+      120
+    ],
+    "foodRadius": 100,
+    "mainRadius": 62,
+    "vesselRadius": 112,
+    "inputUnitRadius": 1
+  },
+  "assets": [
+    {
+      "id": "katori",
+      "state": "top",
+      "revision": 1,
+      "path": "/assets/nutriserve/food/katori-top-v1.png",
+      "width": 1254,
+      "height": 1254,
+      "viewBox": "37 63.5 1161 1161",
+      "bytes": 1399602,
+      "sha256": "0bbfe4b7a19936378933ab0ff220cea48db5e323ce233896331766029c127a2e",
+      "sourceFile": "exec-2958568c-4174-487e-8e7c-a79683ea4123.png",
+      "prompt": "Production game asset for NutriServe, original Indian-food serving game. Flat outlined cartoon illustration, restrained broad flat colors, crisp warm dark brown contour, very simple hard-edged shading. NOT photorealistic, no microtexture, no gradients, no glow, no text, no utensils or UI. EXACT overhead orthographic view, circular footprint centered in a square image, occupying 85% of the canvas with true transparent surrounding padding. Should remain clear at 140 pixels. One EMPTY stainless-steel Indian katori seen straight down: a perfectly circular narrow rolled rim and circular empty inner basin. Steel uses blue-gray, slate gray and ivory flat highlight arcs, only a few broad segments. Outer contour and concentric inner edge clean and bold. No handle, no food, no perspective ellipse, no cast shadow. Top outer diameter perfectly round; rim band about 10% of total diameter.",
+      "inputImages": [],
+      "alpha": {
+        "transparentPixels": 534772,
+        "opaqueLikePixels": 1026009
+      },
+      "visibleBounds": {
+        "left": 45,
+        "top": 64,
+        "right": 1190,
+        "bottom": 1224,
+        "threshold": 8
+      },
+      "pivot": [
+        617.5,
+        644
+      ],
+      "review": {
+        "status": "accepted-pilot-top",
+        "date": "2026-11-20",
+        "evidenceIds": [
+          "ev_4242feb37a061fdb76510f82d01cb968ac09df4363ececc671e52f3a1cc81bd0",
+          "ev_402a3e335b814c3cef70b15d17f3f84469d750fc0bced6833cf983ba9565a463",
+          "ev_a8d853896db5ff9bfa3bf77720c563ea9d6af792c879136672ca9b2cebc6dd3e",
+          "ev_ac53971d82e7bacbccff00354f7ec3eefeecdb0069652d71c185832fecf83fda",
+          "ev_4629db4b71b73d16c152d37cccd657b1d4215e34f44ead80aab2e5bf2d233a87"
+        ],
+        "reviewer": "Codex visual review; not user sign-off"
+      }
+    },
+    {
+      "id": "rice_white",
+      "state": "top",
+      "revision": 2,
+      "path": "/assets/nutriserve/food/rice_white-top-v2.png",
+      "width": 1254,
+      "height": 1254,
+      "viewBox": "57.5 62 1143 1143",
+      "bytes": 1431676,
+      "sha256": "970509cd674038e07473b879a841efd836571c5365a4e6d9b938c5ee20d66413",
+      "sourceFile": "exec-c24166ce-988d-4636-99ab-f1561bd4a07b.png",
+      "prompt": "Edit this original NutriServe rice sprite. Preserve the overhead circular rice bed, every grain position, transparent background and dimensions. Change only the line and shadow palette: make all internal grain outlines LIGHT warm tan (#c8ad7d) instead of dark brown, reduce contrast of the grain shadows to pale warm cream (#ecdbb8), and use ivory (#fff7e5) grain faces. Keep a slightly darker medium-tan outside silhouette. No gradients, no added objects. The rice must be a quiet base underneath colorful curry and garnishes, legible but not visually dominant at 140px bowl width.",
+      "inputImages": [
+        "exec-6b6060ce-2fb6-4385-a398-c1d8ba115bd8.png"
+      ],
+      "alpha": {
+        "transparentPixels": 575447,
+        "opaqueLikePixels": 981151
+      },
+      "visibleBounds": {
+        "left": 58,
+        "top": 64,
+        "right": 1200,
+        "bottom": 1203,
+        "threshold": 8
+      },
+      "pivot": [
+        629,
+        633.5
+      ],
+      "review": {
+        "status": "accepted-pilot-top",
+        "date": "2026-11-20",
+        "evidenceIds": [
+          "ev_4242feb37a061fdb76510f82d01cb968ac09df4363ececc671e52f3a1cc81bd0",
+          "ev_402a3e335b814c3cef70b15d17f3f84469d750fc0bced6833cf983ba9565a463",
+          "ev_a8d853896db5ff9bfa3bf77720c563ea9d6af792c879136672ca9b2cebc6dd3e",
+          "ev_ac53971d82e7bacbccff00354f7ec3eefeecdb0069652d71c185832fecf83fda",
+          "ev_4629db4b71b73d16c152d37cccd657b1d4215e34f44ead80aab2e5bf2d233a87"
+        ],
+        "reviewer": "Codex visual review; not user sign-off"
+      }
+    },
+    {
+      "id": "chana_masala",
+      "state": "top",
+      "revision": 1,
+      "path": "/assets/nutriserve/food/chana_masala-top-v1.png",
+      "width": 1254,
+      "height": 1254,
+      "viewBox": "38.5 48 1174 1174",
+      "bytes": 1353103,
+      "sha256": "6760eef64154bd201e65701f75b102524d7a3d36b3d052f23d92efc9347a34fe",
+      "sourceFile": "exec-971efa04-d10c-46a1-856f-7dfe06fef774.png",
+      "prompt": "Production game asset for NutriServe, original Indian-food serving game. Flat outlined cartoon illustration, restrained broad flat colors, crisp warm dark brown contour, very simple hard-edged shading. NOT photorealistic, no microtexture, no gradients, no glow, no text, no utensils or UI. EXACT overhead orthographic view, circular footprint centered in a square image, occupying 85% of the canvas with true transparent surrounding padding. Should remain clear at 140 pixels. One circular pool of chana masala, no bowl or plate. Rich terracotta-orange thick tomato masala gravy with about 18 large golden chickpeas, their recognizable cleft contours clearly readable. A few small red tomato pieces, no leaves or garnish. Solid filled round silhouette, modest irregular edge. One shadow shape per chickpea, no realistic shine. Food surface only.",
+      "inputImages": [],
+      "alpha": {
+        "transparentPixels": 524630,
+        "opaqueLikePixels": 1036277
+      },
+      "visibleBounds": {
+        "left": 39,
+        "top": 57,
+        "right": 1212,
+        "bottom": 1213,
+        "threshold": 8
+      },
+      "pivot": [
+        625.5,
+        635
+      ],
+      "review": {
+        "status": "accepted-pilot-top",
+        "date": "2026-11-20",
+        "evidenceIds": [
+          "ev_4242feb37a061fdb76510f82d01cb968ac09df4363ececc671e52f3a1cc81bd0",
+          "ev_402a3e335b814c3cef70b15d17f3f84469d750fc0bced6833cf983ba9565a463",
+          "ev_a8d853896db5ff9bfa3bf77720c563ea9d6af792c879136672ca9b2cebc6dd3e",
+          "ev_ac53971d82e7bacbccff00354f7ec3eefeecdb0069652d71c185832fecf83fda",
+          "ev_4629db4b71b73d16c152d37cccd657b1d4215e34f44ead80aab2e5bf2d233a87"
+        ],
+        "reviewer": "Codex visual review; not user sign-off"
+      }
+    },
+    {
+      "id": "palak_dal",
+      "state": "top",
+      "revision": 1,
+      "path": "/assets/nutriserve/food/palak_dal-top-v1.png",
+      "width": 1254,
+      "height": 1254,
+      "viewBox": "57.5 61.5 1137 1137",
+      "bytes": 1200355,
+      "sha256": "8aaf85286197cda34e28d9217d8c7c1d591e454674e9a91ee39f9b6e286e48f7",
+      "sourceFile": "exec-31960d6b-7fab-4081-8eed-6e9240379892.png",
+      "prompt": "Production game asset for NutriServe, original Indian-food serving game. Flat outlined cartoon illustration, restrained broad flat colors, crisp warm dark brown contour, very simple hard-edged shading. NOT photorealistic, no microtexture, no gradients, no glow, no text, no utensils or UI. EXACT overhead orthographic view, circular footprint centered in a square image, occupying 85% of the canvas with true transparent surrounding padding. Should remain clear at 140 pixels. One circular pool of palak dal, no bowl or plate. Thick muted leaf-green spinach dal with about 20 clearly visible rounded golden yellow split lentils, a few broad dark green spinach shapes. No herb garnish, no white cream, no bowl. Solid filled circular silhouette, modest irregular edge. Restrained contrast, large readable ingredients, not noisy. Food surface only.",
+      "inputImages": [],
+      "alpha": {
+        "transparentPixels": 578091,
+        "opaqueLikePixels": 981762
+      },
+      "visibleBounds": {
+        "left": 58,
+        "top": 62,
+        "right": 1194,
+        "bottom": 1198,
+        "threshold": 8
+      },
+      "pivot": [
+        626,
+        630
+      ],
+      "review": {
+        "status": "accepted-pilot-top",
+        "date": "2026-11-20",
+        "evidenceIds": [
+          "ev_4242feb37a061fdb76510f82d01cb968ac09df4363ececc671e52f3a1cc81bd0",
+          "ev_402a3e335b814c3cef70b15d17f3f84469d750fc0bced6833cf983ba9565a463",
+          "ev_a8d853896db5ff9bfa3bf77720c563ea9d6af792c879136672ca9b2cebc6dd3e",
+          "ev_ac53971d82e7bacbccff00354f7ec3eefeecdb0069652d71c185832fecf83fda",
+          "ev_4629db4b71b73d16c152d37cccd657b1d4215e34f44ead80aab2e5bf2d233a87"
+        ],
+        "reviewer": "Codex visual review; not user sign-off"
+      }
+    }
+  ]
+}

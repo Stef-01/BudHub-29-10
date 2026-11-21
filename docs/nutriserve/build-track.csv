@@ -9,8 +9,8 @@ C07,Claude,Accessible responsive renderer,implemented (layout studies until A02-
 C08,Claude,End-to-end release gate,mechanics gate passed; visual sign-off pending,C01 C02 C03 C04 C05 C06 C07,One complete day desktop mobile reload wrong ticket; final art reviewed in game against NutriServe's own masters
 A01,Codex,Six pilot idle characters,reviewed,,Native-size cast and alpha checks; source hashes recorded
 A02,Codex,Reaction and walk states,queued,A01,Preserve identities scale and anchors; no idle aliases
-A03,Codex,Vessel masks and pilot foods,garnish family reviewed; vessels foods and drizzle pending,,Five discrete garnishes integrated; see GARNISH_ASSETS.md; vessel camera mask and food layering remain open
+A03,Codex,Vessel masks and pilot foods,partial: top katori and three food surfaces plus five garnishes reviewed,,Finish unit-circle geometry preserved; side-view vessels and remaining foods/drizzles pending; see FOOD_ASSETS.md
 A04,Codex,Final station and equipment art,queued,C03 C04,Four machines and editable interaction hit areas; reviewed against NutriServe's own masters
-A05,Codex,Full catalog and optimized derivatives,queued,A02 A03,Current-main IDs reconciled; lazy loading and derivatives checked against their NutriServe masters
+A05,Codex,Full catalog and optimized derivatives,partial: 15 masters and 27 runtime copies verified,A02 A03,PNG masters preserved; responsive character WebP plus food/garnish copies; remaining catalog pending
 R01,Codex,Mix unit producer and boost trace,retired 2026-11-12 (no parity target),,Retired: Byte ranges and original runtime timing corroborate conversion
 R02,Codex,Waiting topping and total-score trace,retired 2026-11-12 (no parity target),,Retired: Control paths and golden original-runtime cases recorded

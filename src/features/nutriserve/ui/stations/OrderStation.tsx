@@ -70,7 +70,7 @@ export function OrderStation({ state, dispatch }: { state: GameState; dispatch: 
               return (
                 <li key={c.id}>
                   <span className="ns-thumb">
-                    <CustomerSprite customerId={c.catalogId} className="ns-sprite-img" decorative />
+                    <CustomerSprite customerId={c.catalogId} className="ns-sprite-img" sizes="1.6em" decorative />
                   </span>
                   {name(c.catalogId)}
                   {ticket && <small> #{ticket.number}</small>}

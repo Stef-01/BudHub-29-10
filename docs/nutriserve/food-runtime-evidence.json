@@ -1,0 +1,222 @@
+{
+  "date": "2026-11-20",
+  "scope": "Art-rendering review; game captures use a controlled valid schema-2 save fixture, not a full-day playthrough.",
+  "captures": [
+    {
+      "name": "runtime-desktop",
+      "evidenceId": "ev_4242feb37a061fdb76510f82d01cb968ac09df4363ececc671e52f3a1cc81bd0",
+      "evidenceSha256": "1bf13afc1cddf8c7e1c369742380057d2adbcdb7a5b52e1e1e25d4281059d461",
+      "screenshotSha256": "03f6db7de90ac5aa6dea6dfcfa1398e15ec76e4a0a6f60311f97a598b802798e",
+      "steps": [
+        {
+          "id": "scenario_start",
+          "status": "completed"
+        },
+        {
+          "id": "garnish-family",
+          "status": "completed"
+        },
+        {
+          "id": "runtime-review",
+          "status": "completed"
+        },
+        {
+          "id": "images-ready",
+          "status": "completed"
+        }
+      ],
+      "errors": [],
+      "completeness": {
+        "status": "complete",
+        "equality_eligible": true,
+        "missing_sections": [],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "name": "food-desktop-optimized",
+      "evidenceId": "ev_402a3e335b814c3cef70b15d17f3f84469d750fc0bced6833cf983ba9565a463",
+      "evidenceSha256": "a1468e95efe654b44a2d84e9892fb1b14a093b4c5ce55819d76287413b6c5f62",
+      "screenshotSha256": "4e66d09cadf8c517f451711190402083dfd89177b62f333b5e73bfa2ae37d6ef",
+      "steps": [
+        {
+          "id": "scenario_start",
+          "status": "completed"
+        },
+        {
+          "id": "garnish-family",
+          "status": "completed"
+        },
+        {
+          "id": "food-review",
+          "status": "completed"
+        },
+        {
+          "id": "dark-surface",
+          "status": "completed"
+        },
+        {
+          "id": "checker-surface",
+          "status": "completed"
+        },
+        {
+          "id": "cream-surface",
+          "status": "completed"
+        }
+      ],
+      "errors": [],
+      "completeness": {
+        "status": "complete",
+        "equality_eligible": true,
+        "missing_sections": [],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "name": "food-mobile-optimized",
+      "evidenceId": "ev_a8d853896db5ff9bfa3bf77720c563ea9d6af792c879136672ca9b2cebc6dd3e",
+      "evidenceSha256": "029cc5ec50745cbbc824a269298f884a895006106793e3f1cec42c3caafb1ef3",
+      "screenshotSha256": "1a3499470c0176ad46498ac585ddcbb3a2d398ec398690202f6896747c4c665a",
+      "steps": [
+        {
+          "id": "scenario_start",
+          "status": "completed"
+        },
+        {
+          "id": "garnish-family",
+          "status": "completed"
+        },
+        {
+          "id": "food-review",
+          "status": "completed"
+        }
+      ],
+      "errors": [],
+      "completeness": {
+        "status": "complete",
+        "equality_eligible": true,
+        "missing_sections": [],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "name": "food-game-desktop-optimized",
+      "evidenceId": "ev_ac53971d82e7bacbccff00354f7ec3eefeecdb0069652d71c185832fecf83fda",
+      "evidenceSha256": "99d66201623130b95e40ec307ab9d75655a70a6f146cfc175948965a44c90f21",
+      "screenshotSha256": "df8d007fbac7165dba8806c32df664e28fc0f66e5ca01205e6295e0c0c620908",
+      "steps": [
+        {
+          "id": "scenario_start",
+          "status": "completed"
+        },
+        {
+          "id": "app-load",
+          "status": "completed"
+        },
+        {
+          "id": "games",
+          "status": "completed"
+        },
+        {
+          "id": "open-kitchen",
+          "status": "completed"
+        },
+        {
+          "id": "restore-review-fixture",
+          "status": "completed"
+        },
+        {
+          "id": "finish-rendered",
+          "status": "completed"
+        },
+        {
+          "id": "images-ready",
+          "status": "completed"
+        }
+      ],
+      "errors": [
+        {
+          "sequence": 18,
+          "step_index": 1,
+          "kind": "console",
+          "level": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "url": {
+            "url": "http://127.0.0.1:4323/favicon.ico",
+            "origin": "http://127.0.0.1:4323",
+            "query_parameter_names": [],
+            "redacted": false
+          }
+        }
+      ],
+      "completeness": {
+        "status": "complete",
+        "equality_eligible": true,
+        "missing_sections": [],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "name": "food-game-mobile-optimized",
+      "evidenceId": "ev_4629db4b71b73d16c152d37cccd657b1d4215e34f44ead80aab2e5bf2d233a87",
+      "evidenceSha256": "3c8636eca1788194fa6b9d7fa0df71a3aff135dc8cebfc2bb69d0ac706392f0d",
+      "screenshotSha256": "f406d69d7334eef29087362e35a25472e7084c44f6351fcb06818cd93515eab7",
+      "steps": [
+        {
+          "id": "scenario_start",
+          "status": "completed"
+        },
+        {
+          "id": "app-load",
+          "status": "completed"
+        },
+        {
+          "id": "games",
+          "status": "completed"
+        },
+        {
+          "id": "open-kitchen",
+          "status": "completed"
+        },
+        {
+          "id": "restore-review-fixture",
+          "status": "completed"
+        },
+        {
+          "id": "finish-rendered",
+          "status": "completed"
+        },
+        {
+          "id": "images-ready",
+          "status": "completed"
+        }
+      ],
+      "errors": [
+        {
+          "sequence": 18,
+          "step_index": 1,
+          "kind": "console",
+          "level": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "url": {
+            "url": "http://127.0.0.1:4323/favicon.ico",
+            "origin": "http://127.0.0.1:4323",
+            "query_parameter_names": [],
+            "redacted": false
+          }
+        }
+      ],
+      "completeness": {
+        "status": "complete",
+        "equality_eligible": true,
+        "missing_sections": [],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    }
+  ]
+}

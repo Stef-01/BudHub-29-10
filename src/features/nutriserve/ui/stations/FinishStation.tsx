@@ -549,6 +549,8 @@ export function FinishStation({ state, dispatch }: { state: GameState; dispatch:
               label="Vessel seen from above"
               baseColor={foodColor(dish.build.base?.foodId)}
               mainColor={foodColor(dish.build.main?.foodId)}
+              baseFoodId={dish.build.base?.foodId}
+              mainFoodId={dish.build.main?.foodId}
               drizzles={Object.entries(dish.finish.drizzles).map(([id, d]) => ({ color: DRIZZLE_COLORS[id] ?? '#fff', cellsMg: d.cellsMg }))}
               garnishes={dish.finish.garnishes}
               cursor={cursor}

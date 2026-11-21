@@ -14,10 +14,11 @@ Open **Games → Preview the NutriServe remaster art**, or `/nutriserve-art-lab.
 | [Claude track](CLAUDE_BUILD_TRACK.md) | Ready-to-execute engineering handoff and ownership boundary |
 | [Track CSV](build-track.csv) | Concrete tasks and evidence/asset dependencies |
 | [Claude status](CLAUDE_STATUS.md) | Engineering status, verification, measured costs, asset requests by id/state |
+| [Food and runtime delivery](FOOD_ASSETS.md) | Four new top-view assets; 27 optimized copies; quality iterations and REA evidence |
 | [Garnish delivery](GARNISH_ASSETS.md) | Five original Finish pieces, native-size/alpha review, provenance and remaining asset work |
 
 Codex owns asset generation and visual acceptance. Claude's gameplay track has been implemented (see `CLAUDE_STATUS.md`).
 
 Validation of the art handoff (10 November 2026): all six source PNG hash/alpha/dimension checks; focused NutriServe typecheck; production build; REA desktop/390px review scenarios; BudHub game-entry smoke test (its seven reference arithmetic tests were removed with the reference contract on 12 November). The repository-wide typecheck had 65 existing diagnostics; comparison against an archive of the untouched main baseline found no new or removed diagnostic lines. The game's own tests and release gate are listed in `CLAUDE_STATUS.md`.
 
-NutriServe Kitchen is inspired by the kitchen-serving genre; it doesn't aim for or claim parity with any other game, and every one of its rules is its own since `prep-v9` (audit 16; before it, some prep numbers were still derived from the other game's; see `CLAUDE_STATUS.md`). Outstanding production includes all reaction/animation states, final food/equipment/scene art, audio, and optimized derivatives (the station interactions and progression are implemented, with provisional numbers).
+NutriServe Kitchen is inspired by the kitchen-serving genre; it doesn't aim for or claim parity with any other game, and every one of its rules is its own since `prep-v9` (audit 16; before it, some prep numbers were still derived from the other game's; see `CLAUDE_STATUS.md`). The 20 November asset pass delivers top-view katori, three food surfaces and optimized copies of all 15 current masters. Outstanding production includes reaction/animation states, side-view vessel and food layers, the remaining food catalog, equipment/scene art and audio (station interactions and progression are implemented, with provisional numbers).

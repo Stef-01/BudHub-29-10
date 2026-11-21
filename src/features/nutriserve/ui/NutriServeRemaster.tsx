@@ -965,7 +965,7 @@ function DaySummary({ state, dispatch, onExit }: { state: GameState; dispatch: D
             <tr key={r.ticketId}>
               <th scope="row">
                 <span className="ns-thumb">
-                  <CustomerSprite customerId={r.catalogCustomerId} className="ns-sprite-img" decorative />
+                  <CustomerSprite customerId={r.catalogCustomerId} className="ns-sprite-img" sizes="22px" decorative />
                 </span>
                 {name(r.catalogCustomerId)}
                 {r.mismatchedOrder && <small> (wrong order)</small>}

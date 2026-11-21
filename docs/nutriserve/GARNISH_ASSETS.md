@@ -27,7 +27,7 @@ Validation: 107 existing simulation/station/nutrition/regression tests; strict s
 
 ## Cost and next handoff
 
-The five unmodified PNG masters total **3,416,016 bytes** (3.26 MiB), and all five decoded at source dimensions occupy **31,451,712 RGBA bytes** (30.0 MiB). Browsers reuse a source across repeated placements, but these masters are oversized for 20–24px pieces. A05 must produce and visually compare small transparent derivatives before broader catalog expansion. This is an accepted pilot art delivery, not an optimized production asset budget.
+The five unmodified PNG masters total **3,416,016 bytes** (3.26 MiB), and all five decoded at source dimensions occupy **31,451,712 RGBA bytes** (30.0 MiB). Browsers reuse a source across repeated placements, but these masters are oversized for 20–24px pieces. A05 must produce and visually compare small transparent derivatives before broader catalog expansion. Update, 20 November: reviewed 192px lossless WebP copies now total 76,598 bytes and are used by the runtime renderer. The master sizes above remain provenance figures; see FOOD_ASSETS.md for generation, decoded-memory figures and review evidence.
 
 Codex owns the next art batches: A03 katori back/front/mask with a measured unit-circle contract, matching food layers and drizzle textures, followed by A02 character reactions and A04 station equipment. Claude can continue mechanics and input work using the existing IDs and pivots; no replacement glyphs or new scoring rules are needed for this family. Keep `CLAUDE_STATUS.md` as the engineering status source.
 

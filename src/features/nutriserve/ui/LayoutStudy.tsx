@@ -1,15 +1,14 @@
-// Code-native LAYOUT STUDIES for scenery and vessels. Garnishes use reviewed source art.
-// The layout studies give the stations readable,
-// interactive geometry until the asset track delivers final art (station art A04, vessel masks and
-// foods A03). They are deliberately plain: flat shapes, no attempt to stand in as finished art.
-// Every element carries data-layout-study so a visual review can find (and replace) them.
-import React from 'react';
+// Scenery and side-view vessels remain code-native layout studies (A03/A04).
+// Finish uses reviewed top-view food, katori and garnish art over the existing geometry.
+// Unproduced foods retain solid-color fallbacks. Study elements carry data-layout-study.
+import React, { useId } from 'react';
 import { VESSEL_RIM_SHARE } from './stage.ts';
 import type { StationId } from '../simulation/index.ts';
 import { getFood } from '../simulation/index.ts';
 import { FINISH_V1 } from '../simulation/index.ts';
 import { GarnishSprite } from '../assets/GarnishSprite';
 import { GARNISH_SPRITES } from '../assets/garnishes';
+import { FoodSurface } from '../assets/FoodSurface';
 
 export const STATION_COLORS: Record<StationId, { wall: string; accent: string; label: string; hi: string }> = {
   // NutriServe's own station colours (peacock teal, turmeric, terracotta, rani pink).
@@ -131,6 +130,9 @@ export function GarnishGlyph({ id, size = 10 }: { id: string; size?: number }) {
 export function VesselTop({
   baseColor,
   mainColor,
+  baseFoodId,
+  mainFoodId,
+  useArtwork = true,
   drizzles,
   garnishes,
   cursor,
@@ -138,23 +140,40 @@ export function VesselTop({
 }: {
   baseColor: string;
   mainColor: string;
+  baseFoodId?: string;
+  mainFoodId?: string;
+  /** Review-only before/after switch. Production always defaults to accepted artwork. */
+  useArtwork?: boolean;
   drizzles: Array<{ color: string; cellsMg: number[] }>;
   garnishes: Array<{ id: string; x: number; y: number; fell: boolean }>;
   cursor?: { x: number; y: number };
   label: string;
 }) {
+  const clipId = useId();
+  const mainClipId = useId();
+  const garnishEdgeId = useId();
   const n = FINISH_V1.gridSize;
   const cell = 200 / n;
   const toSvg = (v: number) => 120 + v * 120 * VESSEL_RIM_SHARE; // local 1 = the drawn rim (stage.ts)
   return (
-    <svg viewBox="0 0 240 240" role="img" aria-label={label} data-layout-study="vessel-top">
+    <svg viewBox="0 0 240 240" role="img" aria-label={label} data-vessel-renderer={useArtwork ? 'art-pilot' : 'layout-study'}>
       <circle cx="120" cy="120" r="112" fill="#c4cfce" stroke="#30332e" strokeWidth="4" />
+      {useArtwork && <FoodSurface id="katori" x={8} y={8} diameter={224} />}
       <circle cx="120" cy="120" r="100" fill={baseColor} />
-      <circle cx="120" cy="120" r="62" fill={mainColor} opacity=".95" />
-      <clipPath id="ns-top-clip">
-        <circle cx="120" cy="120" r="100" />
-      </clipPath>
-      <g clipPath="url(#ns-top-clip)">
+      <defs>
+        <clipPath id={clipId}><circle cx="120" cy="120" r="100" /></clipPath>
+        <clipPath id={mainClipId}><circle cx="120" cy="120" r="62" /></clipPath>
+        <filter id={garnishEdgeId} x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
+          <feMorphology in="SourceAlpha" operator="dilate" radius="0.65" result="edge" />
+          <feFlood floodColor="#fff5d6" />
+          <feComposite in2="edge" operator="in" />
+          <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      {useArtwork && <g clipPath={`url(#${clipId})`}><FoodSurface id={baseFoodId} x={20} y={20} diameter={200} /></g>}
+      <circle cx="120" cy="120" r="62" fill={mainColor} />
+      {useArtwork && <g clipPath={`url(#${mainClipId})`}><FoodSurface id={mainFoodId} x={58} y={58} diameter={124} /></g>}
+      <g clipPath={`url(#${clipId})`}>
         {drizzles.map((d, di) =>
           d.cellsMg.map((mg, i) =>
             mg > 0 ? (
@@ -172,7 +191,7 @@ export function VesselTop({
         )}
       </g>
       {garnishes.map((g, i) => (
-        <g key={i} transform={`translate(${toSvg(g.x)} ${toSvg(g.y)})`} opacity={g.fell ? 0.45 : 1}>
+        <g key={i} transform={`translate(${toSvg(g.x)} ${toSvg(g.y)})`} opacity={g.fell ? 0.45 : 1} filter={useArtwork ? `url(#${garnishEdgeId})` : undefined}>
           <GarnishGlyph id={g.id} />
         </g>
       ))}

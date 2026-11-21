@@ -40,7 +40,7 @@ Six transparent 1024 × 1536 PNG pilot idle sprites (made with another game's sc
 
 The runtime registry is `src/features/nutriserve/assets/characters.ts`; metadata/provenance is `public/assets/nutriserve/manifest.json`; shared rendering is `CustomerSprite.tsx`. The current game header uses these six sprites when their IDs appear; other customers keep their existing visuals. Happy/sad result art is **not** replaced by idle sprites. That mixed-style transition is a known pilot limitation until reaction states are delivered.
 
-Sprite source files are approximately 1.1–1.2 MB each. This pass preserves the generated masters without lossy processing. Mobile delivery needs explicitly reviewed scaled/WebP derivatives before full-catalog expansion; keep anchors identical and compare composited derivatives to source. Do not ship 53 full-resolution masters in an eagerly loaded scene.
+Sprite source files are approximately 1.1–1.2 MB each. This pass preserves the generated masters without lossy processing. The 20 November delivery adds 96/360/720px character WebP copies and smaller food/garnish runtime images, with unchanged anchors and master/runtime comparisons; see FOOD_ASSETS.md. Future families require the same derivative review before full-catalog expansion. Do not ship 53 full-resolution masters in an eagerly loaded scene.
 
 ## Production queue and dependencies
 
@@ -64,3 +64,7 @@ The TypeScript AST reconciliation of the exact current-main `FOOD_LIBRARY` and `
 The source prompts and per-character identities are retained in `asset-prompts.json` as a provenance record of how the pilot sprites were made (they used another game's screenshot as a style input and aimed at its proportions; new prompts must not, see Originality above). The constraints that carry over to new work are the technical and originality ones: a flat outlined cartoon in NutriServe's own proportions and face design, one hard-edged shadow at most, full-body left-facing idle, transparent padding, no realistic portrait/irises/texture/lighting.
 
 For each later pose, pass the exact approved identity as the edit target and change only pose/expression. Asset IDs, states and dimensions are part of the contract. Claude should request a missing asset by ID/state and proceed with unrelated mechanics, rather than fabricate or recolor a substitute and mark it complete.
+
+## Quality comparison update — 20 November 2026
+
+The latest owner request explicitly asks for quality comparison against Papa's Freezeria. Compare observable readability, layering, contrast and scene completeness using official screenshots; record findings in FOOD_ASSETS.md. This does not make the original imagery a generation input or reinstate the retired mechanics-parity tasks. The new food family was generated from a written brief and its own rice revision. The owner also explicitly approved deterministic optimized runtime copies while retaining every master.

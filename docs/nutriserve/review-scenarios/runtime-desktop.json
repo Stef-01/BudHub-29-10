@@ -1,0 +1,55 @@
+{
+  "browser": {
+    "mode": "launch",
+    "executable_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "headless": true
+  },
+  "start_url": {
+    "url": "http://127.0.0.1:4323/nutriserve-art-lab.html"
+  },
+  "environment": {
+    "viewport": {
+      "width": 1280,
+      "height": 2000,
+      "device_scale_factor": 1
+    },
+    "timezone": "America/Los_Angeles",
+    "reduced_motion": "no-preference"
+  },
+  "actions": [
+    {
+      "step_id": "garnish-family",
+      "action": "wait_for_timeout",
+      "duration_ms": 1800
+    },
+    {
+      "step_id": "runtime-review",
+      "action": "click",
+      "locator": {
+        "kind": "role",
+        "role": "link",
+        "name": "Review optimized assets"
+      }
+    },
+    {
+      "step_id": "images-ready",
+      "action": "wait_for_timeout",
+      "duration_ms": 1600
+    }
+  ],
+  "capture": {
+    "at_end": [
+      "screenshot",
+      "dom",
+      "url"
+    ],
+    "events": [
+      "console"
+    ],
+    "after_each_step": [
+      "screenshot",
+      "url"
+    ]
+  },
+  "command_timeout_ms": 60000
+}

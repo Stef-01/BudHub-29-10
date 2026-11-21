@@ -1,0 +1,93 @@
+{
+  "browser": {
+    "mode": "launch",
+    "executable_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "headless": true
+  },
+  "start_url": {
+    "url": "http://127.0.0.1:4323/"
+  },
+  "environment": {
+    "viewport": {
+      "width": 1280,
+      "height": 1000,
+      "device_scale_factor": 1
+    },
+    "timezone": "America/Los_Angeles",
+    "reduced_motion": "no-preference"
+  },
+  "actions": [
+    {
+      "step_id": "app-load",
+      "action": "wait_for_timeout",
+      "duration_ms": 3000
+    },
+    {
+      "step_id": "games",
+      "action": "click",
+      "locator": {
+        "kind": "role",
+        "role": "button",
+        "name": "Games"
+      }
+    },
+    {
+      "step_id": "open-kitchen",
+      "action": "click",
+      "locator": {
+        "kind": "role",
+        "role": "button",
+        "name": "Play NutriServe Kitchen (preview)"
+      }
+    },
+    {
+      "step_id": "restore-review-fixture",
+      "action": "click",
+      "locator": {
+        "kind": "role",
+        "role": "button",
+        "name": "Continue day 1"
+      }
+    },
+    {
+      "step_id": "finish-rendered",
+      "action": "wait_for_timeout",
+      "duration_ms": 1500
+    },
+    {
+      "step_id": "images-ready",
+      "action": "wait_for_timeout",
+      "duration_ms": 1000
+    }
+  ],
+  "capture": {
+    "at_end": [
+      "screenshot",
+      "dom",
+      "url"
+    ],
+    "events": [
+      "console"
+    ],
+    "after_each_step": [
+      "url"
+    ]
+  },
+  "command_timeout_ms": 60000,
+  "storage": {
+    "local_storage": [
+      {
+        "origin": "http://127.0.0.1:4323",
+        "entries": [
+          {
+            "name": "nutriserve.remaster.save.v1:local",
+            "value": {
+              "source": "literal",
+              "value": "{\"format\":\"nutriserve-remaster-save\",\"schemaVersion\":2,\"state\":{\"schemaVersion\":2,\"runId\":\"food-art-review-2026-11-16\",\"paramVersions\":{\"build\":\"build-v7\",\"prep\":\"prep-v9-provisional\",\"finish\":\"finish-v4-provisional\",\"waiting\":\"waiting-v1-provisional\",\"aggregation\":\"aggregation-v2-provisional\",\"economy\":\"economy-v3\",\"day\":\"day-v2\",\"orders\":\"orders-v1\",\"progression\":\"progression-v8\"},\"seed\":42,\"rngState\":1703683461,\"nowMs\":20400,\"paused\":false,\"nextId\":6,\"nextTicketNumber\":2,\"selected\":{\"station\":\"finish\",\"ticketId\":\"t4\",\"dishId\":\"d5\"},\"day\":{\"number\":1,\"customers\":[{\"id\":\"c1\",\"catalogId\":\"priya_balanced\",\"arrivalMs\":1500,\"phase\":\"waiting_food\",\"atCounterMs\":4000,\"ticketId\":\"t4\"},{\"id\":\"c2\",\"catalogId\":\"arjun_fit\",\"arrivalMs\":31926,\"phase\":\"scheduled\"},{\"id\":\"c3\",\"catalogId\":\"vikram_lowsodium\",\"arrivalMs\":58297,\"phase\":\"scheduled\"}],\"completed\":false,\"results\":[]},\"tickets\":[{\"id\":\"t4\",\"number\":1,\"customerId\":\"c1\",\"catalogCustomerId\":\"priya_balanced\",\"order\":{\"size\":\"medium\",\"baseId\":\"rice_red\",\"mainId\":\"palak_dal\",\"sideId\":\"raita\",\"idealG\":{\"base\":131,\"main\":176,\"side\":60},\"prepLevel\":\"quick\",\"finish\":[{\"kind\":\"garnish\",\"id\":\"onion\",\"count\":2}]},\"takenAtMs\":4000,\"atCounterMs\":4000}],\"dishes\":[{\"id\":\"d5\",\"size\":\"medium\",\"stage\":\"finishing\",\"createdAtMs\":4000,\"forTicketId\":\"t4\",\"build\":{\"base\":{\"foodId\":\"rice_white\",\"mg\":128000},\"main\":{\"foodId\":\"chana_masala\",\"mg\":144000},\"side\":{\"foodId\":\"raita\",\"mg\":60000}},\"finish\":{\"drizzles\":{},\"garnishes\":[{\"id\":\"coriander\",\"x\":-0.3,\"y\":-0.2,\"fell\":false},{\"id\":\"coriander\",\"x\":0.3,\"y\":0.2,\"fell\":false}],\"steps\":[\"garnish:coriander\"]},\"prep\":{\"slot\":0,\"startedAtMs\":8400,\"milliUnits\":12000000,\"finishedAtMs\":20400}}],\"prepSlots\":[{\"index\":0,\"boostHeld\":false,\"heat\":0,\"overheated\":false},{\"index\":1,\"boostHeld\":false,\"heat\":0,\"overheated\":false},{\"index\":2,\"boostHeld\":false,\"heat\":0,\"overheated\":false},{\"index\":3,\"boostHeld\":false,\"heat\":0,\"overheated\":false}],\"profile\":{\"rank\":1,\"points\":0,\"coins\":0,\"upgrades\":[],\"creditedDays\":[],\"reportedDays\":[],\"bestDayScore\":0},\"customerPool\":[\"arjun_fit\",\"priya_balanced\",\"rohan_light\",\"maya_protein\",\"vikram_lowsodium\",\"ananya_breakfast\"],\"rev\":13}}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

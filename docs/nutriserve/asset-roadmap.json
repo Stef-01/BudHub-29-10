@@ -6,7 +6,7 @@
     },
     {
       "path": "services/nutriserveCharacters.ts",
-      "sha256": "96329f2727b8991ffea34d263651a23dcc8cca91541842032d575736ec201707"
+      "sha256": "0eb3a6e40d8e0ad5ccc1b51dc24e4a3d3d2ae917b76a6b265fdb6c46d3639cbd"
     }
   ],
   "method": "TypeScript AST of exact exported array initializers; unrelated tips excluded",
@@ -19,492 +19,547 @@
     {
       "id": "rice_white",
       "label": "White Rice",
-      "status": "planned-remaster",
+      "status": "partial-top-surface",
+      "acceptedStates": [
+        "finish-top-surface"
+      ],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "rice_brown",
       "label": "Brown Rice",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "rice_red",
       "label": "Red Rice",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "veg_biryani",
       "label": "Veg Biryani",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "lemon_rice",
       "label": "Lemon Rice",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "chana_masala",
       "label": "Chana Masala",
-      "status": "planned-remaster",
+      "status": "partial-top-surface",
+      "acceptedStates": [
+        "finish-top-surface"
+      ],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "chickpea_curry",
       "label": "Chickpea Curry",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "palak_dal",
       "label": "Palak Dal",
-      "status": "planned-remaster",
+      "status": "partial-top-surface",
+      "acceptedStates": [
+        "finish-top-surface"
+      ],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "masoor_dal",
       "label": "Masoor Dal",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "moong_dal_tadka",
       "label": "Moong Dal Tadka",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "rajma_masala",
       "label": "Rajma Masala",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "dal_tadka",
       "label": "Dal Tadka",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "paneer_butter_masala",
       "label": "Paneer Butter Masala",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "chicken_curry",
       "label": "Chicken Curry",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "kerala_parippu_curry",
       "label": "Kerala Parippu Curry (Moong Dal)",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "kadala_curry",
       "label": "Kadala Curry (Brown Chickpea)",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "mathi_sardine_curry",
       "label": "Mathi Kerala Sardine Curry",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "kerala_lamb_curry",
       "label": "Keralan Lamb Curry",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "kerala_beef_curry",
       "label": "Keralan Beef Curry",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "baingan_bharta",
       "label": "Baingan Bharta",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "bhindi_masala",
       "label": "Bhindi Masala",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "palak_paneer",
       "label": "Palak Paneer",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "mixed_veg_curry",
       "label": "Mixed Veg Curry",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "aloo_gobi",
       "label": "Aloo Gobi",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "beans_carrot_thoran",
       "label": "Beans & Carrot Thoran",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "moringa_leaf_thoran",
       "label": "Moringa Leaf Thoran (Drumstick Leaves)",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "banana_flower_thoran",
       "label": "Banana Flower Thoran",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "jackfruit_seeds_thoran",
       "label": "Jackfruit Seeds Thoran (Chakkakuru)",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "roti",
       "label": "Roti / Chapati",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "paratha",
       "label": "Paratha",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "naan_plain",
       "label": "Plain Naan",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "garlic_naan",
       "label": "Garlic Naan",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "cheese_naan",
       "label": "Cheese Naan",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "poha",
       "label": "Poha",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "upma",
       "label": "Upma",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "masala_dosa",
       "label": "Masala Dosa",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "tapioca_kappa",
       "label": "Tapioca (Kappa)",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "dosa_plain",
       "label": "Dosa (Plain)",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "idli_plain",
       "label": "Idli (Plain)",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "sambar",
       "label": "Sambar",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "raita",
       "label": "Cucumber Raita",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "sprouts_salad",
       "label": "Sprouts Salad",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "okra_pachadi",
       "label": "Okra Pachadi",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "moru_curry_pulissery",
       "label": "Moru Curry (Pulissery)",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "samosa",
       "label": "Samosa",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "laddu",
       "label": "Laddu",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "jalebi",
       "label": "Jalebi",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "dal_makhani",
       "label": "Dal Makhani",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     },
     {
       "id": "butter_chicken",
       "label": "Butter Chicken",
       "status": "planned-remaster",
+      "acceptedStates": [],
       "requiredStates": [
         "library-icon",
         "recipe-dependent-serving-layers"
       ],
-      "note": "Existing legacy art is not counted as accepted remaster art"
+      "note": "Top-surface acceptance does not complete side views or library icons. Existing legacy art is not counted as accepted remaster art"
     }
   ],
   "customers": [
